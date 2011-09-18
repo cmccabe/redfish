@@ -1,0 +1,9 @@
+cscope.files
+cscope.out
+*.swp
+*.swo
+build/
+ideas/
+junk/
+ideas/
+*~
