@@ -47,3 +47,5 @@ void JORM_FREE_##name(struct name *jorm) { \
 #define JORM_CONTAINER_END \
 	free(jorm); \
 }
+
+#define JORM_IGNORE(x)

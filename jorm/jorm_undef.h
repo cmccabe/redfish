@@ -14,3 +14,4 @@
 #undef JORM_BOOL
 #undef JORM_ARRAY
 #undef JORM_CONTAINER_END
+#undef JORM_IGNORE

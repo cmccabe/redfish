@@ -17,4 +17,5 @@ JORM_CONTAINER_BEGIN(bob)
 	JORM_NESTED(d, abbie)
 	JORM_BOOL(e)
 	JORM_ARRAY(f, abbie)
+	JORM_IGNORE(int extra_data;)
 JORM_CONTAINER_END

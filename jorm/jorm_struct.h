@@ -14,4 +14,4 @@
 #define JORM_BOOL(name) int name;
 #define JORM_ARRAY(name, ty) struct ty **name;
 #define JORM_CONTAINER_END };
-
+#define JORM_IGNORE(x) x

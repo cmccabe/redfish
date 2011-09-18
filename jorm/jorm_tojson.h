@@ -91,3 +91,5 @@ if (me->name != JORM_INVAL_ARRAY) { \
 #define JORM_CONTAINER_END \
 	return jo; \
 }
+
+#define JORM_IGNORE(x)

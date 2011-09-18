@@ -80,6 +80,7 @@ int test2(void)
 	my_bob->f[0] = my_abbie[1];
 	my_bob->f[1] = my_abbie[2];
 	my_bob->f[2] = NULL;
+	my_bob->extra_data = 404;
 	jo = JORM_TOJSON_bob(my_bob);
 	if (!jo) {
 		ret = EXIT_FAILURE;
@@ -144,6 +145,7 @@ int test3(void)
 	ret = 0;
 	EXPECT_NONZERO(my_bob->a == 1);
 	EXPECT_NONZERO(my_bob->b == 2.5);
+	EXPECT_ZERO(my_bob->extra_data);
 done:
 	if (jo) {
 		json_object_put(jo);

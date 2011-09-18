@@ -21,4 +21,5 @@ struct json_object;
 #define JORM_BOOL(name)
 #define JORM_ARRAY(name, ty)
 #define JORM_CONTAINER_END
+#define JORM_IGNORE(x)
 

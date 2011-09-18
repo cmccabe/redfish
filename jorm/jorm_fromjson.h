@@ -105,3 +105,4 @@ handle_oom: \
 #define JORM_CONTAINER_END \
 	return out; \
 }
+#define JORM_IGNORE(x)
