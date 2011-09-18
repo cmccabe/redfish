@@ -1,0 +1,57 @@
+ARCHITECTURE
+The high-level architecture of the OneFish distributed filesystem.
+Read "engineering assumptions" before reading this document.
+
+OFCHUNKD
+* The data storage daemon
+* Written in C
+* Serves up chunks to clients
+* Stores data in 64 MB chunks on a local filesystem.
+* Data is indexed by 64-bit IDs and stored in a two-level directory structure.
+* So if you have 1aac5e3c0d661e45, 1ae40ca407b68cc7, f0483d9fe1d0cc4b, and
+f045cad3b8f396b7, you have this on-disk:
+        1a/ac5e3c0d661e45
+        1a/e40ca407b68cc7
+        f0/483d9fe1d0cc4b
+        f0/45cad3b8f396b7
+* This is similar to how git stores data.
+
+OFMETAD
+* The metadata daemon.
+* Manages all metadata, including file ownership, permissions, file names, etc
+* Written in C
+* Read "metadata sharding" for details
+
+OFMONITORD
+* The monitor process.
+* Runs tests, including launching daemons
+        * uses ssh to launch daemons and test clients. Hadoop requires
+        passwordless ssh to be set up, so we can too.
+* Collects cluster-wide statistics by polling daemons
+* Measures cluster performance and health
+* written in Google Go
+* communicates with daemons over sockets
+* The monitor is optional-- you don't need it
+* If the monitor crashes, just start a new one.
+* has a "one-shot" mode that just checks current cluster status
+* Eventually, can use SQL database to lock machines (to share a single test
+cluster among multiple users) 
+* Eventually, can have some kind of web interface displaying cluster-wide
+statistics
+
+OFCLIENT.SO
+* The C library that is used by all clients.
+* We'll also have JNI bindings for Hadoop.
+* The C library buffers up to <CHUNK-SIZE> bytes locally before ever writing
+anything out. 
+
+OFTOOL
+* a simple tool that uses ofclient.so to make requests
+
+VARIOUS TEST PROGRAMS
+* various test programs simple use ofclient.so to make a bunch of wacky
+requests.
+
+* in general, the main logic of tests is implemented inside ofmonitord. Test
+programs are more about the implementation-- actually doing the stuff that
+ofmonitord is orchestrating

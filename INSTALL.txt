@@ -1,0 +1,14 @@
+To build OneFish, you must have a C compiler and the CMake build system
+installed.
+
+CMake can be installed in most Linux distributions with 
+"apt-get install cmake" or "yum install cmake".
+
+See http://www.cmake.org for details about CMake.
+
+To build and install OneFish:
+mkdir build
+cd build
+cmake ..
+make
+sudo make install

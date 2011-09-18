@@ -1,0 +1,3 @@
+add_executable(str_range_lock_unit str_range_lock_unit.c str_range_lock.c)
+target_link_libraries(str_range_lock_unit util utest)
+add_test(str_range_lock_unit ${CMAKE_CURRENT_BINARY_DIR}/str_range_lock_unit str_range_lock_unit)

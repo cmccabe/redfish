@@ -1,0 +1,61 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" /> 
+    <title>goals</title>
+    <link rel="stylesheet" type="text/css" href="doC.CSS" media="screen" /> 
+  </head>
+  <body>
+  <img src="cabinet.jpg"/><p>
+  <h1>Goals</h1>
+  <h3>No Single Point of Failure</h3>
+  Some existing clustered filesystems have a single point of failure which can
+  take down the whole filesystem for many minutes at a time. Often this is the
+  metadata server, although not always. OneFish does not have a SPOF.<p>
+  <h3>Petabyte Scale</h3>
+  OneFish is designed to work well on big computer clusters, especially
+  clusters running the <a href="http://hadoop.apache.org/">Hadoop scalable
+  computing framework.</a><p>
+  OneFish is designed to scale to many petabytes. You will not need to create
+  and manage a flock of smaller filesystems. Instead, you only need to manage
+  one filesystem.<p>
+  <h3>Simple and Reliable</h3>
+  It's very important that a filesystem be as simple and reliable as possible.
+  Absolutely no code should be committed without thorough unit testing and
+  regression testing. It's also important to keep configuration knobs to a
+  minimum.<p>
+  <h3>Native Performance</h3>
+  The filesystem ought to get as much performance as it can out of your
+  hardware.<p>
+  <h3>Open Source</h3>
+  OneFish is our way of giving back to the open source community which has
+  given us so much great software over the years.<p>
+  <h1>Non-goals</h1>
+  <h3>POSIX semantics</h3>
+  OneFish will not offer POSIX filesystem semantics, now or ever. There are
+  many great filesystems out there which do offer POSIX or near-POSIX
+  filesystem semantics, like <a href="http://www.lustre.org">Lustre</a> 
+  and <a href="http://ceph.newdream.net/">Ceph</a>.<p>
+  
+  In my opinion, POSIX filesystem semantics are most useful in a
+  traditional high-performance computing environment.<p>
+
+  A lot of other popular filesystems, like NFS and HDFS, do not and never will
+  offer traditional POSIX semantics. This is a fundamental tradeoff and one
+  that I think we need to make to get acceptable peformance and lower code
+  complexity.<p>
+
+  <h4>Wide Area Network Operation</h4>
+  OneFish is not designed to work over wide area networks (WANs) or in
+  environments with extremely high latency between nodes. For example, if your
+  nodes are connected together over home broadband connections, OneFish is not
+  the filesystem for you.<p>
+
+  There are a lot of great filesystems out there which are designed for
+  distributed environments.
+  <a href="http://www.xtreemfs.org/">XtreemFS</a> and
+  <a href="http://www.tahoe-lafs.org">Tahoe-LAFS</a> are just two examples.<p>
+
+  <h4>Kernel Client</h4>
+  We're not interested in writing a kernel client for OneFish at the moment.<p>
+  </body>
+</html>

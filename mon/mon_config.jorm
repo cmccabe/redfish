@@ -1,0 +1,29 @@
+/*
+ * The OneFish distributed filesystem
+ *
+ * Copyright (C) 2011 Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
+ *
+ * This is licensed under the Apache License, Version 2.0.  See file COPYING.
+ */
+
+JORM_CONTAINER_BEGIN(mon_daemon)
+	JORM_STR(bindir)
+	JORM_STR(binary)
+	JORM_STR(config)
+	JORM_STR(host)
+	JORM_STR(logdir)
+	JORM_STR(pidfile)
+	JORM_STR(port)
+	JORM_STR(rack)
+JORM_CONTAINER_END
+
+JORM_CONTAINER_BEGIN(mon_cluster)
+	JORM_NESTED(defaults, mon_daemon)
+	JORM_ARRAY(daemons, mon_daemon)
+JORM_CONTAINER_END
+
+JORM_CONTAINER_BEGIN(mon_config)
+	JORM_STR(logdir)
+	JORM_STR(pidfile)
+	JORM_NESTED(cluster, mon_cluster)
+JORM_CONTAINER_END
