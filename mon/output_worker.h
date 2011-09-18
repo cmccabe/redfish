@@ -9,64 +9,26 @@
 #ifndef ONEFISH_OUTPUT_WORKER_DOT_H
 #define ONEFISH_OUTPUT_WORKER_DOT_H
 
-#include "mon/worker.h"
-
-#include <unistd.h> /* for uint32_t */
-
 #define LBUF_LEN_DIGITS 8
-
-/** Mode to run the output worker in */
-enum output_worker_sink_t {
-	MON_OUTPUT_SINK_NONE,
-	MON_OUTPUT_SINK_STDOUT,
-	MON_OUTPUT_SINK_FISHTOP,
-	MON_OUTPUT_SINK_NUM,
-};
-
-enum output_worker_json_msg_t {
-	MON_OUTPUT_MSG_MON_CLUSTER = 1,
-	MON_OUTPUT_MSG_END = 2,
-};
-
-/** The output worker */
-extern struct worker *g_output_worker;
-
-/** A message containing JSON for the output worker to output */
-enum {
-	WORKER_MSG_OUTPUT_JSON = 1,
-};
-struct output_worker_msg
-{
-	struct worker_msg msg;
-	enum output_worker_json_msg_t json_ty;
-	struct json_object* jo;
-};
 
 /** Initialize the output worker.
  *
- * @param argv0		argv[0]
- * @param mode		Output mode to use
- *
- * @return		0 on success; error code otherwise
+ * @param sock_path	path to the socket to listen on
+ * @param err		The error output buffer
+ * @param err_len	The length of the error output buffer
  */
-int output_worker_init(const char *argv0, enum output_worker_sink_t sink);
+void init_output_worker(const char* sock_path, char *err, size_t err_len);
 
-/** Stop and join the output worker
- *
- * @return		0 on success; error code otherwise
+/** Tell the update worker that the state has changed and observers need to be
+ * updated
  */
-int output_worker_shutdown(void);
+void kick_output_worker(void);
 
-/** Send a message to the output worker.
+/** Tell the update worker to shut itself down.
  *
- * @worker		the worker
- * @omsg		The message to send to the worker. The message will be
- *			freed, including the enclosed JSON, if the function
- *			returns nonzero.
- *
- * @return		0 on success; error code otherwise
+ * This should be done only after all the threads calling kick_output_worker
+ * have been stopped.
  */
-int output_worker_sendmsg_or_free(struct worker *worker,
-				  struct output_worker_msg *omsg);
+void shutdown_output_worker(void);
 
 #endif

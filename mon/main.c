@@ -38,11 +38,6 @@ static void usage(int exitstatus)
 "    Run in the foreground (do not daemonize)",
 "-h",
 "    Show this help message",
-"-o <output-sink>",
-"    Set the output sink. Valid output sinks are:",
-"        none: no output at all",
-"        -: output raw JSON to stdout",
-"        top: show pretty output using fishtop",
 "-T",
 "    Show test descriptions",
 NULL
@@ -52,27 +47,15 @@ NULL
 	exit(exitstatus);
 }
 
-static enum output_worker_sink_t parse_output_worker_sink(const char *str)
-{
-	if (strcmp(str, "none") == 0)
-		return MON_OUTPUT_SINK_NONE;
-	else if (strcmp(str, "-") == 0)
-		return MON_OUTPUT_SINK_STDOUT;
-	else if (strcmp(str, "top") == 0)
-		return MON_OUTPUT_SINK_FISHTOP;
-	else
-		return MON_OUTPUT_SINK_NUM;
-}
-
 static void parse_arguments(int argc, char **argv, int *daemonize,
 	const char **mon_config_file,
 	const struct mon_action ***mon_actions,
-	struct mon_action_args ***mon_args, enum output_worker_sink_t *sink)
+	struct mon_action_args ***mon_args)
 {
 	int c;
 	char err[512] = { 0 };
 
-	while ((c = getopt(argc, argv, "c:fho:T")) != -1) {
+	while ((c = getopt(argc, argv, "c:fhT")) != -1) {
 		switch (c) {
 		case 'c':
 			*mon_config_file = optarg;
@@ -82,13 +65,6 @@ static void parse_arguments(int argc, char **argv, int *daemonize,
 			break;
 		case 'h':
 			usage(EXIT_SUCCESS);
-		case 'o':
-			*sink = parse_output_worker_sink(optarg);
-			if (*sink == MON_OUTPUT_SINK_NUM) {
-				fprintf(stderr, "Invalid argument to -o.\n\n");
-				usage(EXIT_FAILURE);
-			}
-			break;
 		case 'T':
 			print_action_descriptions(MON_ACTION_TEST);
 			exit(EXIT_SUCCESS);
@@ -110,32 +86,6 @@ static void parse_arguments(int argc, char **argv, int *daemonize,
 	}
 }
 
-static int output_mon_config(struct json_object *jo)
-{
-	struct output_worker_msg *omsg =
-		calloc(1, sizeof(struct output_worker_msg));
-	if (!omsg)
-		return -ENOMEM;
-	omsg->msg.ty = WORKER_MSG_OUTPUT_JSON;
-	omsg->json_ty = MON_OUTPUT_MSG_MON_CLUSTER;
-	omsg->jo = jo;
-	json_object_get(jo); /* output_worker will call 'put' on the conf */
-	return output_worker_sendmsg_or_free(g_output_worker, omsg);
-}
-
-static int output_msg_end(void)
-{
-	struct json_object *jo = json_object_new_object();
-	struct output_worker_msg *omsg =
-		calloc(1, sizeof(struct output_worker_msg));
-	if (!omsg)
-		return -ENOMEM;
-	omsg->msg.ty = WORKER_MSG_OUTPUT_JSON;
-	omsg->json_ty = MON_OUTPUT_MSG_END;
-	omsg->jo = jo;
-	return output_worker_sendmsg_or_free(g_output_worker, omsg);
-}
-
 int main(int argc, char **argv)
 {
 	char err[512] = { 0 };
@@ -145,12 +95,11 @@ int main(int argc, char **argv)
 	const char *mon_config_file = NULL;
 	const struct mon_action **mon_actions = NULL;
 	struct mon_action_args **mon_args = NULL;
-	enum output_worker_sink_t sink = MON_OUTPUT_SINK_FISHTOP;
 	struct mon_config *conf;
 	struct log_config *lc;
 
 	parse_arguments(argc, argv, &daemonize, &mon_config_file, &mon_actions,
-			&mon_args, &sink);
+			&mon_args);
 	jo = parse_json_file(mon_config_file, err, sizeof(err));
 	if (err[0]) {
 		fprintf(stderr, "error parsing config file '%s': %s\n",
@@ -204,15 +153,9 @@ int main(int argc, char **argv)
 		ret = EXIT_FAILURE;
 		goto done_signal_reset_dispositions;
 	}
-	ret = output_worker_init(argv[0], sink);
-	if (ret) {
-		glitch_log("output_worker_init error: %d\n", ret);
-		ret = EXIT_FAILURE;
-		goto done_signal_reset_dispositions;
-	}
-	ret = output_mon_config(jo);
-	if (ret) {
-		glitch_log("output_mon_config error: %d\n", ret);
+	init_output_worker(lc->socket_path, err, sizeof(err));
+	if (err[0]) {
+		glitch_log("error initializing output worker: %d\n", ret);
 		ret = EXIT_FAILURE;
 		goto done_signal_reset_dispositions;
 	}
@@ -229,16 +172,10 @@ int main(int argc, char **argv)
 			goto done_shutdown_output_worker;
 		}
 	}
-	ret = output_msg_end();
-	if (ret) {
-		glitch_log("output_msg_end error: %d\n", ret);
-		ret = EXIT_FAILURE;
-		goto done_shutdown_output_worker;
-	}
 	ret = EXIT_SUCCESS;
 
 done_shutdown_output_worker:
-	output_worker_shutdown();
+	shutdown_output_worker();
 done_signal_reset_dispositions:
 	signal_resset_dispositions();
 done_close_glitchlog:

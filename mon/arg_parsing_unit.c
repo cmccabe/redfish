@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define FISHMON_WFT_ARGS "-o", "none", "-f"
+#define FISHMON_WFT_ARGS "-f"
 
 static const char *CONF[] = {
 	"{",

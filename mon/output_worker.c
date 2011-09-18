@@ -6,6 +6,7 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
+#include "core/glitch_log.h"
 #include "jorm/json.h"
 #include "mon/output_worker.h"
 #include "mon/worker.h"
@@ -14,222 +15,283 @@
 #include "util/platform/pipe2.h"
 #include "util/run_cmd.h"
 #include "util/safe_io.h"
+#include "util/string.h"
 
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/un.h>
+
+static pthread_t g_output_worker_thread;
+
+static int g_write_event_fd = -1;
+
+#define MON_OUTPUT_WORKER_MAX_CONN 10
+
+enum output_worker_conn_state
+{
+	OUTPUT_WORKER_CONN_DISC,
+	OUTPUT_WORKER_CONN_NEW,
+	OUTPUT_WORKER_CONN_ESTABLISHED,
+};
 
 struct output_worker_data
 {
-	int fd;
-	int pid;
-	int close_fd_on_exit;
+	char *sock_path;
+	int sock;
+	int event_fd[2];
+	int conn[MON_OUTPUT_WORKER_MAX_CONN];
+	enum output_worker_conn_state cstate[MON_OUTPUT_WORKER_MAX_CONN];
 };
 
-struct worker *g_output_worker;
-
-static int do_output(struct worker_msg *msg, void *data)
+static void do_bind_and_listen(struct output_worker_data *odata,
+			       char *err, size_t err_len)
 {
-	int res, ret;
-	struct json_object *joty;
-	struct output_worker_data *odata = (struct output_worker_data*)data;
-	struct output_worker_msg *omsg = (struct output_worker_msg*)msg;
-	char len_buf[LBUF_LEN_DIGITS + 2] = { 0 };
-	const char* jostr;
-	size_t jostr_len;
+	int ret;
+	struct sockaddr_un address;
+	odata->sock = socket(PF_UNIX, SOCK_STREAM, 0);
+	if (odata->sock < 0) {
+		ret = errno;
+		snprintf(err, err_len,
+			 "failed to create socket: error %d", ret);
+		goto error;
+	}
+	fcntl(odata->sock, F_SETFD, FD_CLOEXEC);
 
-	if (msg->ty != WORKER_MSG_OUTPUT_JSON) {
-		ret = -EINVAL;
-		goto done;
+	memset(&address, 0, sizeof(struct sockaddr_un));
+	if (zsnprintf(address.sun_path, sizeof(address.sun_path),
+				"%s", odata->sock_path)) {
+		snprintf(err, err_len, "socket path too long!\n");
+		goto error_close_fd;
 	}
-	if (json_object_get_type(omsg->jo) != json_type_object) {
-		ret = -EDOM;
-		goto done_put_jo;
+	address.sun_family = AF_UNIX;
+	ret = 0;
+	if (bind(odata->sock, (struct sockaddr*)&address,
+			sizeof(struct sockaddr_un))) {
+		ret = errno;
+		if (ret == EADDRINUSE) {
+			RETRY_ON_EINTR(ret, unlink(odata->sock_path));
+			if (bind(odata->sock, (struct sockaddr*)&address,
+					sizeof(struct sockaddr_un))) {
+				ret = errno;
+			}
+		}
 	}
-	joty = json_object_new_int(omsg->json_ty);
-	if (!joty) {
-		ret = -ENOMEM;
-		goto done_put_jo;
+	if (ret) {
+		snprintf(err, err_len, "Failed to bind to the UNIX domain "
+			 "socket '%s': error %d\n", odata->sock_path, ret);
+		goto error_close_fd;
 	}
-	json_object_object_add(omsg->jo, "type", joty);
+	if (listen(odata->sock, 5)) {
+		ret = errno;
+		snprintf(err, err_len, "Failed to listen to the UNIX domain "
+			 "socket '%s': error %d\n", odata->sock_path, ret);
+		goto error_unlink_sock;
+	}
+	return;
+
+error_unlink_sock:
+	RETRY_ON_EINTR(ret, unlink(odata->sock_path));
+error_close_fd:
+	RETRY_ON_EINTR(ret, close(odata->sock));
+error:
+	return;
+}
+
+static void output_worker_accept_new_conn(struct output_worker_data *odata)
+{
+	int ret, i, cfd;
+	struct sockaddr_un address;
+	socklen_t alen = sizeof(struct sockaddr_un);
+	RETRY_ON_EINTR(cfd, accept(odata->sock, (struct sockaddr*)&address, &alen));
+	if (cfd < 0) {
+		ret = errno;
+		glitch_log("accept failed with error %d\n", ret);
+		return;
+	}
+	for (i = 0; i < MON_OUTPUT_WORKER_MAX_CONN; ++i) {
+		if (odata->cstate[i] == OUTPUT_WORKER_CONN_DISC) {
+			odata->cstate[i] = OUTPUT_WORKER_CONN_NEW;
+			odata->conn[i] = cfd;
+			return;
+		}
+	}
+	glitch_log("logic error on line %d of %s\n", __LINE__, __FILE__);
+	RETRY_ON_EINTR(ret, close(cfd));
+}
+
+/*
+static int write_json_msg(int fd, struct json_object *jo)
+{
 	jostr = json_object_get_string(omsg->jo);
 	jostr_len = strlen(jostr);
 	snprintf(len_buf, sizeof(len_buf),
 		"\n\% " TO_STR2(LBUF_LEN_DIGITS) "Zd", jostr_len);
 	res = safe_write(odata->fd, len_buf, LBUF_LEN_DIGITS + 1);
+	if (res)
+		return res;
 	res = safe_write(odata->fd, jostr, jostr_len);
-	if (omsg->json_ty == MON_OUTPUT_MSG_END) {
-		char newline[1] = "\n";
-		res = safe_write(odata->fd, newline, 1);
+	if (res)
+		return res;
+	return 0;
+}
+*/
+
+static void update_observers(struct output_worker_data *odata)
+{
+	int i, ret;
+
+	for (i = 0; i < MON_OUTPUT_WORKER_MAX_CONN; ++i) {
+		if (odata->cstate[i] == OUTPUT_WORKER_CONN_DISC)
+			continue;
+		else if (odata->cstate[i] == OUTPUT_WORKER_CONN_NEW) {
+			char fu[] = "full_update";
+			ret = safe_write(odata->conn[i], fu, strlen(fu));
+			if (ret) {
+				RETRY_ON_EINTR(ret, close(odata->conn[i]));
+				odata->conn[i] = -1;
+				odata->cstate[i] = OUTPUT_WORKER_CONN_DISC;
+			}
+			odata->cstate[i] = OUTPUT_WORKER_CONN_ESTABLISHED;
+		}
+		else if (odata->cstate[i] == OUTPUT_WORKER_CONN_ESTABLISHED) {
+			char fu[] = "partial_update";
+			ret = safe_write(odata->conn[i], fu, strlen(fu));
+			if (ret) {
+				RETRY_ON_EINTR(ret, close(odata->conn[i]));
+				odata->conn[i] = -1;
+				odata->cstate[i] = OUTPUT_WORKER_CONN_DISC;
+			}
+		}
 	}
-	ret = 0;
-done_put_jo:
-	json_object_put(omsg->jo);
-done:
-	return ret;
 }
 
-static void close_output_fd(void *data)
+static void* run_output_worker(void *v)
+{
+	int ret, i;
+	struct output_worker_data *odata = (struct output_worker_data*)v;
+
+	while (1) {
+		struct pollfd fds[2];
+		memset(fds, 0, sizeof(fds));
+		/* only listen for new connections if we have a free slot. */
+		fds[0].fd = odata->event_fd[PIPE_READ];
+		fds[0].events = 0;
+		for (i = 0; i < MON_OUTPUT_WORKER_MAX_CONN; ++i) {
+			if (odata->cstate[i] == OUTPUT_WORKER_CONN_DISC) {
+				fds[0].events = POLLIN;
+				break;
+			}
+		}
+		fds[1].fd = odata->sock;
+		fds[1].events = POLLIN | POLLRDBAND;
+		ret = poll(fds, 2, -1);
+		if (ret < 0) {
+			ret = errno;
+			if (ret == EINTR)
+				continue;
+			glitch_log("output_worker_data: poll error %d\n", ret);
+			break;
+		}
+		if (fds[0].revents & POLLIN) {
+			output_worker_accept_new_conn(odata);
+		}
+		if (fds[1].revents & POLLIN) {
+			char buf[1] = { '\0' };
+			ret = safe_read(odata->event_fd[PIPE_READ], buf, sizeof(buf));
+			if (buf[0] == '\0') {
+				/* shutdown. */
+				break;
+			}
+			else if (buf[0] == '\1') {
+				update_observers(odata);
+			}
+		}
+	}
+
+	for (i = 0; i < MON_OUTPUT_WORKER_MAX_CONN; ++i) {
+		if (odata->cstate[i] != OUTPUT_WORKER_CONN_DISC) {
+			RETRY_ON_EINTR(ret, close(odata->conn[i]));
+		}
+		odata->cstate[i] = OUTPUT_WORKER_CONN_DISC;
+	}
+	RETRY_ON_EINTR(ret, close(odata->sock));
+	RETRY_ON_EINTR(ret, close(odata->event_fd[PIPE_READ]));
+	g_write_event_fd = -1;
+	free(odata->sock_path);
+	free(odata);
+	return NULL;
+}
+
+void init_output_worker(const char* sock_path, char *err, size_t err_len)
+{
+	struct output_worker_data *odata;
+	int ret, i;
+
+	odata = calloc(1, sizeof(struct output_worker_data));
+	if (!odata) {
+		snprintf(err, err_len, "out of memory\n");
+		goto error;
+	}
+	odata->sock_path = strdup(sock_path);
+	if (!odata->sock_path) {
+		snprintf(err, err_len, "out of memory\n");
+		goto error_free_odata;
+	}
+	ret = do_pipe2(odata->event_fd, O_CLOEXEC);
+	if (ret) {
+		snprintf(err, err_len, "failed to open pipe: error %d\n", ret);
+		goto error_free_sock_path;
+	}
+	do_bind_and_listen(odata, err, err_len);
+	if (err[0])
+		goto error_close_pipe;
+	for (i = 0; i < MON_OUTPUT_WORKER_MAX_CONN; ++i) {
+		odata->cstate[i] = OUTPUT_WORKER_CONN_DISC;
+	}
+	ret = pthread_create(&g_output_worker_thread, NULL,
+		       run_output_worker, (void*)odata);
+	if (ret) {
+		snprintf(err, err_len, "pthread_create failed with "
+			 "error %d\n", ret);
+		goto error_close_sock;
+	}
+	g_write_event_fd = odata->event_fd[PIPE_WRITE];
+	return;
+
+error_close_sock:
+	RETRY_ON_EINTR(ret, close(odata->sock));
+error_close_pipe:
+	RETRY_ON_EINTR(ret, close(odata->event_fd[PIPE_READ]));
+	RETRY_ON_EINTR(ret, close(odata->event_fd[PIPE_WRITE]));
+error_free_sock_path:
+	free(odata->sock_path);
+error_free_odata:
+	free(odata);
+error:
+	return;
+}
+
+static void kick_output_worker_impl(char m)
 {
 	int res;
-	struct output_worker_data *odata = (struct output_worker_data*)data;
-	if (odata->close_fd_on_exit) {
-		RETRY_ON_EINTR(res, close(odata->fd));
-	}
-	odata->fd = -1;
-	free(odata);
+	char buf[1] = { m };
+	res = safe_write(g_write_event_fd, buf, 1);
 }
 
-static int start_filter_give_input(const char *fishtop, int *pid)
+void kick_output_worker(void)
 {
-	char fd_str[32] = { 0 };
-	const char *cvec[] = { fishtop, "-f", fd_str, NULL };
-	int mypid, res, ret, pipefd[2] = { -1, -1 };
-
-	*pid = -1;
-	/* Create a pipe to pass in data */
-	ret = do_pipe2(pipefd, O_CLOEXEC);
-	if (ret) {
-		return FORCE_NEGATIVE(ret);
-	}
-	mypid = fork();
-	if (mypid == -1) {
-		RETRY_ON_EINTR(res, close(pipefd[PIPE_WRITE]));
-		RETRY_ON_EINTR(res, close(pipefd[PIPE_READ]));
-		return FORCE_NEGATIVE(errno);
-	}
-	else if (mypid == 0) {
-		int curflags;
-		RETRY_ON_EINTR(res, close(pipefd[PIPE_WRITE]));
-		/* Don't close the read end of the pipe when we execute our
-		 * subprocess */
-		curflags = fcntl(pipefd[PIPE_READ], F_GETFL, 0);
-		ret = fcntl(pipefd[PIPE_READ], F_SETFL, curflags & (~O_CLOEXEC));
-		if (ret)
-			_exit(127);
-		snprintf(fd_str, sizeof(fd_str), "%d", pipefd[PIPE_READ]);
-		execvp(cvec[0], (char**)cvec);
-		_exit(127);
-	}
-	*pid = mypid;
-	RETRY_ON_EINTR(res, close(pipefd[PIPE_READ]));
-	pipefd[PIPE_READ] = -1;
-
-	return pipefd[PIPE_WRITE];
+	kick_output_worker_impl('\1');
 }
 
-static int output_worker_init_fishtop(const char *argv0,
-		struct output_worker_data *odata)
+void shutdown_output_worker(void)
 {
-	char fishtop[PATH_MAX];
-	int ret;
-
-	ret = get_colocated_path(argv0, "fishtop", fishtop, sizeof(fishtop));
-	if (ret) {
-		fprintf(stderr, "failed to find 'fishtop' : name too long\n");
-		return ret;
-	}
-	if (access(fishtop, R_OK | X_OK)) {
-		char fishtop2[PATH_MAX];
-		ret = get_colocated_path(argv0, "../top/fishtop",
-				fishtop2, sizeof(fishtop2));
-		if (ret) {
-			fprintf(stderr, "failed to find 'fishtop' : "
-				"name too long\n");
-			return ret;
-		}
-		if (access(fishtop2, R_OK | X_OK)) {
-			fprintf(stderr, "failed to find '%s' or '%s'.\n",
-				fishtop2, fishtop2);
-			return ret;
-		}
-		strcpy(fishtop, fishtop2);
-	}
-	odata->close_fd_on_exit = 1;
-	odata->fd = start_filter_give_input(fishtop, &odata->pid);
-	if (odata->fd < 0) {
-		ret = odata->fd;
-		free(odata);
-		fprintf(stderr, "start_filter_give_input failed with "
-			"error %d\n", ret);
-		return ret;
-	}
-	return 0;
-}
-
-int output_worker_init(const char *argv0, enum output_worker_sink_t sink)
-{
-	int ret;
-	struct output_worker_data *odata =
-		calloc(1, sizeof(struct output_worker_data));
-	if (!odata)
-		return -ENOMEM;
-
-	switch (sink) {
-	case MON_OUTPUT_SINK_NONE:
-		odata->fd = open("/dev/null", O_WRONLY);
-		if (odata->fd < 0) {
-			ret = errno;
-			fprintf(stderr, "failed to open /dev/null: error "
-				"%d\n", ret);
-			goto error;
-		}
-		odata->pid = -1;
-		odata->close_fd_on_exit = 1;
-		break;
-	case MON_OUTPUT_SINK_STDOUT:
-		odata->fd = STDOUT_FILENO;
-		odata->pid = -1;
-		odata->close_fd_on_exit = 0;
-		break;
-	case MON_OUTPUT_SINK_FISHTOP:
-		ret = output_worker_init_fishtop(argv0, odata);
-		if (ret)
-			goto error;
-		break;
-	default:
-		fprintf(stderr, "logic error on %s:%d\n", __FILE__, __LINE__);
-		ret = -EDOM;
-		goto error;
-	}
-
-	g_output_worker = worker_start("output_worker",
-					do_output, close_output_fd, odata);
-	if (!g_output_worker) {
-		ret = -EDOM;
-		goto error;
-	}
-	return 0;
-error:
-	close_output_fd(odata);
-	return ret;
-}
-
-int output_worker_shutdown(void)
-{
-	int ret;
-	ret = worker_stop(g_output_worker);
-	if (ret)
-		return ret;
-	ret = worker_join(g_output_worker);
-	if (ret)
-		return ret;
-	return 0;
-
-}
-
-int output_worker_sendmsg_or_free(struct worker *worker,
-				  struct output_worker_msg *omsg)
-{
-	int ret = worker_sendmsg(worker, omsg);
-	if (ret) {
-		json_object_put(omsg->jo);
-		free(omsg);
-	}
-	return ret;
+	kick_output_worker_impl('\0');
 }

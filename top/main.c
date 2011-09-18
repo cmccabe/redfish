@@ -211,6 +211,8 @@ static void main_loop(int comm_fd, char *prog_err, size_t prog_err_len)
 				snprintf(ts.conn_status, TS_CONN_STATUS_LEN,
 					 "Disconnected: %s", err);
 				fprintf(fp, "got comm_fd err %s\n", err);
+				RETRY_ON_EINTR(ret, close(comm_fd));
+				comm_fd = -1;
 			}
 			else {
 				handle_json_message(jo, &ts);
