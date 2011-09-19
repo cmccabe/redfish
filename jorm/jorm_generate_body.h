@@ -11,6 +11,10 @@
  */
 
 #include "jorm/jorm_undef.h"
+#include "jorm/jorm_util.h"
+#include JORM_CUR_FILE
+
+#include "jorm/jorm_undef.h"
 #include "jorm/jorm_free.h"
 #include JORM_CUR_FILE
 

@@ -121,14 +121,17 @@ done:
 
 int test3(void)
 {
+	size_t i;
 	int ret;
 	char err[512] = { 0 };
 	const char in_str[] = "{ \"a\": 1, \"b\": 2.500000, "
 		"\"c\": \"hi there\", \"d\": { \"a\": 0 }, "
 		"\"e\": false, \"f\": [ { \"a\": 1 }, "
 		"{ \"a\": 2 } ] }";
+	int expected_array_val[] = { 1, 2, 6 };
 	struct json_object* jo = NULL;
 	struct bob *my_bob = NULL;
+	struct abbie* final_abbie;
 
 	jo = parse_json_string(in_str, err, sizeof(err));
 	if (err[0]) {
@@ -146,6 +149,13 @@ int test3(void)
 	EXPECT_NONZERO(my_bob->a == 1);
 	EXPECT_NONZERO(my_bob->b == 2.5);
 	EXPECT_ZERO(my_bob->extra_data);
+	final_abbie = JORM_ARRAY_APPEND_abbie(&my_bob->f);
+	EXPECT_NOT_EQUAL(final_abbie, NULL);
+	final_abbie->a = 6;
+	for (i = 0; i < sizeof(expected_array_val) / 
+			sizeof(expected_array_val[0]); ++i) {
+		EXPECT_EQUAL(my_bob->f[i]->a, expected_array_val[i]);
+	}
 done:
 	if (jo) {
 		json_object_put(jo);

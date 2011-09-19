@@ -35,14 +35,7 @@ void JORM_FREE_##name(struct name *jorm) { \
 	jorm->name = JORM_INVAL_BOOL;
 
 #define JORM_ARRAY(name, ty) \
-	if (jorm->name != JORM_INVAL_ARRAY) { \
-		struct ty **arr; \
-		for (arr = jorm->name; *arr; ++arr) { \
-			JORM_FREE_##ty(*arr); \
-		} \
-		free(jorm->name); \
-		jorm->name = JORM_INVAL_ARRAY; \
-	}
+	JORM_ARRAY_FREE_##ty(&jorm->name);
 
 #define JORM_CONTAINER_END \
 	free(jorm); \

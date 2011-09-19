@@ -42,4 +42,22 @@ extern void die_if(int t);
 		} \
 	} while (0);
 
+#define EXPECT_EQUAL(x, y) \
+	do { \
+		if (x != y) { \
+			fprintf(stderr, "failed on line %d: %s\n",\
+				__LINE__, #x); \
+			return 1; \
+		} \
+	} while (0);
+
+#define EXPECT_NOT_EQUAL(x, y) \
+	do { \
+		if (x == y) { \
+			fprintf(stderr, "failed on line %d: %s\n",\
+				__LINE__, #x); \
+			return 1; \
+		} \
+	} while (0);
+
 #endif
