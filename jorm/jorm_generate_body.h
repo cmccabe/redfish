@@ -25,3 +25,7 @@
 #include "jorm/jorm_undef.h"
 #include "jorm/jorm_fromjson.h"
 #include JORM_CUR_FILE
+
+#include "jorm/jorm_undef.h"
+#include "jorm/jorm_copy.h"
+#include JORM_CUR_FILE

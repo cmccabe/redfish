@@ -12,7 +12,8 @@ struct json_object;
 	struct name; \
 	extern struct name *JORM_FROMJSON_##name(struct json_object *jo); \
 	extern struct json_object *JORM_TOJSON_##name(struct name *me); \
-	extern void JORM_FREE_##name(struct name *jorm);
+	extern void JORM_FREE_##name(struct name *jorm); \
+	extern int JORM_COPY_##name(struct name *src, struct name *dst);
 #define JORM_INT(name)
 #define JORM_DOUBLE(name)
 #define JORM_STR(name)

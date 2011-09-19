@@ -174,10 +174,59 @@ done:
 	return ret;
 }
 
+int test4(void)
+{
+	struct bob *b1 = calloc(1, sizeof(struct bob));
+	struct bob *b2 = calloc(1, sizeof(struct bob));
+	struct bob *b3 = calloc(1, sizeof(struct bob));
+
+	EXPECT_NOT_EQUAL(b1, NULL);
+	EXPECT_NOT_EQUAL(b2, NULL);
+	EXPECT_NOT_EQUAL(b3, NULL);
+
+	EXPECT_EQUAL(b3->a, 0);
+	b1->a = 101;
+	EXPECT_ZERO(JORM_COPY_bob(b1, b3));
+	EXPECT_EQUAL(b3->a, 101);
+
+	b2->a = JORM_INVAL_INT;
+	b2->b = 50;
+	b2->d = calloc(1, sizeof(struct abbie));
+	b2->d->a = 9000;
+	EXPECT_ZERO(JORM_COPY_bob(b2, b3));
+	EXPECT_EQUAL(b3->b, 50);
+	EXPECT_NOT_EQUAL(b3->d, NULL);
+	EXPECT_EQUAL(b3->d->a, 9000);
+	EXPECT_EQUAL(b3->a, 101);
+
+	b1->f = calloc(3, sizeof(struct abbie*));
+	EXPECT_NOT_EQUAL(b1->f, NULL);
+	b1->f[0] = calloc(1, sizeof(struct abbie));
+	EXPECT_NOT_EQUAL(b1->f[0], NULL);
+	b1->f[1] = calloc(1, sizeof(struct abbie));
+	EXPECT_NOT_EQUAL(b1->f[1], NULL);
+	b1->f[2] = NULL;
+	b1->f[0]->a = 100;
+	b1->f[1]->a = 200;
+	EXPECT_ZERO(JORM_COPY_bob(b1, b3));
+	EXPECT_NOT_EQUAL(b3->f, NULL);
+	EXPECT_NOT_EQUAL(b3->f[0], NULL);
+	EXPECT_EQUAL(b3->f[0]->a, 100);
+	EXPECT_NOT_EQUAL(b3->f[1], NULL);
+	EXPECT_EQUAL(b3->f[1]->a, 200);
+	EXPECT_EQUAL(b3->f[2], NULL);
+
+	JORM_FREE_bob(b1);
+	JORM_FREE_bob(b2);
+	JORM_FREE_bob(b3);
+	return 0;
+}
+
 int main(void)
 {
 	EXPECT_ZERO(test1());
 	EXPECT_ZERO(test2());
 	EXPECT_ZERO(test3());
+	EXPECT_ZERO(test4());
 	return EXIT_SUCCESS;
 }
