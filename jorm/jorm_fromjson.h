@@ -66,6 +66,12 @@ handle_oom: \
 		out->name = JORM_INVAL_NESTED; \
 	} \
 }
+#define JORM_EMBEDDED(name, ty) { \
+	out->name = JORM_FROMJSON_##ty(jo); \
+	if (!out->name) { \
+		goto handle_oom; \
+	} \
+}
 #define JORM_BOOL(name) { \
 	struct json_object* ji = json_object_object_get(jo, #name); \
 	if (ji && (json_object_get_type(ji) == json_type_boolean)) { \

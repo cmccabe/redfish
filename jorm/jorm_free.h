@@ -31,6 +31,12 @@ void JORM_FREE_##name(struct name *jorm) { \
 		jorm->name = JORM_INVAL_NESTED; \
 	}
 
+#define JORM_EMBEDDED(name, ty) \
+	if (jorm->name != JORM_INVAL_EMBEDDED) { \
+		JORM_FREE_##ty(jorm->name); \
+		jorm->name = JORM_INVAL_EMBEDDED; \
+	}
+
 #define JORM_BOOL(name) \
 	jorm->name = JORM_INVAL_BOOL;
 

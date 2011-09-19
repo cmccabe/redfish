@@ -17,6 +17,7 @@ struct json_object;
 #define JORM_DOUBLE(name)
 #define JORM_STR(name)
 #define JORM_NESTED(name, ty)
+#define JORM_EMBEDDED(name, ty)
 #define JORM_BOOL(name)
 #define JORM_ARRAY(name, ty) \
 	extern struct ty* JORM_ARRAY_APPEND_##ty(struct ty ***arr); \

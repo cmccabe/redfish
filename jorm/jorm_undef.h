@@ -11,6 +11,7 @@
 #undef JORM_DOUBLE
 #undef JORM_STR
 #undef JORM_NESTED
+#undef JORM_EMBEDDED
 #undef JORM_BOOL
 #undef JORM_ARRAY
 #undef JORM_CONTAINER_END

@@ -17,6 +17,7 @@
 #define JORM_INVAL_DOUBLE		INFINITY
 #define JORM_INVAL_INT			INT_MIN
 #define JORM_INVAL_NESTED		((void*)NULL)
+#define JORM_INVAL_EMBEDDED		((void*)NULL)
 #define JORM_INVAL_ARRAY		((void*)NULL)
 #define JORM_INVAL_STR			((char*)NULL)
 

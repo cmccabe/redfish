@@ -9,6 +9,7 @@
 #include "jorm/jorm_const.h"
 #include "jorm/json.h"
 
+#include <json/json_object_private.h> /* need for struct json_object_iter */
 #include <stdlib.h> /* for calloc */
 
 #define JORM_CONTAINER_BEGIN(name) \
@@ -58,6 +59,20 @@ if (me->name != JORM_INVAL_NESTED) { \
 		goto handle_oom; \
 	} \
 	json_object_object_add(jo, #name, ji); \
+}
+
+#define JORM_EMBEDDED(name, ty) \
+if (me->name != JORM_INVAL_EMBEDDED) { \
+	struct json_object_iter iter; \
+	struct json_object* ji = JORM_TOJSON_##ty(me->name); \
+	if (!ji) { \
+		goto handle_oom; \
+	} \
+	json_object_object_foreachC(ji, iter) { \
+		json_object_get(iter.val); \
+		json_object_object_add(jo, iter.key, iter.val); \
+	} \
+	json_object_put(ji); \
 }
 
 #define JORM_BOOL(name) \

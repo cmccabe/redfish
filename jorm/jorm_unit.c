@@ -81,6 +81,10 @@ int test2(void)
 	my_bob->f[1] = my_abbie[2];
 	my_bob->f[2] = NULL;
 	my_bob->extra_data = 404;
+	my_bob->g = calloc(1, sizeof(struct carrie));
+	EXPECT_NOT_EQUAL(my_bob->g, NULL);
+	my_bob->g->x = 101;
+	my_bob->g->y = 5.0;
 	jo = JORM_TOJSON_bob(my_bob);
 	if (!jo) {
 		ret = EXIT_FAILURE;
@@ -89,7 +93,7 @@ int test2(void)
 	str = json_object_to_json_string(jo);
 	if (strcmp(str, "{ \"a\": 1, \"b\": 2.500000, \"c\": \"hi there\", "
 		   "\"d\": { \"a\": 0 }, \"e\": false, \"f\": [ { \"a\": 1 }, "
-		   "{ \"a\": 2 } ] }") != 0)
+		   "{ \"a\": 2 } ], \"x\": 101, \"y\": 5.000000 }") != 0)
 	{
 		fprintf(stderr, "got str = '%s'\n", str);
 		ret = EXIT_FAILURE;
@@ -127,7 +131,7 @@ int test3(void)
 	const char in_str[] = "{ \"a\": 1, \"b\": 2.500000, "
 		"\"c\": \"hi there\", \"d\": { \"a\": 0 }, "
 		"\"e\": false, \"f\": [ { \"a\": 1 }, "
-		"{ \"a\": 2 } ] }";
+		"{ \"a\": 2 } ], \"x\" : 5, \"y\" : 1.5 }";
 	int expected_array_val[] = { 1, 2, 6 };
 	struct json_object* jo = NULL;
 	struct bob *my_bob = NULL;
@@ -156,6 +160,8 @@ int test3(void)
 			sizeof(expected_array_val[0]); ++i) {
 		EXPECT_EQUAL(my_bob->f[i]->a, expected_array_val[i]);
 	}
+	EXPECT_EQUAL(my_bob->g->x, 5);
+	EXPECT_EQUAL(my_bob->g->y, 1.5);
 done:
 	if (jo) {
 		json_object_put(jo);
