@@ -179,6 +179,7 @@ int test4(void)
 	struct bob *b1 = calloc(1, sizeof(struct bob));
 	struct bob *b2 = calloc(1, sizeof(struct bob));
 	struct bob *b3 = calloc(1, sizeof(struct bob));
+	struct abbie **abbie_arr = NULL;
 
 	EXPECT_NOT_EQUAL(b1, NULL);
 	EXPECT_NOT_EQUAL(b2, NULL);
@@ -216,6 +217,15 @@ int test4(void)
 	EXPECT_EQUAL(b3->f[1]->a, 200);
 	EXPECT_EQUAL(b3->f[2], NULL);
 
+	abbie_arr = JORM_ARRAY_COPY_abbie(b3->f);
+	EXPECT_NOT_EQUAL(abbie_arr, NULL);
+	EXPECT_NOT_EQUAL(abbie_arr[0], NULL);
+	EXPECT_EQUAL(abbie_arr[0]->a, 100);
+	EXPECT_NOT_EQUAL(abbie_arr[1], NULL);
+	EXPECT_EQUAL(abbie_arr[1]->a, 200);
+	EXPECT_EQUAL(abbie_arr[2], NULL);
+
+	JORM_ARRAY_FREE_abbie(&abbie_arr);
 	JORM_FREE_bob(b1);
 	JORM_FREE_bob(b2);
 	JORM_FREE_bob(b3);
