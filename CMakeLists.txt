@@ -38,10 +38,10 @@ include_directories(
     ${JSON_C_INCLUDE_DIR}
 )
 
-add_subdirectory(chunk)
 add_subdirectory(core)
 add_subdirectory(jorm)
 add_subdirectory(mds)
 add_subdirectory(mon)
+add_subdirectory(osd)
 add_subdirectory(top)
 add_subdirectory(util)

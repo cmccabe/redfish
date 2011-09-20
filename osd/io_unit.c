@@ -6,7 +6,7 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#include "chunk/io.h"
+#include "osd/io.h"
 #include "util/tempfile.h"
 #include "util/test.h"
 

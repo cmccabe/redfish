@@ -11,7 +11,7 @@
  * All operations should be re-entrant!
  */
 
-#include "chunk/io.h"
+#include "osd/io.h"
 #include "util/error.h"
 #include "util/safe_io.h"
 
