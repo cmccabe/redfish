@@ -17,6 +17,7 @@
 #include <unistd.h>
 
 extern const struct mon_action write_file_test_act;
+extern const struct mon_action ssh_test_act;
 //extern struct mon_action *ssh_status_act;
 //extern struct mon_action *mds_status_act;
 //extern struct mon_action *install_act;
@@ -28,6 +29,7 @@ extern const struct mon_action write_file_test_act;
 
 static const struct mon_action *MON_ACTIONS[] = {
 	&write_file_test_act,
+	&ssh_test_act,
 	//&status_act,
 //	&install_act,
 //	&start_act,
@@ -52,9 +54,26 @@ const char *get_mon_action_arg(struct action_arg **args,
 	return default_val;
 }
 
+static const char *mon_action_ty_to_str(enum mon_action_ty ty)
+{
+	switch(ty) {
+	case MON_ACTION_ADMIN:
+		return "administrative action";
+	case MON_ACTION_IDLE:
+		return "idle action";
+	case MON_ACTION_TEST:
+		return "test action";
+	case MON_ACTION_UNIT_TEST:
+		return "unit test";
+	default:
+		return "unknown";
+	}
+}
+
 void print_action_descriptions(enum mon_action_ty ty)
 {
 	size_t i;
+	fprintf(stderr, "%ss:\n", mon_action_ty_to_str(ty));
 	for (i = 0; i < NUM_MON_ACTIONS; ++i) {
 		if (MON_ACTIONS[i]->ty != ty)
 			continue;

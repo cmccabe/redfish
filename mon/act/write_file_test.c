@@ -16,7 +16,7 @@
 static const char *write_file_test_names[] = { "write_file_test", NULL };
 
 static const char *write_file_test_desc[] = {
-"Write some text to a file",
+"write_file_test: write some text to a file",
 NULL
 };
 

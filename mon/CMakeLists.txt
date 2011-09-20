@@ -1,4 +1,5 @@
 add_executable(fishmon 
+    act/ssh_test.c
     act/write_file_test.c
     action.c
     daemon_worker.c
@@ -6,6 +7,7 @@ add_executable(fishmon
     mon_config.c
     mon_info.c
     output_worker.c
+    ssh.c
     worker.c
 )
 target_link_libraries(fishmon core jorm)
