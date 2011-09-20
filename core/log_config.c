@@ -7,6 +7,7 @@
  */
 
 #include "core/log_config.h"
+#include "util/dir.h"
 #include "util/string.h"
 
 #define JORM_CUR_FILE "core/log_config.jorm"
@@ -49,50 +50,40 @@ static void resolve_log_name(const char *conf_name, const char *default_name,
 	}
 }
 
-struct log_config *create_log_config(struct json_object *jo,
-		char *err, size_t err_len, enum fish_daemon_ty dty)
+void harmonize_log_config(struct log_config *lc,
+		char *err, size_t err_len, int want_mkdir, int mon)
 {
-	struct log_config *lc = JORM_FROMJSON_log_config(jo);
-	if (!lc) {
-		snprintf(err, err_len, "JORM_FROMJSON_log_config: out "
-			 "of memory.\n");
-		goto error;
-	}
 	if (lc->use_syslog == JORM_INVAL_BOOL)
 		lc->use_syslog = 0;
 	resolve_log_name("crash_log", "crash.log", &lc->crash_log,
 			 lc->base_dir, err, err_len);
 	if (err[0])
-		goto error_free_lconf;
+		return;
 	resolve_log_name("glitch_log", "glitch.log", &lc->glitch_log,
 			 lc->base_dir, err, err_len);
 	if (err[0])
-		goto error_free_lconf;
-	if (dty == ONEFISH_DAEMON_TYPE_MON) {
+		return;
+	if (mon) {
 		resolve_log_name("mon_data_dir", "data", &lc->mon_data_dir,
 				 lc->base_dir, err, err_len);
 		if (err[0])
-			goto error_free_lconf;
+			return;
 	}
 	resolve_log_name("pid_file", "pid", &lc->pid_file,
 			 lc->base_dir, err, err_len);
 	if (err[0])
-		goto error_free_lconf;
-	if (dty == ONEFISH_DAEMON_TYPE_MON) {
+		return;
+	if (mon) {
 		resolve_log_name("socket_path", "socket", &lc->socket_path,
 				 lc->base_dir, err, err_len);
 		if (err[0])
-			goto error_free_lconf;
+			return;
 	}
-	return lc;
-
-error_free_lconf:
-	JORM_FREE_log_config(lc);
-error:
-	return NULL;
-}
-
-void free_log_config(struct log_config *lconf)
-{
-	JORM_FREE_log_config(lconf);
+	if (want_mkdir) {
+		if (lc->base_dir) {
+			do_mkdir(lc->base_dir, 0755, err, sizeof(err));
+			if (err[0])
+				return;
+		}
+	}
 }

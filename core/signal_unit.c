@@ -6,6 +6,7 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
+#include "core/log_config.h"
 #include "core/signal.h"
 #include "util/error.h"
 #include "util/simple_io.h"
@@ -48,7 +49,7 @@ static int validate_crash_log(const char *crash_log, int sig)
 static int test_signal_handler(const char *tempdir, int sig)
 {
 	int ret, pid, status;
-	char error[512] = { 0 };
+	char err[512] = { 0 };
 	char crash_log[PATH_MAX];
 	snprintf(crash_log, sizeof(crash_log), "%s/crash.log.%d",
 		 tempdir, rand());
@@ -58,9 +59,12 @@ static int test_signal_handler(const char *tempdir, int sig)
 		return ret;
 	}
 	else if (pid == 0) {
-		signal_init(error, sizeof(error), crash_log, NULL);
-		if (error[0]) {
-			fprintf(stderr, "signal_init error: %s\n", error);
+		struct log_config lc;
+		memset(&lc, 0, sizeof(lc));
+		lc.crash_log = crash_log;
+		signal_init(err, sizeof(err), &lc, NULL);
+		if (err[0]) {
+			fprintf(stderr, "signal_init error: %s\n", err);
 			_exit(1);
 		}
 		raise(sig);

@@ -9,39 +9,32 @@
 #ifndef ONEFISH_MON_ACTION_DOT_H
 #define ONEFISH_MON_ACTION_DOT_H
 
-#include <stdio.h> /* for FILE* */
 #include <unistd.h> /* for size_t */
 
-struct mon_action_args {
-	char **name;
-	char **val;
-};
+struct action_arg;
+struct action_info;
+struct mon_info;
 
 /** Extract an argument from a mon_action_args structure.
  *
- * @param args			The args
+ * @param args			The action arguments
  * @param name			The name of the argument to grab
  * @param default_val		The value to return if the argument wasn't 
  *				given
  *				
  * @returns			a pointer to the argument value
  */
-const char *get_mon_action_arg(const struct mon_action_args *args,
+const char *get_mon_action_arg(struct action_arg **args,
 			const char *name, const char *default_val);
-
-/** Release the memory associated with some monitor action arguments
- *
- * @param args			The args
- */
-void free_mon_action_args(struct mon_action_args* args);
 
 enum mon_action_ty {
 	MON_ACTION_ADMIN,
+	MON_ACTION_IDLE,
 	MON_ACTION_TEST,
 	MON_ACTION_UNIT_TEST,
 };
 
-typedef int (*action_fn_t)(const struct mon_action_args *args);
+typedef int (*action_fn_t)(struct action_info *ai, struct action_arg **args);
 
 /** Describes a monitor action that the user can request.
  *
@@ -72,24 +65,20 @@ struct mon_action {
  */
 void print_action_descriptions(enum mon_action_ty ty);
 
-/** Print a series of lines
+/** Given an action name, return a pointer to the action structure
  *
- * @param lines			NULL-terminated array of lines to print.
+ * @param actname		The action name
  */
-void print_lines(FILE *fp, const char **lines);
+const struct mon_action* parse_one_action(const char *actname);
 
 /** Parse some monitor actions passed in on argv
  *
  * @param argv		A NULL-terminated array of strings.
- * @param error		A buffer where we can write an error string if need be.
- * @param error_len	Length of the error buffer.
- * @param mon_actions	Where to write the (dynamically allocated)
- * 			NULL-terminated array of pointers to monitor actions.
- * @param mon_args	Where to write the (dynamically allocated)
- * 			NULL-terminated array of pointers to monitor arguments.
+ * @param err		A buffer where we can write an error string if need be.
+ * @param err_len	Length of the error buffer.
+ *
+ * @return		A monitor info structure, or NULL on error.
  */
-void parse_mon_actions(char **argv, char *error, size_t error_len,
-		       const struct mon_action ***mon_actions,
-		       struct mon_action_args ***mon_args);
+struct action_info** argv_to_action_info(char **argv, char *err, size_t err_len);
 
 #endif

@@ -25,35 +25,21 @@
 static const char *CONF[] = {
 	"{",
 	"	\"base_dir\" : \"%s\",",
-	"	\"pidfile\" : \"/var/run/mon.pid\",",
 	"	\"default\" : {",
-	"		\"logdir\" : \"/var/log/def_log\",",
+	"		\"base_dir\" : \"%s\"",
 	"	},",
 	"	\"cluster\" : {",
 	"               \"daemons\": [",
-	"		{",
-	"			\"pidfile\" : \"/var/run/osd1.pid\",",
-	"			\"binary\" : \"./osd/fishosd\",",
-	"			\"config\" : \"/etc/osd1.conf\"",
-	"		},",
-	"		{",
-	"			\"logdir\" : \"/var/log/osd2_log_dir\",",
-	"			\"pidfile\" : \"/var/run/osd2.pid\",",
-	"			\"binary\" : \"./osd/fishosd\",",
-	"			\"config\" : \"/etc/osd2.conf\"",
-	"		},",
-	"		{",
-	"			\"pidfile\" : \"/var/run/mds1.pid\",",
-	"			\"binary\" : \"./osd/fishmds\",",
-	"			\"config\" : \"/etc/mds1.conf\"",
-	"		},",
-	"		{",
-	"			\"pidfile\" : \"/var/run/mds2.pid\",",
-	"			\"binary\" : \"./osd/fishosd\",",
-	"			\"config\" : \"/etc/mds2.conf\"",
-	"		}",
-	"	        ]",
-	"           }",
+	"			{",
+	"				\"type\" : \"osd\",",
+	"				\"config\" : \"/etc/osd.conf\"",
+	"			},",
+	"			{",
+	"				\"type\" : \"mds\",",
+	"				\"config\" : \"/etc/mds.conf\"",
+	"			}",
+	"		]",
+	"	}",
 	"}",
 	NULL
 };
@@ -134,7 +120,7 @@ static int make_temp_conf_file(const char *tdir, char *conf, size_t conf_len)
 		fprintf(stderr, "error opening %s: %d\n", conf, ret);
 		return -EIO;
 	}
-	fprintf(fp, cstr, tdir);
+	fprintf(fp, cstr, tdir, tdir);
 	free(cstr);
 	fclose(fp);
 	return 0;

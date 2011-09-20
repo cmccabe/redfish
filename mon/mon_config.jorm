@@ -7,14 +7,14 @@
  */
 
 JORM_CONTAINER_BEGIN(mon_daemon)
+	JORM_EMBEDDED(lc, log_config)
 	JORM_STR(bindir)
-	JORM_STR(binary)
+	JORM_STR(type)
 	JORM_STR(config)
 	JORM_STR(host)
-	JORM_STR(logdir)
-	JORM_STR(pidfile)
-	JORM_STR(port)
+	JORM_INT(port)
 	JORM_STR(rack)
+	JORM_IGNORE(int idx;)
 JORM_CONTAINER_END
 
 JORM_CONTAINER_BEGIN(mon_cluster)
@@ -23,7 +23,6 @@ JORM_CONTAINER_BEGIN(mon_cluster)
 JORM_CONTAINER_END
 
 JORM_CONTAINER_BEGIN(mon_config)
-	JORM_STR(logdir)
-	JORM_STR(pidfile)
+	JORM_EMBEDDED(lc, log_config)
 	JORM_NESTED(cluster, mon_cluster)
 JORM_CONTAINER_END

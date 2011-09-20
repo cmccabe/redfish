@@ -6,6 +6,7 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
+#include "core/log_config.h"
 #include "core/signal.h"
 #include "util/compiler.h"
 
@@ -53,6 +54,7 @@ static void cat_fd_to_syslog(char *line, size_t max_line, int fd)
 		char b[1];
 		int res = read(fd, b, 1);
 		if ((bidx == max_line - 1) || (res <= 0) || (b[0] == '\n')) {
+			fprintf(stderr, "%s\n", line);
 			syslog(LOG_ERR | LOG_USER | LOG_PERROR, "%s", line);
 			if (res <= 0)
 				break;
@@ -157,23 +159,23 @@ void signal_resset_dispositions(void)
 	}
 }
 
-void signal_init(char *error, size_t error_len, const char *crash_log,
-		 signal_cb_t fatal_signal_cb)
+void signal_init(char *err, size_t err_len, const struct log_config *lc,
+		signal_cb_t fatal_signal_cb)
 {
 	int ret;
 
 	if ((g_alt_stack.ss_sp != NULL) || (g_crash_log_fd != -1)) {
-		snprintf(error, error_len, "signal_init: already "
+		snprintf(err, err_len, "signal_init: already "
 			 "initialized!");
 		return;
 	}
-	if (crash_log) {
-		g_crash_log_fd = open(crash_log,
-			O_CREAT | O_TRUNC | O_RDWR, 0600);
+	if (lc->crash_log) {
+		g_crash_log_fd = open(lc->crash_log,
+			O_CREAT | O_TRUNC | O_RDWR, 0640);
 		if (g_crash_log_fd < 0) {
 			ret = errno;
-			snprintf(error, error_len, "signal_init: open(%s) "
-				 "failed: error %d", crash_log, ret);
+			snprintf(err, err_len, "signal_init: open(%s) "
+				 "failed: error %d", lc->crash_log, ret);
 			return;
 		}
 	}
@@ -181,10 +183,10 @@ void signal_init(char *error, size_t error_len, const char *crash_log,
 		g_crash_log_fd = STDERR_FILENO;
 	}
 	g_fatal_signal_cb = fatal_signal_cb;
-	signal_init_altstack(error, error_len, &g_alt_stack);
-	if (error[0])
+	signal_init_altstack(err, err_len, &g_alt_stack);
+	if (err[0])
 		return;
-	signal_set_dispositions(error, error_len);
-	if (error[0])
+	signal_set_dispositions(err, err_len);
+	if (err[0])
 		return;
 }

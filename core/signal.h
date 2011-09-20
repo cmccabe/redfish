@@ -11,22 +11,24 @@
 
 #include <unistd.h> /* for size_t */
 
+struct log_config;
+
 typedef void (*signal_cb_t)(int);
 
 /** Install the signal handlers for a OneFish daemon.
  *
- * @param error			a buffer to write any errors to
- * @param error_len		length of the error buffer
- * @param crash_log		The crash log to write when a fatal signal
- *				happens. If this is NULL, we'll write the crash
- *				log to stderr.
+ * @param err			a buffer to write any errors to
+ * @param err_len		length of the error buffer
+ * @param lc			The log config. If crash_log is configured, we
+ *				will open a file that will be written to when a
+ *				fatal signal happens.
  * @param fatal_signal_cb	Callback that is executed after a fatal signal,
  *				or NULL for none.
  *
  * We write out an error message to error if signal_init fails.
  */
-void signal_init(char *error, size_t error_len, const char *crash_log,
-		 signal_cb_t fatal_signal_cb);
+void signal_init(char *err, size_t err_len, const struct log_config *lc,
+		signal_cb_t fatal_signal_cb);
 
 /** Clear all signal handlers, free the alternate signal stack, and disable the
  * crash log.

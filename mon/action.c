@@ -7,6 +7,7 @@
  */
 
 #include "mon/action.h"
+#include "mon/mon_info.h"
 #include "util/string.h"
 
 #include <stdio.h>
@@ -38,44 +39,17 @@ static const struct mon_action *MON_ACTIONS[] = {
 
 #define NUM_MON_ACTIONS (sizeof(MON_ACTIONS)/sizeof(MON_ACTIONS[0]))
 
-const char *get_mon_action_arg(const struct mon_action_args *arglist,
+const char *get_mon_action_arg(struct action_arg **args,
 			const char *name, const char *default_val)
 {
-	char **n = arglist->name;
-	char **v = arglist->val;
-	for (; *n; ++n, ++v) {
-		if (strcmp(*n, name) == 0) {
-			return *v;
+	struct action_arg **a;
+	
+	for (a = args; *a; ++a) {
+		if (strcmp((*a)->key, name) == 0) {
+			return (*a)->val;
 		}
 	}
 	return default_val;
-}
-
-void free_mon_action_args(struct mon_action_args* args)
-{
-	if (!args)
-		return;
-	if (args->name) {
-		size_t i = 0;
-		while (1) {
-			if (args->name[i])
-				free(args->name[i++]);
-			else
-				break;
-		}
-		free(args->name);
-	}
-	if (args->val) {
-		size_t i = 0;
-		while (1) {
-			if (args->val[i])
-				free(args->val[i++]);
-			else
-				break;
-		}
-		free(args->val);
-	}
-	free(args);
 }
 
 void print_action_descriptions(enum mon_action_ty ty)
@@ -88,7 +62,7 @@ void print_action_descriptions(enum mon_action_ty ty)
 	}
 }
 
-static const struct mon_action* parse_one_action(const char *actname)
+const struct mon_action* parse_one_action(const char *actname)
 {
 	size_t i;
 	for (i = 0; i < NUM_MON_ACTIONS; ++i) {
@@ -105,130 +79,102 @@ static const struct mon_action* parse_one_action(const char *actname)
 
 /** Action arguments have the form FOO=BAR
  */
-static struct mon_action_args* build_action_args(char **argv, size_t *idx)
+static struct action_arg** parse_action_args(char *err, size_t err_len,
+					     char **argv, size_t *idx)
 {
-	size_t i, cnt;
-	struct mon_action_args *args =
-		calloc(1, sizeof(struct mon_action_args));
+	struct action_arg** args = calloc(1, sizeof(struct action_arg*));
 	if (!args)
-		goto error;
-	cnt = 0;
+		goto malloc_failed;
 	while (1) {
-		const char *t = argv[*idx + cnt];
-		if (t == NULL)
-			break;
-		if (index(t, '=') == NULL)
-			break;
-		++cnt;
-	}
-	args->name = calloc(cnt + 1, sizeof(const char*));
-	if (!args->name)
-		goto error;
-	args->val = calloc(cnt + 1, sizeof(const char*));
-	if (!args->val)
-		goto error;
-	for (i = 0; i < cnt; ++i) {
-		char *eq;
-		args->name[i] = strdup(argv[*idx + i]);
-		if (!args->name[i])
-			goto error;
-		eq = index(args->name[i], '=');
+		struct action_arg* a;
+		char *eq, *str = argv[*idx];
+		if (str == NULL)
+			return args;
+		eq = index(str, '=');
+		if (eq == NULL)
+			return args;
+		a = JORM_ARRAY_APPEND_action_arg(&args);
+		if (!a)
+			goto malloc_failed;
+		a->key = strdup(str);
+		if (!a->key)
+			goto malloc_failed;
+		eq = index(a->key, '=');
 		*eq = '\0';
-		args->val[i] = strdup(eq + 1);
+		a->val = strdup(eq + 1);
+		if (!a->val)
+			goto malloc_failed;
+		*idx = *idx + 1;
 	}
-	*idx = *idx + cnt;
-	return args;
-error:
-	free_mon_action_args(args);
+
+malloc_failed:
+	if (args)
+		JORM_ARRAY_FREE_action_arg(&args);
+	snprintf(err, err_len, "malloc failed");
 	return NULL;
 }
 
-static void validate_action_args(char *error, size_t error_len, 
-	const struct mon_action *act, struct mon_action_args *args)
+static void validate_action_args(char *err, size_t err_len, 
+	const struct mon_action *act, struct action_arg **args)
 {
-	char **n;
-	for (n = args->name; *n; ++n) {
+	if (args == NULL)
+		return;
+	for (; *args; ++args) {
 		const char **a;
 		for (a = act->args; *a; ++a) {
-			if (strcmp(*a, *n) == 0) {
+			if (strcmp(*a, (*args)->key) == 0) {
 				break;
 			}
 		}
 		if (*a == NULL) {
-			snprintf(error, error_len, "Parse error: action "
+			snprintf(err, err_len, "Parse error: action "
 				 "'%s' does not take '%s' as an argument.\n",
-				 act->names[0], *n);
+				 act->names[0], (*args)->key);
 			return;
 		}
 	}
 }
 
-void parse_mon_actions(char ** argv, char *error, size_t error_len,
-		       const struct mon_action ***mon_actions,
-		       struct mon_action_args ***mon_args)
+struct action_info** argv_to_action_info(char **argv, char *err, size_t err_len)
 {
-	size_t i, idx, num_acts = 0;
+	size_t idx;
+	struct action_info **arr = NULL;
 
-	memset(error, 0, error_len);
-	*mon_actions = NULL;
-	*mon_args = NULL;
-
-	*mon_actions = calloc(1, sizeof(void*));
-	if (!*mon_actions)
-		goto malloc_error;
-	*mon_args = calloc(1, sizeof(void*));
-	if (!*mon_args)
-		goto malloc_error;
 	for (idx = 0; argv[idx]; ) {
-		struct mon_action_args **argl, *arg;
-		const struct mon_action **acts;
-		const struct mon_action *act = parse_one_action(argv[idx]);
+		struct action_info *ai;
+		const struct mon_action* act = parse_one_action(argv[idx]);
 		if (!act) {
-			snprintf(error, error_len, "There is no monitor action "
+			snprintf(err, err_len, "There is no monitor action "
 				 "named '%s'. Please enter a valid action.\n",
 				 argv[idx]);
-			goto error;
+			JORM_ARRAY_FREE_action_info(&arr);
+			return NULL;
 		}
-		acts = realloc(*mon_actions,
-			    sizeof(struct mon_action*) * (num_acts + 2));
-		if (!acts)
-			goto malloc_error;
-		*mon_actions = acts;
-		acts[num_acts] = act;
-		acts[num_acts + 1] = NULL;
+		ai = JORM_ARRAY_APPEND_action_info(&arr);
+		if (!ai)
+			goto malloc_failed;
+		ai->act_name = strdup(act->names[0]);
+		if (!ai->act_name)
+			goto malloc_failed;
 		++idx;
-		arg = build_action_args(argv, &idx);
-		if (!arg)
-			goto malloc_error;
-		argl = realloc(*mon_args,
-			    sizeof(struct mon_action_args*) * (num_acts + 2));
-		if (!argl)
-			goto malloc_error;
-		*mon_args = argl;
-		argl[num_acts] = arg;
-		argl[num_acts + 1] = NULL;
-		++num_acts;
-		validate_action_args(error, error_len, act, arg);
-		if (error[0])
-			goto error;
-	}
-	if (num_acts == 0) {
-		snprintf(error, error_len, "You must give at least one "
-			 "action for fishmon to execute.");
-		goto error;
-	}
-	return;
-
-malloc_error:
-	snprintf(error, error_len, "malloc failed.");
-error:
-	free(*mon_actions);
-	*mon_actions = NULL;
-	if (*mon_args) {
-		for (i = 0; i < num_acts; ++i) {
-			free_mon_action_args(*mon_args[i]);
+		ai->args = parse_action_args(err, err_len, argv, &idx);
+		if (err[0])
+			return NULL;
+		validate_action_args(err, err_len, act, ai->args);
+		if (err[0]) {
+			JORM_ARRAY_FREE_action_info(&arr);
+			return NULL;
 		}
-		free(*mon_args);
-		*mon_args = NULL;
 	}
+	if (arr[0] == NULL) {
+		snprintf(err, err_len, "You must give at least one "
+			 "action for fishmon to execute.");
+		return NULL;
+	}
+	return arr;
+
+malloc_failed:
+	snprintf(err, err_len, "malloc failed.");
+	JORM_ARRAY_FREE_action_info(&arr);
+	return NULL;
 }

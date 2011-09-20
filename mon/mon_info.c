@@ -6,9 +6,11 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#include "core/log_config.h"
-#include "mon/mon_config.h"
+#include "mon/mon_info.h"
 
-#define JORM_CUR_FILE "mon/mon_config.jorm"
+#define JORM_CUR_FILE "mon/mon_info.jorm"
 #include "jorm/jorm_generate_body.h"
 #undef JORM_CUR_FILE
+
+pthread_mutex_t g_mon_info_lock = PTHREAD_MUTEX_INITIALIZER;
+struct mon_info g_mon_info = { NULL, NULL};

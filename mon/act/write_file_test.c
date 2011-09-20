@@ -7,8 +7,10 @@
  */
 
 #include "mon/action.h"
+#include "mon/mon_info.h"
 
 #include <errno.h>
+#include <pthread.h>
 #include <stdio.h>
 
 static const char *write_file_test_names[] = { "write_file_test", NULL };
@@ -20,12 +22,15 @@ NULL
 
 static const char *write_file_test_args[] = { "file_name", "text" , NULL };
 
-static int do_write_file_test(const struct mon_action_args *args)
+static int do_write_file_test(struct action_info *ai,
+			      struct action_arg ** args)
 {
 	int ret;
 	FILE *fp;
-	const char *file_name = get_mon_action_arg(args, "file_name", "/tmp/out");
-	const char *text = get_mon_action_arg(args, "text", "sample_text");
+	const char *file_name, *text;
+
+	file_name = get_mon_action_arg(args, "file_name", "/tmp/out");
+	text = get_mon_action_arg(args, "text", "sample_text");
 
 	fp = fopen(file_name, "w");
 	if (!fp) {
@@ -41,6 +46,10 @@ static int do_write_file_test(const struct mon_action_args *args)
 		ret = errno;
 		return ret;
 	}
+	pthread_mutex_lock(&g_mon_info_lock);
+	ai->percent_done = 100;
+	ai->changed = 1;
+	pthread_mutex_unlock(&g_mon_info_lock);
 	return 0;
 }
 

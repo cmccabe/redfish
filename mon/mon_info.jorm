@@ -1,0 +1,32 @@
+/*
+ * The OneFish distributed filesystem
+ *
+ * Copyright (C) 2011 Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
+ *
+ * This is licensed under the Apache License, Version 2.0.  See file COPYING.
+ */
+
+JORM_CONTAINER_BEGIN(action_arg)
+	JORM_STR(key)
+	JORM_STR(val)
+JORM_CONTAINER_END
+
+JORM_CONTAINER_BEGIN(action_info)
+	JORM_STR(act_name)
+	JORM_ARRAY(args, action_arg)
+	JORM_INT(percent_done)
+	JORM_IGNORE(int changed;)
+JORM_CONTAINER_END
+
+JORM_CONTAINER_BEGIN(daemon_info)
+	JORM_INT(idx)
+	JORM_INT(type)
+	JORM_STR(status)
+	/*JORM_STR(subactions);*/
+	JORM_IGNORE(int changed;)
+JORM_CONTAINER_END
+
+JORM_CONTAINER_BEGIN(mon_info)
+	JORM_ARRAY(acts, action_info)
+	JORM_ARRAY(daemons, daemon_info)
+JORM_CONTAINER_END

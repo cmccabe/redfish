@@ -11,11 +11,14 @@
 #include "core/signal.h"
 #include "jorm/json.h"
 #include "mon/action.h"
+#include "mon/daemon_worker.h"
 #include "mon/mon_config.h"
+#include "mon/mon_info.h"
 #include "mon/output_worker.h"
 #include "mon/worker.h"
 #include "util/compiler.h"
 #include "util/dir.h"
+#include "util/string.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -47,10 +50,8 @@ NULL
 	exit(exitstatus);
 }
 
-static void parse_arguments(int argc, char **argv, int *daemonize,
-	const char **mon_config_file,
-	const struct mon_action ***mon_actions,
-	struct mon_action_args ***mon_args)
+static void parse_argv(int argc, char **argv, int *daemonize,
+		const char **mon_config_file, struct action_info*** ai)
 {
 	int c;
 	char err[512] = { 0 };
@@ -73,8 +74,7 @@ static void parse_arguments(int argc, char **argv, int *daemonize,
 			usage(EXIT_FAILURE);
 		}
 	}
-	parse_mon_actions(argv + optind, err, sizeof(err),
-			  mon_actions, mon_args);
+	*ai = argv_to_action_info(argv + optind, err, sizeof(err));
 	if (err[0]) {
 		fprintf(stderr, "%s\n\n", err);
 		usage(EXIT_FAILURE);
@@ -86,54 +86,154 @@ static void parse_arguments(int argc, char **argv, int *daemonize,
 	}
 }
 
+static int main_loop(void)
+{
+	int ret;
+	size_t idx = 0;
+
+	/* execute monitor actions */
+	pthread_mutex_lock(&g_mon_info_lock);
+	while (1) {
+		const struct mon_action* act;
+		struct action_info *ai;
+		struct action_arg **args_copy;
+
+		ai = g_mon_info.acts[idx];
+		if (ai == NULL) {
+			/* no more actions to execute. */
+			pthread_mutex_unlock(&g_mon_info_lock);
+			ret = EXIT_SUCCESS;
+			break;
+		}
+		act = parse_one_action(ai->act_name);
+		args_copy = JORM_ARRAY_COPY_action_arg(ai->args);
+		pthread_mutex_unlock(&g_mon_info_lock);
+		ret = act->fn(ai, args_copy);
+		if (ret) {
+			ret = EXIT_FAILURE;
+			break;
+		}
+		JORM_ARRAY_FREE_action_arg(&args_copy);
+		pthread_mutex_lock(&g_mon_info_lock);
+		if ((act->ty == MON_ACTION_IDLE) &&
+		    (g_mon_info.acts[idx + 1] == NULL)) {
+			/* If we're on the last action, and it is an idle
+			 * action, keep doing it. */
+		}
+		else {
+			/* next action */
+			++idx;
+		}
+	}
+	return ret;
+}
+
+static struct mon_config* parse_mon_config(const char *file,
+					   char *err, size_t err_len)
+{
+	struct mon_config *mc;
+	struct json_object* jo = parse_json_file(file, err, err_len);
+	if (err[0])
+		return NULL;
+	mc = JORM_FROMJSON_mon_config(jo);
+	json_object_put(jo);
+	if (!mc) {
+		snprintf(err, err_len, "ran out of memory reading "
+			 "config file.\n");
+		return NULL;
+	}
+	return mc;
+}
+
+struct daemon_info** create_daemons_array(const struct mon_cluster *cluster,
+					  char *err, size_t err_len)
+{
+	struct daemon_info** di;
+	int idx, num_daemons;
+	for (num_daemons = 0; cluster->daemons[num_daemons]; ++num_daemons) {
+		;
+	}
+	di = calloc(num_daemons + 1, sizeof(struct daemon_info*));
+	if (!di)
+		goto oom_error;
+	for (idx = 0; idx < num_daemons; ++idx) {
+		di[idx] = calloc(1, sizeof(struct daemon_info));
+		if (!di[idx])
+			goto oom_error;
+		di[idx]->idx = idx;
+		if (cluster->daemons[idx]->type == NULL) {
+			snprintf(err, err_len, "you must supply a 'type' "
+				 "for daemon %d", idx + 1);
+			goto error;
+		}
+		if (strcmp(cluster->daemons[idx]->type, "mds") == 0) {
+			di[idx]->type = ONEFISH_DAEMON_TYPE_MDS;
+		}
+		else if (strcmp(cluster->daemons[idx]->type, "osd") == 0) {
+			di[idx]->type = ONEFISH_DAEMON_TYPE_OSD;
+		}
+		else {
+			snprintf(err, err_len, "error parsing type of daemon "
+				 "%d: must be 'mds' or 'osd'", idx + 1);
+			goto error;
+		}
+		di[idx]->status = NULL;
+		di[idx]->changed = 0;
+	}
+	return di;
+
+oom_error:
+	snprintf(err, err_len, "out of memory.");
+error:
+	if (di)
+		JORM_ARRAY_FREE_daemon_info(&di);
+	return NULL;
+
+
+}
+
 int main(int argc, char **argv)
 {
 	char err[512] = { 0 };
-	int daemonize = 1, ret;
-	size_t cur_act;
-	struct json_object* jo;
+	int ret, daemonize = 1;
 	const char *mon_config_file = NULL;
-	const struct mon_action **mon_actions = NULL;
-	struct mon_action_args **mon_args = NULL;
-	struct mon_config *conf;
-	struct log_config *lc;
+	struct action_info** ai = NULL;
+	struct mon_config *mc;
 
-	parse_arguments(argc, argv, &daemonize, &mon_config_file, &mon_actions,
-			&mon_args);
-	jo = parse_json_file(mon_config_file, err, sizeof(err));
+	parse_argv(argc, argv, &daemonize, &mon_config_file, &ai);
+	g_mon_info.acts = argv_to_action_info(argv + optind, err, sizeof(err));
 	if (err[0]) {
-		fprintf(stderr, "error parsing config file '%s': %s\n",
-			mon_config_file, err);
+		fprintf(stderr, "%s", err);
 		ret = EXIT_FAILURE;
 		goto done;
 	}
-	conf = JORM_FROMJSON_mon_config(jo);
-	if (!conf) {
-		fprintf(stderr, "ran out of memory reading config file.\n");
+	mc = parse_mon_config(mon_config_file, err, sizeof(err));
+	if (err[0]) {
+		fprintf(stderr, "error parsing monitor config file '%s': %s\n",
+			mon_config_file, err);
 		ret = EXIT_FAILURE;
-		goto done_release_config;
+		goto free_action_info;
 	}
-	lc = create_log_config(jo, err, sizeof(err), ONEFISH_DAEMON_TYPE_MON);
+	g_mon_info.daemons = create_daemons_array(mc->cluster,
+						  err, sizeof(err));
+	if (err[0]) {
+		fprintf(stderr, "create_daemons_array error: %s\n", err);
+		ret = EXIT_FAILURE;
+		goto free_mc;
+	}
+	harmonize_log_config(mc->lc, err, sizeof(err), 1, 1);
 	if (err[0]) {
 		fprintf(stderr, "log_config error: %s", err);
 		ret = EXIT_FAILURE;
-		goto done_release_config;
+		goto free_daemon_info;
 	}
-	if (lc->base_dir) {
-		do_mkdir(lc->base_dir, 0755, err, sizeof(err));
-		if (err[0]) {
-			fprintf(stderr, "error: %s", err);
-			ret = EXIT_FAILURE;
-			goto done_release_lc;
-		}
-	}
-	open_glitch_log(lc, err, sizeof(err));
+	open_glitch_log(mc->lc, err, sizeof(err));
 	if (err[0]) {
 		fprintf(stderr, "open_glitch_log error: %s\n", err);
 		ret = EXIT_FAILURE;
-		goto done_release_lc;
+		goto free_daemon_info;
 	}
-	signal_init(err, sizeof(err), NULL, NULL);
+	signal_init(err, sizeof(err), mc->lc, NULL);
 	if (err[0]) {
 		fprintf(stderr, "signal_init error: %s\n", err);
 		ret = EXIT_FAILURE;
@@ -153,37 +253,32 @@ int main(int argc, char **argv)
 		ret = EXIT_FAILURE;
 		goto done_signal_reset_dispositions;
 	}
-	init_output_worker(lc->socket_path, err, sizeof(err));
+	init_daemon_workers(mc->cluster, err, sizeof(err));
+	if (err[0]) {
+		glitch_log("init_daemon_workers error: %s\n", err);
+		goto done_signal_reset_dispositions;
+	}
+	init_output_worker(mc->lc->socket_path, err, sizeof(err));
 	if (err[0]) {
 		glitch_log("error initializing output worker: %d\n", ret);
 		ret = EXIT_FAILURE;
-		goto done_signal_reset_dispositions;
+		goto done_shutdown_daemon_workers;
 	}
-//	mon_daemon_init(jlocal, josd, jmds, err, sizeof(err));
-//	if (err[0]) {
-//		glitch_log("mon_daemon_init error: %s\n", err);
-//		ret = EXIT_FAILURE;
-//		goto done_release_config;
-//	}
-	/* execute monitor actions */
-	for (cur_act = 0; mon_actions[cur_act]; ++cur_act) {
-		ret = mon_actions[cur_act]->fn(mon_args[cur_act]);
-		if (ret) {
-			goto done_shutdown_output_worker;
-		}
-	}
-	ret = EXIT_SUCCESS;
+	ret = main_loop();
 
-done_shutdown_output_worker:
 	shutdown_output_worker();
+done_shutdown_daemon_workers:
+	shutdown_daemon_workers();
 done_signal_reset_dispositions:
 	signal_resset_dispositions();
 done_close_glitchlog:
 	close_glitch_log();
-done_release_lc:
-	free_log_config(lc);
-done_release_config:
-	json_object_put(jo);
+free_daemon_info:
+	JORM_ARRAY_FREE_daemon_info(&g_mon_info.daemons);
+free_mc:
+	JORM_FREE_mon_config(mc);
+free_action_info:
+	JORM_ARRAY_FREE_action_info(&g_mon_info.acts);
 done:
 	return ret;
 }

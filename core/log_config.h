@@ -19,25 +19,16 @@
 
 struct json_object;
 
-/** Initialize the log_config structure
+/** Harmonize the log_config structure.
+ * Mostly, this means filling in defaults based on base_dir.
  *
- * @param jo		Configuration JSON
+ * @param lc		The log_config
  * @param err		output buffer for errors
  * @param err_len	length of error buffer
- * @param dty		type of daemon we are
- *
- * @return		the log configuration. If an error occurs, NULL will be
- *			returned and the err buffer will be filled.
+ * @param want_mkdir	True if we want to make base_dir if it doesn't exist
+ * @param mon		True if we want to fill in the monitor-only fields
  */
-struct log_config *create_log_config(struct json_object *jo,
-		char *err, size_t err_len, enum fish_daemon_ty dty);
-
-/** Free a log_config structure
- *
- * @param lconf		Pointer to a log_config structure
- *
- * @return		0 on success; error code otherwise
- */
-void free_log_config(struct log_config *lconf);
+void harmonize_log_config(struct log_config *lc,
+		char *err, size_t err_len, int want_mkdir, int mon);
 
 #endif

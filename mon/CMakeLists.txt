@@ -1,8 +1,10 @@
 add_executable(fishmon 
     act/write_file_test.c
     action.c
+    daemon_worker.c
     main.c
     mon_config.c
+    mon_info.c
     output_worker.c
     worker.c
 )
