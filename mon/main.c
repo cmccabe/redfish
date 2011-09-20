@@ -233,7 +233,7 @@ int main(int argc, char **argv)
 		ret = EXIT_FAILURE;
 		goto free_daemon_info;
 	}
-	signal_init(err, sizeof(err), mc->lc, NULL);
+	signal_init(argv[0], err, sizeof(err), mc->lc, NULL);
 	if (err[0]) {
 		fprintf(stderr, "signal_init error: %s\n", err);
 		ret = EXIT_FAILURE;

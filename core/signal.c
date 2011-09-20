@@ -9,6 +9,7 @@
 #include "core/log_config.h"
 #include "core/signal.h"
 #include "util/compiler.h"
+#include "util/safe_io.h"
 
 #include <errno.h>
 #include <execinfo.h>
@@ -33,18 +34,27 @@ static stack_t g_alt_stack;
 
 static int g_crash_log_fd = -1;
 
+static int g_use_syslog = 0;
+
 static signal_cb_t g_fatal_signal_cb = NULL;
 
-static void cat_fd_to_syslog(char *line, size_t max_line, int fd)
+/** This function reads the file we just wrote, and sends it to some other
+ * output streams.
+ *
+ * We always write it to stderr. Most of the time, stderr will be hooked to
+ * /dev/null, but sometimes it isn't.
+ *
+ * If use_syslog was specified, we write the file to syslog. Technically, we're
+ * not supposed to do this, because syslog is not a signal-safe function.
+ * However, we've already written out the crash_log, so there will be some
+ * record of what went wrong, even if we crash and burn in this function.
+ * Also, in practice, syslog tends to do non-signal-safe stuff like call malloc
+ * only on the first invocation or when openlog is called.
+ */
+static void regurgitate_fd(char *line, size_t max_line, int fd)
 {
 	int ret;
 	size_t bidx;
-	/* Now write the file we just wrote to syslog.  We can't use fopen and
-	 * friends, because they might allocate memory.  So we just read lines
-	 * one byte at a time and then send them off to syslog.  It would be
-	 * nice if we could use backtrace_symbols here, but we can't. That
-	 * function calls malloc, for reasons that can best be described as
-	 * "misguided." */
 	ret = lseek(fd, 0, SEEK_SET);
 	if (ret)
 		return;
@@ -52,10 +62,13 @@ static void cat_fd_to_syslog(char *line, size_t max_line, int fd)
 	bidx = 0;
 	while (1) {
 		char b[1];
-		int res = read(fd, b, 1);
-		if ((bidx == max_line - 1) || (res <= 0) || (b[0] == '\n')) {
-			fprintf(stderr, "%s\n", line);
-			syslog(LOG_ERR | LOG_USER | LOG_PERROR, "%s", line);
+		int tmp, res = read(fd, b, 1);
+		if ((bidx == max_line - 2) || (res <= 0) || (b[0] == '\n')) {
+			if (g_use_syslog) {
+				syslog(LOG_ERR | LOG_USER, "%s", line);
+			}
+			line[bidx++] = '\n';
+			tmp = safe_write(STDERR_FILENO, line, bidx);
 			if (res <= 0)
 				break;
 			memset(line, 0, max_line);
@@ -72,9 +85,13 @@ static void cat_fd_to_syslog(char *line, size_t max_line, int fd)
 static void handle_fatal_signal(int sig,
 	POSSIBLY_UNUSED(siginfo_t *siginfo), POSSIBLY_UNUSED(void *ctx))
 {
-	int res, bsize;
+	int i, res, bsize;
 	void *bentries[128];
 	char *buf = (char*)bentries;
+
+	for (i = 0; i < NUM_FATAL_SIGNALS; ++i) {
+		signal(FATAL_SIGNALS[i], SIG_IGN);
+	}
 	if (g_fatal_signal_cb)
 		g_fatal_signal_cb(sig);
 	snprintf(buf, sizeof(bentries), "HANDLE_FATAL_SIGNAL(sig=%d, name=%s)\n",
@@ -87,7 +104,7 @@ static void handle_fatal_signal(int sig,
 	fsync(g_crash_log_fd);
 
 	if (g_crash_log_fd != STDERR_FILENO) {
-		cat_fd_to_syslog((char*)bentries, sizeof(bentries),
+		regurgitate_fd((char*)bentries, sizeof(bentries),
 				 g_crash_log_fd);
 	}
 	/* die */
@@ -159,8 +176,8 @@ void signal_resset_dispositions(void)
 	}
 }
 
-void signal_init(char *err, size_t err_len, const struct log_config *lc,
-		signal_cb_t fatal_signal_cb)
+void signal_init(const char *argv0, char *err, size_t err_len,
+		 const struct log_config *lc, signal_cb_t fatal_signal_cb)
 {
 	int ret;
 
@@ -189,4 +206,11 @@ void signal_init(char *err, size_t err_len, const struct log_config *lc,
 	signal_set_dispositions(err, err_len);
 	if (err[0])
 		return;
+	if (lc->use_syslog) {
+		g_use_syslog = 1;
+		openlog(argv0, LOG_NDELAY | LOG_PID, LOG_USER);
+	}
+	else {
+		g_use_syslog = 0;
+	}
 }

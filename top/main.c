@@ -249,7 +249,7 @@ int main(int argc, char **argv)
 	char err[512] = { 0 };
 
 	parse_arguments(argc, argv, &comm_fd, &color);
-	signal_init(err, sizeof(err), NULL, do_endwin);
+	signal_init(argv[0], err, sizeof(err), NULL, do_endwin);
 	if (err[0]) {
 		fprintf(stderr, "signal_init error: %s\n", err);
 		return EXIT_FAILURE;

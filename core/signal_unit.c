@@ -46,7 +46,7 @@ static int validate_crash_log(const char *crash_log, int sig)
 	return 0;
 }
 
-static int test_signal_handler(const char *tempdir, int sig)
+static int test_signal_handler(const char *argv0, const char *tempdir, int sig)
 {
 	int ret, pid, status;
 	char err[512] = { 0 };
@@ -62,7 +62,7 @@ static int test_signal_handler(const char *tempdir, int sig)
 		struct log_config lc;
 		memset(&lc, 0, sizeof(lc));
 		lc.crash_log = crash_log;
-		signal_init(err, sizeof(err), &lc, NULL);
+		signal_init(argv0, err, sizeof(err), &lc, NULL);
 		if (err[0]) {
 			fprintf(stderr, "signal_init error: %s\n", err);
 			_exit(1);
@@ -76,17 +76,17 @@ static int test_signal_handler(const char *tempdir, int sig)
 	return 0;
 }
 
-int main(void)
+int main(POSSIBLY_UNUSED(int argc), char **argv)
 {
 	char tempdir[PATH_MAX];
 	srand(time(NULL));
 	EXPECT_ZERO(get_tempdir(tempdir, sizeof(tempdir), 0770));
 	EXPECT_ZERO(register_tempdir_for_cleanup(tempdir));
-	EXPECT_ZERO(test_signal_handler(tempdir, SIGSEGV));
-	EXPECT_ZERO(test_signal_handler(tempdir, SIGBUS));
-	EXPECT_ZERO(test_signal_handler(tempdir, SIGILL));
-	EXPECT_ZERO(test_signal_handler(tempdir, SIGFPE));
-	EXPECT_ZERO(test_signal_handler(tempdir, SIGABRT));
-	EXPECT_ZERO(test_signal_handler(tempdir, SIGINT));
+	EXPECT_ZERO(test_signal_handler(argv[0], tempdir, SIGSEGV));
+	EXPECT_ZERO(test_signal_handler(argv[0], tempdir, SIGBUS));
+	EXPECT_ZERO(test_signal_handler(argv[0], tempdir, SIGILL));
+	EXPECT_ZERO(test_signal_handler(argv[0], tempdir, SIGFPE));
+	EXPECT_ZERO(test_signal_handler(argv[0], tempdir, SIGABRT));
+	EXPECT_ZERO(test_signal_handler(argv[0], tempdir, SIGINT));
 	return EXIT_SUCCESS;
 }
