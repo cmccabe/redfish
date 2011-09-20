@@ -24,9 +24,10 @@
 
 static const char *CONF[] = {
 	"{",
-	"	\"base_dir\" : \"%s\",",
+	"	\"base_dir\" : \"%s\", # test out the commenting system!",
 	"	\"default\" : {",
-	"		\"base_dir\" : \"%s\"",
+	"		\"base_dir\" : \"%s\",",
+	"		\"foo_bar_baz\" : \"#string with hash mark inside\"",
 	"	},",
 	"	\"cluster\" : {",
 	"               \"daemons\": [",
