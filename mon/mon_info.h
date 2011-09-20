@@ -13,6 +13,10 @@
 #include "jorm/jorm_generate_include.h"
 #undef JORM_CUR_FILE
 
+#if 0 /* Give the dependency scanner a clue */
+#include "mon/mon_info.jorm"
+#endif
+
 #include <pthread.h>
 
 extern pthread_mutex_t g_mon_info_lock;

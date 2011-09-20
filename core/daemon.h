@@ -15,4 +15,8 @@
 #include "jorm/jorm_generate_include.h"
 #undef JORM_CUR_FILE
 
+#if 0 /* Give the dependency scanner a clue */
+#include "core/daemon.jorm"
+#endif
+
 #endif
