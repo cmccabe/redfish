@@ -1,7 +1,7 @@
-add_executable(fishmds
+add_executable(../fishmds
     main.c
 )
-target_link_libraries(fishmds core jorm)
+target_link_libraries(../fishmds core jorm)
 
 add_executable(str_range_lock_unit str_range_lock_unit.c str_range_lock.c)
 target_link_libraries(str_range_lock_unit util utest)

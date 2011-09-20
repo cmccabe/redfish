@@ -3,10 +3,10 @@ add_library(io
 )
 target_link_libraries(io util)
 
-add_executable(fishosd
+add_executable(../fishosd
     main.c
 )
-target_link_libraries(fishosd
+target_link_libraries(../fishosd
     core
     io
     jorm
