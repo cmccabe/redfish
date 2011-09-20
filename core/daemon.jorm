@@ -1,0 +1,13 @@
+/*
+ * The OneFish distributed filesystem
+ *
+ * Copyright (C) 2011 Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
+ *
+ * This is licensed under the Apache License, Version 2.0.  See file COPYING.
+ */
+
+JORM_CONTAINER_BEGIN(daemon)
+	JORM_EMBEDDED(lc, log_config)
+	JORM_INT(port)
+	JORM_STR(rack)
+JORM_CONTAINER_END

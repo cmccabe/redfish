@@ -8,8 +8,7 @@
 
 #include "core/daemon.h"
 #include "core/log_config.h"
-#include "mon/mon_config.h"
 
-#define JORM_CUR_FILE "mon/mon_config.jorm"
+#define JORM_CUR_FILE "core/daemon.jorm"
 #include "jorm/jorm_generate_body.h"
 #undef JORM_CUR_FILE

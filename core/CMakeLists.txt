@@ -1,4 +1,5 @@
 add_library(core
+    daemon.c
     log_config.c
     glitch_log.c
     signal.c
