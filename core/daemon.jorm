@@ -9,5 +9,5 @@
 JORM_CONTAINER_BEGIN(daemon)
 	JORM_EMBEDDED(lc, log_config)
 	JORM_INT(port)
-	JORM_STR(rack)
+	JORM_INT(rack)
 JORM_CONTAINER_END
