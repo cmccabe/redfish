@@ -39,6 +39,7 @@ void open_glitch_log(const struct log_config *lconf, char *err, size_t err_len)
 		pthread_mutex_destroy(&g_glitch_log_lock);
 		return;
 	}
+	setvbuf(fp, NULL, _IOLBF, 0); /* use line-buffered output */
 	g_glitch_log_fp = fp;
 	return;
 }
