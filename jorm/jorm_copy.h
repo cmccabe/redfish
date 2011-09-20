@@ -12,7 +12,9 @@
 #include <string.h> /* for strdup */
 
 #define JORM_CONTAINER_BEGIN(name) \
-int JORM_COPY_##name(struct name *src, struct name *dst) {
+int JORM_COPY_##name(struct name *src, struct name *dst) { \
+	if (!src) \
+		return 0; \
 
 #define JORM_INT(name) \
 	if (src->name != JORM_INVAL_INT) \
