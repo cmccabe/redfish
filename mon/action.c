@@ -166,7 +166,7 @@ struct action_info** argv_to_action_info(char **argv, char *err, size_t err_len)
 			return NULL;
 		}
 	}
-	if (arr[0] == NULL) {
+	if ((arr == NULL) || (arr[0] == NULL)) {
 		snprintf(err, err_len, "You must give at least one "
 			 "action for fishmon to execute.");
 		return NULL;
