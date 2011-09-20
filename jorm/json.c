@@ -19,6 +19,47 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+enum remove_comments_state
+{
+	REMOVE_COMMENTS_STATE_NORMAL,
+	REMOVE_COMMENTS_STATE_IN_STR,
+	REMOVE_COMMENTS_STATE_IN_COMMENT,
+};
+
+static void remove_comments(char *b)
+{
+	enum remove_comments_state state = REMOVE_COMMENTS_STATE_NORMAL;
+	while (1) {
+		char c = *b;
+		if (c == '\0')
+			return;
+		switch (state) {
+		case REMOVE_COMMENTS_STATE_NORMAL:
+			if (c == '"')
+				state = REMOVE_COMMENTS_STATE_IN_STR;
+			else if (c == '#') {
+				*b = ' ';
+				state = REMOVE_COMMENTS_STATE_IN_COMMENT;
+			}
+			break;
+		case REMOVE_COMMENTS_STATE_IN_STR:
+			if (c == '"')
+				state = REMOVE_COMMENTS_STATE_NORMAL;
+			break;
+		case REMOVE_COMMENTS_STATE_IN_COMMENT:
+			if (c == '\n')
+				state = REMOVE_COMMENTS_STATE_NORMAL;
+			else
+				*b = ' ';
+			break;
+		default:
+			abort();
+			break;
+		}
+		++b;
+	}
+}
+
 struct json_object* parse_json_file(const char *file_name,
 				char *err, size_t err_len)
 {
@@ -50,6 +91,7 @@ struct json_object* parse_json_file(const char *file_name,
 		free(buf);
 		return NULL;
 	}
+	remove_comments(buf);
 	jret = parse_json_string(buf, err, err_len);
 	if (!jret) {
 		free(buf);
