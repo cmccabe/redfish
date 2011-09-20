@@ -132,3 +132,25 @@ done_free_json_tokener:
 done:
 	return ret;
 }
+
+const char *json_ty_to_str(enum json_type ty)
+{
+	switch (ty) {
+	case json_type_null:
+		return "null";
+	case json_type_boolean:
+		return "boolean";
+	case json_type_double:
+		return "double";
+	case json_type_int:
+		return "int";
+	case json_type_object:
+		return "object";
+	case json_type_array:
+		return "array";
+	case json_type_string:
+		return "string";
+	default:
+		return "unknown";
+	}
+}

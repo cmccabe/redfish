@@ -29,3 +29,7 @@
 #include "jorm/jorm_undef.h"
 #include "jorm/jorm_copy.h"
 #include JORM_CUR_FILE
+
+#include "jorm/jorm_undef.h"
+#include "jorm/jorm_tycheck.h"
+#include JORM_CUR_FILE

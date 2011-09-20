@@ -25,8 +25,8 @@
  * @param err			error output buffer
  * @param err_len		size of error output buffer
  *
- * Returns a JSON object or NULL if parsing failed.
- * If parsing failed, the err buffer will be set.
+ * @return			a JSON object or NULL if parsing failed.
+ *				If parsing failed, the err buffer will be set.
  */
 struct json_object* parse_json_file(const char *file_name,
 				char *err, size_t err_len);
@@ -37,10 +37,18 @@ struct json_object* parse_json_file(const char *file_name,
  * @param err			error output buffer
  * @param err_len		size of error output buffer
  *
- * Returns a JSON object or NULL if parsing failed.
- * If parsing failed, the err buffer will be set.
+ * @return			a JSON object or NULL if parsing failed.
+ *				If parsing failed, the err buffer will be set.
  */
 struct json_object* parse_json_string(const char *str,
 				char *err, size_t err_len);
+
+/** Return a string corresponding to a JSON type
+ *
+ * @param ty			The JSON type
+ *
+ * @return			a statically allocated string
+ */
+const char *json_ty_to_str(enum json_type ty);
 
 #endif

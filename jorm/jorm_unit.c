@@ -232,11 +232,76 @@ int test4(void)
 	return 0;
 }
 
+int test5(void)
+{
+	int ret;
+	char acc[512] = { 0 }, err[512] = { 0 };
+	struct json_object *jo = NULL;
+	const char in_str[] = "{ \"a\": \"1\", \"b\": 2.500000, "
+		"\"c\": 5.0, \"d\": { \"a\": false }, "
+		"\"e\": false, \"f\": [ { \"a\": 1 }, "
+		"{ \"a\": 2 } ], \"x\" : 5, \"y\" : 1 }";
+	const char in_str2[] = "{ \"d\": false, \"f\" : 1 }";
+	const char in_str3[] = "{ \"f\" : [ { \"a\" : 2.5 }, 1 ] }";
+	jo = parse_json_string(in_str, err, sizeof(err));
+	if (err[0]) {
+		fprintf(stderr, "parse_json_string error: %s\n", err);
+		ret = EXIT_FAILURE;
+		goto done;
+	}
+	JORM_TYCHECK_bob(jo, acc, sizeof(acc), err, sizeof(err));
+	EXPECT_ZERO(strcmp(err, "WARNING: ignoring field \"a\" because "
+		"it has type string, but it should have type int.\n"
+		"WARNING: ignoring field \"c\" because it has type double, "
+		"but it should have type string.\n"
+		"WARNING: ignoring field \"d/a\" because it has type boolean, "
+		"but it should have type int.\n"
+		"WARNING: ignoring field \"y\" because it has type int, "
+		"but it should have type double.\n"));
+
+	acc[0] = '\0';
+	err[0] = '\0';
+	json_object_put(jo);
+	jo = parse_json_string(in_str2, err, sizeof(err));
+	if (err[0]) {
+		fprintf(stderr, "parse_json_string2 error: %s\n", err);
+		ret = EXIT_FAILURE;
+		goto done;
+	}
+	JORM_TYCHECK_bob(jo, acc, sizeof(acc), err, sizeof(err));
+	EXPECT_ZERO(strcmp(err, "WARNING: ignoring field \"d\" because "
+		"it has type boolean, but it should have type object.\n"
+		"WARNING: ignoring field \"f\" because it has type "
+		"int, but it should have type array.\n"));
+
+	acc[0] = '\0';
+	err[0] = '\0';
+	json_object_put(jo);
+	jo = parse_json_string(in_str3, err, sizeof(err));
+	if (err[0]) {
+		fprintf(stderr, "parse_json_string3 error: %s\n", err);
+		ret = EXIT_FAILURE;
+		goto done;
+	}
+	JORM_TYCHECK_bob(jo, acc, sizeof(acc), err, sizeof(err));
+	EXPECT_ZERO(strcmp(err, "WARNING: ignoring field \"f[0]/a\" because "
+		"it has type double, but it should have type int.\n"
+		"WARNING: ignoring field \"f[1]\" because "
+		"it has type array, but it should have type int.\n"));
+
+	ret = 0;
+done:
+	if (jo)
+		json_object_put(jo);
+	return 0;
+}
+
 int main(void)
 {
 	EXPECT_ZERO(test1());
 	EXPECT_ZERO(test2());
 	EXPECT_ZERO(test3());
 	EXPECT_ZERO(test4());
+	EXPECT_ZERO(test5());
 	return EXIT_SUCCESS;
 }
