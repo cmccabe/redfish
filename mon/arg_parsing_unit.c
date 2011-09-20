@@ -137,6 +137,7 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 			      fishmon, sizeof(fishmon)));
 	EXPECT_ZERO(make_temp_conf_file(tdir, conf, sizeof(conf)));
 
+	EXPECT_EQUAL(run_cmd(fishmon, (char*)NULL), 1);
 	EXPECT_ZERO(run_cmd(fishmon, "-c", conf, "-h", (char*)NULL));
 	EXPECT_ZERO(run_cmd(fishmon, "-c", conf, "-T", (char*)NULL));
 	EXPECT_ZERO(write_file_test1(fishmon, conf, tdir));
