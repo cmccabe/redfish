@@ -8,17 +8,20 @@
 
 struct json_object;
 
-#define JORM_CONTAINER_BEGIN(name) \
-	struct name; \
-	extern struct name *JORM_FROMJSON_##name(struct json_object *jo); \
-	extern struct json_object *JORM_TOJSON_##name(struct name *me); \
-	extern void JORM_FREE_##name(struct name *jorm); \
-	extern int JORM_COPY_##name(struct name *src, struct name *dst);
+#define JORM_CONTAINER_BEGIN(ty) \
+	struct ty; \
+	extern struct ty *JORM_FROMJSON_##ty(struct json_object *jo); \
+	extern struct json_object *JORM_TOJSON_##ty(struct ty *me); \
+	extern void JORM_FREE_##ty(struct ty *jorm); \
+	extern int JORM_COPY_##ty(struct ty *src, struct ty *dst); \
+	extern struct ty** JORM_ARRAY_COPY_##ty(struct ty **arr);
 #define JORM_INT(name)
 #define JORM_DOUBLE(name)
 #define JORM_STR(name)
-#define JORM_NESTED(name, ty)
-#define JORM_EMBEDDED(name, ty)
+#define JORM_NESTED(name, ty) \
+	struct ty;
+#define JORM_EMBEDDED(name, ty) \
+	struct ty;
 #define JORM_BOOL(name)
 #define JORM_ARRAY(name, ty) \
 	extern struct ty* JORM_ARRAY_APPEND_##ty(struct ty ***arr); \
