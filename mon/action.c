@@ -18,7 +18,7 @@
 
 extern const struct mon_action write_file_test_act;
 extern const struct mon_action ssh_test_act;
-//extern struct mon_action *ssh_status_act;
+extern const struct mon_action install_act;
 //extern struct mon_action *mds_status_act;
 //extern struct mon_action *install_act;
 //extern struct mon_action *start_act;
@@ -30,7 +30,8 @@ extern const struct mon_action ssh_test_act;
 static const struct mon_action *MON_ACTIONS[] = {
 	&write_file_test_act,
 	&ssh_test_act,
-	//&status_act,
+	&install_act,
+//	&mds_status_act,
 //	&install_act,
 //	&start_act,
 //	&stop_act,

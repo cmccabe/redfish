@@ -34,6 +34,8 @@ static void usage(int exitstatus)
 "information about OneFish.",
 "",
 "fishmon usage:",
+"-A",
+"    Show administrative action descriptions",
 "-c <monitor-configuration-file>",
 "    Set the monitor configuration file. This file contains information ",
 "    about the OneFish cluster we're going to be interacting with.",
@@ -46,7 +48,6 @@ static void usage(int exitstatus)
 NULL
 	};
 	print_lines(stderr, usage_lines);
-	print_action_descriptions(MON_ACTION_ADMIN);
 	exit(exitstatus);
 }
 
@@ -56,8 +57,11 @@ static void parse_argv(int argc, char **argv, int *daemonize,
 	int c;
 	char err[512] = { 0 };
 
-	while ((c = getopt(argc, argv, "c:fhT")) != -1) {
+	while ((c = getopt(argc, argv, "Ac:fhT")) != -1) {
 		switch (c) {
+		case 'A':
+			print_action_descriptions(MON_ACTION_ADMIN);
+			exit(EXIT_SUCCESS);
 		case 'c':
 			*mon_config_file = optarg;
 			break;

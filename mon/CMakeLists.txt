@@ -1,4 +1,5 @@
 add_executable(../fishmon 
+    act/install.c
     act/ssh_test.c
     act/write_file_test.c
     action.c
