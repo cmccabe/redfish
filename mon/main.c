@@ -188,8 +188,6 @@ error:
 	if (di)
 		JORM_ARRAY_FREE_daemon_info(&di);
 	return NULL;
-
-
 }
 
 int main(int argc, char **argv)
