@@ -70,17 +70,17 @@ static void parse_argv(int argc, char **argv, int *daemonize,
 			print_action_descriptions(MON_ACTION_TEST);
 			exit(EXIT_SUCCESS);
 		case '?':
-			fprintf(stderr, "error parsing options.\n\n");
+			glitch_log("error parsing options.\n\n");
 			usage(EXIT_FAILURE);
 		}
 	}
 	*ai = argv_to_action_info(argv + optind, err, sizeof(err));
 	if (err[0]) {
-		fprintf(stderr, "%s\n\n", err);
+		glitch_log("%s\n\n", err);
 		usage(EXIT_FAILURE);
 	}
 	if (*mon_config_file == NULL) {
-		fprintf(stderr, "You must specify a monitor configuration "
+		glitch_log("You must specify a monitor configuration "
 			"file with -c.\n\n");
 		usage(EXIT_FAILURE);
 	}
@@ -201,13 +201,13 @@ int main(int argc, char **argv)
 	parse_argv(argc, argv, &daemonize, &mon_config_file, &ai);
 	g_mon_info.acts = argv_to_action_info(argv + optind, err, sizeof(err));
 	if (err[0]) {
-		fprintf(stderr, "%s", err);
+		glitch_log("%s", err);
 		ret = EXIT_FAILURE;
 		goto done;
 	}
 	mc = parse_mon_config(mon_config_file, err, sizeof(err));
 	if (err[0]) {
-		fprintf(stderr, "error parsing monitor config file '%s': %s\n",
+		glitch_log("error parsing monitor config file '%s': %s\n",
 			mon_config_file, err);
 		ret = EXIT_FAILURE;
 		goto free_action_info;
@@ -215,27 +215,27 @@ int main(int argc, char **argv)
 	g_mon_info.daemons = create_daemons_array(mc->cluster,
 						  err, sizeof(err));
 	if (err[0]) {
-		fprintf(stderr, "create_daemons_array error: %s\n", err);
+		glitch_log("create_daemons_array error: %s\n", err);
 		ret = EXIT_FAILURE;
 		goto free_mc;
 	}
 	harmonize_log_config(mc->lc, err, sizeof(err), 1, 1);
 	if (err[0]) {
-		fprintf(stderr, "log_config error: %s", err);
+		glitch_log("log_config error: %s", err);
 		ret = EXIT_FAILURE;
 		goto free_daemon_info;
 	}
 	configure_glitch_log(mc->lc);
 	signal_init(argv[0], err, sizeof(err), mc->lc, NULL);
 	if (err[0]) {
-		fprintf(stderr, "signal_init error: %s\n", err);
+		glitch_log("signal_init error: %s\n", err);
 		ret = EXIT_FAILURE;
 		goto done_close_glitchlog;
 	}
 	if (daemonize) {
 		if (daemon(0, 0) < 0) {
 			ret = errno;
-			fprintf(stderr, "daemon: error: %d\n", ret);
+			glitch_log("daemon: error: %d\n", ret);
 			ret = EXIT_FAILURE;
 			goto done_signal_reset_dispositions;
 		}

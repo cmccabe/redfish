@@ -141,7 +141,6 @@ int run_cmd_get_output(char *out, int out_len, const char **cvec)
 			if (ret == EINTR)
 				continue;
 			else {
-				fprintf(stderr, "pipe read erro %d\n", ret);
 				snprintf(out, out_len, "Pipe read error: %d", ret);
 				goto done;
 			}

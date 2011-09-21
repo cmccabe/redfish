@@ -55,16 +55,16 @@ static void parse_argv(int argc, char **argv, int *daemonize,
 		case 'h':
 			usage(EXIT_SUCCESS);
 		case '?':
-			fprintf(stderr, "error parsing options.\n\n");
+			glitch_log("error parsing options.\n\n");
 			usage(EXIT_FAILURE);
 		}
 	}
 	if (argv[optind]) {
-		fprintf(stderr, "junk at end of command line\n");
+		glitch_log("junk at end of command line\n");
 		usage(EXIT_FAILURE);
 	}
 	if (*config_file == NULL) {
-		fprintf(stderr, "You must specify an mds configuration "
+		glitch_log("You must specify an mds configuration "
 			"file with -c.\n\n");
 		usage(EXIT_FAILURE);
 	}
@@ -104,28 +104,28 @@ int main(int argc, char **argv)
 	parse_argv(argc, argv, &daemonize, &mds_config_file);
 	d = parse_mds_config(mds_config_file, err, sizeof(err));
 	if (err[0]) {
-		fprintf(stderr, "error parsing monitor config file '%s': %s\n",
+		glitch_log("error parsing monitor config file '%s': %s\n",
 			mds_config_file, err);
 		ret = EXIT_FAILURE;
 		goto done;
 	}
 	harmonize_log_config(d->lc, err, sizeof(err), 1, 1);
 	if (err[0]) {
-		fprintf(stderr, "log_config error: %s", err);
+		glitch_log("log_config error: %s", err);
 		ret = EXIT_FAILURE;
 		goto free_daemon;
 	}
 	configure_glitch_log(d->lc);
 	signal_init(argv[0], err, sizeof(err), d->lc, NULL);
 	if (err[0]) {
-		fprintf(stderr, "signal_init error: %s\n", err);
+		glitch_log("signal_init error: %s\n", err);
 		ret = EXIT_FAILURE;
 		goto done_close_glitchlog;
 	}
 	if (daemonize) {
 		if (daemon(0, 0) < 0) {
 			ret = errno;
-			fprintf(stderr, "daemon: error: %d\n", ret);
+			glitch_log("daemon: error: %d\n", ret);
 			ret = EXIT_FAILURE;
 			goto done_signal_reset_dispositions;
 		}
