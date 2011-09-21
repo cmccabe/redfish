@@ -120,6 +120,7 @@ int daemon_worker_ssh(struct worker *w, sem_t *sem, ...)
 			ret = -ENOMEM;
 			goto error;
 		}
+		m = nm;
 		m->args[num_args - 1] = c;
 		m->args[num_args] = NULL;
 	}
