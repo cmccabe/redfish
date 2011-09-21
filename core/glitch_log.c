@@ -80,6 +80,8 @@ static void glitch_log_to_syslog_and_stderr(const char *buf, size_t buf_sz)
 static void glitch_log_impl(const char *fmt, va_list ap)
 {
 	char *buf;
+	va_list ap2;
+	va_copy(ap2, ap);
 	int ret, txt_sz = vsnprintf(NULL, 0, fmt, ap);
 	buf = malloc(txt_sz + 1);
 	if (!buf) {
@@ -88,7 +90,7 @@ static void glitch_log_impl(const char *fmt, va_list ap)
 		glitch_log_to_syslog_and_stderr(OOM_MSG, sizeof(OOM_MSG) - 1);
 		return;
 	}
-	vsnprintf(buf, txt_sz + 1, fmt, ap);
+	vsnprintf(buf, txt_sz + 1, fmt, ap2);
 	if (g_glitch_log_fd != -1) {
 		ret = safe_write(g_glitch_log_fd, buf, txt_sz);
 		if (ret != 0) {
