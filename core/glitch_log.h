@@ -15,13 +15,25 @@
 
 struct log_config;
 
-/** Open the glitch log. This should be called before any calls to glitch_log
+/** Glitch log is a log that daemons use specifically to log glitches-- bad
+ * conditions that should not ever occur. Because it's designed to log only
+ * exceptional conditions, glitch log is low-performance, unlike fastlog.
+ * System administrators should carefully examine anything that goes into the
+ * glitch log, because each message indicates a bad condition or serious error.
+ *
+ * glitch_log will always output to stderr. It will output to syslog or to log
+ * files if that is configured.
+ *
+ * You can use glitch log before configuring it. Your logs will simply go to
+ * stderr. When you do get around to configuring it, the logs you have already
+ * outputted will be copied to the configured location.
+ */
+
+/** Configure the glitch log.
  *
  * @param lc		The log configuration
- *
- * @return		0 on success; error code otherwise
  */
-void open_glitch_log(const struct log_config *lc, char *err, size_t err_len);
+void configure_glitch_log(const struct log_config *lc);
 
 /** Issue a glitch_log message.
  * This function is thread-safe because it uses the log_config lock.
@@ -34,8 +46,6 @@ void open_glitch_log(const struct log_config *lc, char *err, size_t err_len);
 void glitch_log(const char *fmt, ...) PRINTF_FORMAT(1, 2);
 
 /** Close the glitch log.
- *
- * Must be called after all threads using glitch_log have been stopped.
  */
 void close_glitch_log(void);
 

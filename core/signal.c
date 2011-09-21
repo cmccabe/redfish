@@ -38,47 +38,8 @@ static int g_use_syslog = 0;
 
 static signal_cb_t g_fatal_signal_cb = NULL;
 
-/** This function reads the file we just wrote, and sends it to some other
- * output streams.
- *
- * We always write it to stderr. Most of the time, stderr will be hooked to
- * /dev/null, but sometimes it isn't.
- *
- * If use_syslog was specified, we write the file to syslog. Technically, we're
- * not supposed to do this, because syslog is not a signal-safe function.
- * However, we've already written out the crash_log, so there will be some
- * record of what went wrong, even if we crash and burn in this function.
- * Also, in practice, syslog tends to do non-signal-safe stuff like call malloc
- * only on the first invocation or when openlog is called.
- */
-static void regurgitate_fd(char *line, size_t max_line, int fd)
-{
-	int ret;
-	size_t bidx;
-	ret = lseek(fd, 0, SEEK_SET);
-	if (ret)
-		return;
-	memset(line, 0, max_line);
-	bidx = 0;
-	while (1) {
-		char b[1];
-		int tmp, res = read(fd, b, 1);
-		if ((bidx == max_line - 2) || (res <= 0) || (b[0] == '\n')) {
-			if (g_use_syslog) {
-				syslog(LOG_ERR | LOG_USER, "%s", line);
-			}
-			line[bidx++] = '\n';
-			tmp = safe_write(STDERR_FILENO, line, bidx);
-			if (res <= 0)
-				break;
-			memset(line, 0, max_line);
-			bidx = 0;
-		}
-		else {
-			line[bidx++] = b[0];
-		}
-	}
-}
+extern void regurgitate_fd(char *line, size_t max_line, int ifd, int ofd,
+			int use_syslog);
 
 /** Ths signal handler for nasty, fatal signals.
  */
@@ -104,8 +65,23 @@ static void handle_fatal_signal(int sig,
 	fsync(g_crash_log_fd);
 
 	if (g_crash_log_fd != STDERR_FILENO) {
+		/* This function reads the file we just wrote, and sends it to
+		 * some other output streams.
+		 *
+		 * We always write it to stderr. Most of the time, stderr will
+		 * be hooked to /dev/null, but sometimes it isn't.
+		 *
+		 * If use_syslog was specified, we write the file to syslog.
+		 * Technically, we're not supposed to do this, because syslog is
+		 * not a signal-safe function.  However, we've already written
+		 * out the crash_log, so there will be some record of what went
+		 * wrong, even if we crash and burn in this function.  Also, in
+		 * practice, syslog tends to do non-signal-safe stuff like call
+		 * malloc only on the first invocation or when openlog is
+		 * called.
+		 */
 		regurgitate_fd((char*)bentries, sizeof(bentries),
-				 g_crash_log_fd);
+				 g_crash_log_fd, -1, g_use_syslog);
 	}
 	/* die */
 	raise(sig);
