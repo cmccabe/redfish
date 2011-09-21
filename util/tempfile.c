@@ -38,7 +38,7 @@ static void cleanup_registered_tempdirs(void)
 		return;
 	pthread_mutex_lock(&tempdir_lock);
 	for (i = 0; i < g_num_tempdirs; ++i) {
-		run_cmd("rm", "-rf", g_tempdirs[i], (char*)NULL);
+		remove_tempdir(g_tempdirs[i]);
 		free(g_tempdirs[i]);
 	}
 	free(g_tempdirs);
@@ -86,4 +86,35 @@ int register_tempdir_for_cleanup(const char *tempdir)
 	g_num_tempdirs++;
 	pthread_mutex_unlock(&tempdir_lock);
 	return 0;
+}
+
+void unregister_tempdir_for_cleanup(const char *tempdir)
+{
+	int i;
+	char **tempdirs;
+	pthread_mutex_lock(&tempdir_lock);
+	if (g_num_tempdirs == 0) {
+		pthread_mutex_unlock(&tempdir_lock);
+		return;
+	}
+	for (i = 0; i < g_num_tempdirs; ++i) {
+		if (strcmp(g_tempdirs[i], tempdir) == 0)
+			break;
+	}
+	if (i == g_num_tempdirs) {
+		pthread_mutex_unlock(&tempdir_lock);
+		return;
+	}
+	g_tempdirs[i] = g_tempdirs[g_num_tempdirs - 1];
+	tempdirs = realloc(g_tempdirs, sizeof(char*) * g_num_tempdirs - 1);
+	if (tempdirs) {
+		g_tempdirs = tempdirs;
+	}
+	g_num_tempdirs--;
+	pthread_mutex_unlock(&tempdir_lock);
+}
+
+void remove_tempdir(const char *tempdir)
+{
+	run_cmd("rm", "-rf", tempdir, (char*)NULL);
 }
