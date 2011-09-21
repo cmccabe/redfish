@@ -9,6 +9,8 @@
 #ifndef ONEFISH_UTIL_TEST_H
 #define ONEFISH_UTIL_TEST_H
 
+#include <stdio.h> /* for fprintf */
+
 extern void die_unless(int t);
 extern void die_if(int t);
 
