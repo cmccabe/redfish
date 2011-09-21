@@ -25,9 +25,9 @@ struct fscreen* gfx_fscreen_create(const struct top_state *ts)
 	if (!sn) {
 		return NULL;
 	}
-	sn->lines = NULL; 
-	sn->num_lines = 0; 
-	sn->scroll_pos = 0; 
+	sn->lines = NULL;
+	sn->num_lines = 0;
+	sn->scroll_pos = 0;
 
 	sn->header = fscreen_makeline(COLOR_PAIR(4) | A_REVERSE,
 		"OneFish", COLOR_PAIR(4) | A_REVERSE,

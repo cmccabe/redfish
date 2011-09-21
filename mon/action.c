@@ -45,7 +45,7 @@ const char *get_mon_action_arg(struct action_arg **args,
 			const char *name, const char *default_val)
 {
 	struct action_arg **a;
-	
+
 	for (a = args; *a; ++a) {
 		if (strcmp((*a)->key, name) == 0) {
 			return (*a)->val;
@@ -133,7 +133,7 @@ malloc_failed:
 	return NULL;
 }
 
-static void validate_action_args(char *err, size_t err_len, 
+static void validate_action_args(char *err, size_t err_len,
 	const struct mon_action *act, struct action_arg **args)
 {
 	if (args == NULL)

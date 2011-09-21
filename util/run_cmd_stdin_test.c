@@ -82,7 +82,7 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 		ret = EXIT_FAILURE;
 		goto done;
 	}
-	
+
 	ibuf = fp_to_buf(stdin);
 	if (!ibuf) {
 		fprintf(stderr, "failed to read stdin\n");

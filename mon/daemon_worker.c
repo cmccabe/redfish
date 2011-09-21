@@ -78,7 +78,7 @@ void init_daemon_workers(const struct mon_cluster *cluster,
 oom_error:
 	if (md)
 		JORM_FREE_mon_daemon(md);
-	snprintf(err, err_len, "out of memory"); 
+	snprintf(err, err_len, "out of memory");
 error:
 	for (--idx; idx > 0; --idx) {
 		worker_stop(g_daemon_workers[idx]);

@@ -38,7 +38,7 @@ struct of_block_loc
 	/** The hostname of the datanode with the block */
 	const char *host;
 
-	/** The port number of the datanode with the block */ 
+	/** The port number of the datanode with the block */
 	int port;
 };
 

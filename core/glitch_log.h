@@ -24,7 +24,7 @@ struct log_config;
 void open_glitch_log(const struct log_config *lc, char *err, size_t err_len);
 
 /** Issue a glitch_log message.
- * This function is thread-safe because it uses the log_config lock. 
+ * This function is thread-safe because it uses the log_config lock.
  *
  * @param fmt		Printf-style format string
  * @param ...		Printf-style variadic arguments

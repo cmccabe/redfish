@@ -156,7 +156,7 @@ int test3(void)
 	final_abbie = JORM_ARRAY_APPEND_abbie(&my_bob->f);
 	EXPECT_NOT_EQUAL(final_abbie, NULL);
 	final_abbie->a = 6;
-	for (i = 0; i < sizeof(expected_array_val) / 
+	for (i = 0; i < sizeof(expected_array_val) /
 			sizeof(expected_array_val[0]); ++i) {
 		EXPECT_EQUAL(my_bob->f[i]->a, expected_array_val[i]);
 	}

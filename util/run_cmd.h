@@ -12,7 +12,7 @@
 #include <unistd.h> /* for size_t */
 
 #define RUN_CMD_INTERNAL_ERROR 0x7ffffffd
-#define RUN_CMD_EXITED_ON_SIGNAL 0x7ffffffe 
+#define RUN_CMD_EXITED_ON_SIGNAL 0x7ffffffe
 
 /** Run a command
  *
@@ -63,7 +63,7 @@ int get_colocated_path(const char *argv0, const char *other,
  * @return		RUN_CMD_INTERNAL_ERROR on waitpid error
  *			RUN_CMD_EXITED_ON_SIGNAL if process exited on a signal
  *			The proecss return code otherwise.
- *			Return codes are only from -128 to 127, so it is 
+ *			Return codes are only from -128 to 127, so it is
  *			possible to distinguish the special codes from normal
  *			returns.
  */

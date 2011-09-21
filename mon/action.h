@@ -19,9 +19,9 @@ struct mon_info;
  *
  * @param args			The action arguments
  * @param name			The name of the argument to grab
- * @param default_val		The value to return if the argument wasn't 
+ * @param default_val		The value to return if the argument wasn't
  *				given
- *				
+ *
  * @returns			a pointer to the argument value
  */
 const char *get_mon_action_arg(struct action_arg **args,

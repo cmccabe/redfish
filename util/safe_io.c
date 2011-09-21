@@ -77,7 +77,7 @@ ssize_t safe_read_exact(int fd, void *b, size_t c)
 		return -EDOM;
 	return 0;
 }
- 
+
 ssize_t safe_pread(int fd, void *b, size_t c, off_t off)
 {
 	size_t cnt = 0;

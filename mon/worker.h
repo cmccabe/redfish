@@ -80,7 +80,7 @@ int worker_sendmsg_or_free(struct worker *worker, void *m);
 
 /** Stop a worker
  *
- * @worker		The worker to stop 
+ * @worker		The worker to stop
  *
  * @return		0 if the shutdown message was sent successfully.
  *			error code otherwise
@@ -91,7 +91,7 @@ int worker_stop(struct worker *worker);
  * Usually you will want to call worker_stop on the thread before calling this
  * function.
  *
- * @worker		The worker to join 
+ * @worker		The worker to join
  *
  * @return		0 if the shutdown message was sent successfully and
  *			the thread returned success. Error code otherwise.

@@ -118,7 +118,7 @@ void* worker_main(void *v)
 			}
 		}
 		free(msg);
-	} while (!done); 
+	} while (!done);
 	pthread_mutex_lock(&worker->lock);
 	if (ret == WORKER_SUCCESS)
 		worker->state = WORKER_STATE_STOPPED;
