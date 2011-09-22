@@ -10,7 +10,6 @@
 #include "jorm/json.h"
 
 #include <json/json_object_private.h> /* need for struct json_object_iter */
-#include <stdlib.h> /* for calloc */
 
 #define JORM_CONTAINER_BEGIN(name) \
 struct json_object *JORM_TOJSON_##name(struct name *me) { \

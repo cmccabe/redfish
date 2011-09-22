@@ -12,16 +12,16 @@
 #include <stdlib.h> /* for calloc */
 #include <string.h> /* for strdup */
 
-#define JORM_CONTAINER_BEGIN(name) \
-struct name *JORM_FROMJSON_##name(struct json_object *jo) { \
-	struct name *out = calloc(1, sizeof(struct name)); \
+#define JORM_CONTAINER_BEGIN(ty) \
+struct ty *JORM_FROMJSON_##ty(struct json_object *jo) { \
+	struct ty *out = JORM_INIT_##ty(); \
 	if (!out) { \
 		return NULL; \
 	} \
 	if (0) { \
 		goto handle_oom; \
 handle_oom: \
-		JORM_FREE_##name(out); \
+		JORM_FREE_##ty(out); \
 		return NULL; \
 	}
 #define JORM_INT(name) { \

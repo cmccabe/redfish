@@ -38,7 +38,7 @@ static int test1(void)
 	int ret;
 	const char *str;
 	struct json_object *jo = NULL;
-	struct abbie *my_abbie = calloc(1, sizeof(struct abbie));
+	struct abbie *my_abbie = JORM_INIT_abbie();
 	my_abbie->a = 456;
 	jo = JORM_TOJSON_abbie(my_abbie);
 	if (!jo) {
@@ -68,14 +68,14 @@ static int test2(void)
 	struct abbie *my_abbie[TEST2_NUM_ABBIE + 1] = { 0 };
 	struct bob *my_bob;
 	for (i = 0; i < TEST2_NUM_ABBIE; ++i) {
-		my_abbie[i] = calloc(1, sizeof(struct abbie));
+		my_abbie[i] = JORM_INIT_abbie();
 		if (!my_abbie[i]) {
 			ret = EXIT_FAILURE;
 			goto done;
 		}
 		my_abbie[i]->a = i;
 	}
-	my_bob = calloc(1, sizeof(struct bob));
+	my_bob = JORM_INIT_bob();
 	if (!my_bob) {
 		ret = EXIT_FAILURE;
 		goto done;
@@ -94,7 +94,7 @@ static int test2(void)
 	my_bob->f[1] = my_abbie[2];
 	my_bob->f[2] = NULL;
 	my_bob->extra_data = 404;
-	my_bob->g = calloc(1, sizeof(struct carrie));
+	my_bob->g = JORM_INIT_carrie();
 	EXPECT_NOT_EQUAL(my_bob->g, NULL);
 	my_bob->g->x = 101;
 	my_bob->g->y = 5.0;
@@ -189,23 +189,23 @@ done:
 
 static int test4(void)
 {
-	struct bob *b1 = calloc(1, sizeof(struct bob));
-	struct bob *b2 = calloc(1, sizeof(struct bob));
-	struct bob *b3 = calloc(1, sizeof(struct bob));
+	struct bob *b1 = JORM_INIT_bob();
+	struct bob *b2 = JORM_INIT_bob();
+	struct bob *b3 = JORM_INIT_bob();
 	struct abbie **abbie_arr = NULL;
 
 	EXPECT_NOT_EQUAL(b1, NULL);
 	EXPECT_NOT_EQUAL(b2, NULL);
 	EXPECT_NOT_EQUAL(b3, NULL);
 
-	EXPECT_EQUAL(b3->a, 0);
+	EXPECT_EQUAL(b3->a, JORM_INVAL_INT);
 	b1->a = 101;
 	EXPECT_ZERO(JORM_COPY_bob(b1, b3));
 	EXPECT_EQUAL(b3->a, 101);
 
 	b2->a = JORM_INVAL_INT;
 	b2->b = 50;
-	b2->d = calloc(1, sizeof(struct abbie));
+	b2->d = JORM_INIT_abbie();
 	b2->d->a = 9000;
 	EXPECT_ZERO(JORM_COPY_bob(b2, b3));
 	EXPECT_EQUAL(b3->b, 50);
@@ -215,9 +215,9 @@ static int test4(void)
 
 	b1->f = calloc(3, sizeof(struct abbie*));
 	EXPECT_NOT_EQUAL(b1->f, NULL);
-	b1->f[0] = calloc(1, sizeof(struct abbie));
+	b1->f[0] = JORM_INIT_abbie();
 	EXPECT_NOT_EQUAL(b1->f[0], NULL);
-	b1->f[1] = calloc(1, sizeof(struct abbie));
+	b1->f[1] = JORM_INIT_abbie();
 	EXPECT_NOT_EQUAL(b1->f[1], NULL);
 	b1->f[2] = NULL;
 	b1->f[0]->a = 100;

@@ -11,6 +11,9 @@
 #include <errno.h> /* for ENOMEM */
 #include <string.h> /* for strdup */
 
+/* Note: If JORM_COPY exits with an out-of-memory condition, parts of the source
+ * might still have been copied to the destination.
+ */
 #define JORM_CONTAINER_BEGIN(name) \
 int JORM_COPY_##name(struct name *src, struct name *dst) { \
 	if (!src) \
@@ -36,7 +39,7 @@ int JORM_COPY_##name(struct name *src, struct name *dst) { \
 	if (src->name != JORM_INVAL_NESTED) { \
 		int ret; \
 		if (dst->name == JORM_INVAL_NESTED) { \
-			dst->name = calloc(1, sizeof(struct ty)); \
+			dst->name = JORM_INIT_##ty(); \
 			if (!dst->name) \
 				return -ENOMEM; \
 		} \
@@ -49,7 +52,7 @@ int JORM_COPY_##name(struct name *src, struct name *dst) { \
 	if (src->name != JORM_INVAL_EMBEDDED) { \
 		int ret; \
 		if (dst->name == JORM_INVAL_EMBEDDED) { \
-			dst->name = calloc(1, sizeof(struct ty)); \
+			dst->name = JORM_INIT_##ty(); \
 			if (!dst->name) \
 				return -ENOMEM; \
 		} \
@@ -86,7 +89,7 @@ int JORM_COPY_##name(struct name *src, struct name *dst) { \
 		for (i = 0; i < slen; ++i) { \
 			int ret; \
 			if (dst->name[i] == NULL) { \
-				dst->name[i] = calloc(1, sizeof(struct ty)); \
+				dst->name[i] = JORM_INIT_##ty(); \
 				if (!dst->name[i]) \
 					return -ENOMEM; \
 			} \

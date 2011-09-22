@@ -32,7 +32,7 @@ struct ty* JORM_ARRAY_APPEND_##ty(struct ty ***arr) { \
 		*arr = narr; \
 	} \
 	narr[i+1] = NULL; \
-	narr[i] = calloc(1, sizeof(struct ty)); \
+	narr[i] = JORM_INIT_##ty(); \
 	if (!narr[i]) \
 		return NULL; \
 	return narr[i]; \
@@ -61,7 +61,7 @@ struct ty** JORM_ARRAY_COPY_##ty(struct ty **arr) { \
 	if (!narr) \
 		return NULL; \
 	for (i = 0; i < slen; ++i) { \
-		narr[i] = calloc(1, sizeof(struct ty)); \
+		narr[i] = JORM_INIT_##ty(); \
 		if ((!narr[i]) || JORM_COPY_##ty(arr[i], narr[i])) { \
 			for (--i; i > 0; --i) { \
 				JORM_FREE_##ty(narr[i]); \
