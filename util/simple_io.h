@@ -23,4 +23,18 @@
  */
 ssize_t simple_io_read_whole_file(const char *file, char *buf, int sz);
 
+/** Copy_to_fd failed because of an error on the source fd. */
+#define COPY_FD_TO_FD_SRCERR 0x08000000
+
+/** Copy one file descriptor to another, using read(2) and write(2).
+ *
+ * @param ifd	input file descriptor
+ * @param ofd	output file descriptor
+ *
+ * @return	0 on success; on failure, the error number.
+ * 		If the source caused the problem, the error number will be ORed
+ * 		with COPY_FD_TO_FD_SRCERR.
+ */
+int copy_fd_to_fd(int ifd, int ofd);
+
 #endif

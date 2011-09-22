@@ -36,3 +36,22 @@ ssize_t simple_io_read_whole_file(const char *fname, char *buf, int sz)
 	close(fd);
 	return res;
 }
+
+int copy_fd_to_fd(int ifd, int ofd)
+{
+	while (1) {
+		ssize_t res, wes;
+		char buf[8196];
+
+		res = safe_read(ifd, buf, sizeof(buf));
+		if (res < 0)
+			return res | COPY_FD_TO_FD_SRCERR;
+		else if (res == 0)
+			return 0;
+		wes = safe_write(ofd, buf, res);
+		if (wes < 0)
+			return res & (~COPY_FD_TO_FD_SRCERR);
+		if (res < (ssize_t)sizeof(buf))
+			return 0;
+	}
+}

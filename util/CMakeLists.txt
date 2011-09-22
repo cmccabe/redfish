@@ -38,7 +38,7 @@ add_test(string_unit ${CMAKE_CURRENT_BINARY_DIR}/string_unit string_unit)
 
 add_executable(run_cmd_stdin_test run_cmd_stdin_test.c)
 
-add_executable(simple_io_unit config_unit.c)
+add_executable(simple_io_unit simple_io_unit.c)
 target_link_libraries(simple_io_unit util utest)
 add_test(simple_io_unit ${CMAKE_CURRENT_BINARY_DIR}/simple_io_unit simple_io_unit)
 
