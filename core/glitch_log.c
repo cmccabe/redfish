@@ -47,13 +47,13 @@ void regurgitate_fd(char *line, size_t max_line, int ifd, int ofd,
 	memset(line, 0, max_line);
 	bidx = 0;
 	while (1) {
-		char b[1];
+		char b[1] = { 0 };
 		int tmp, res = read(ifd, b, 1);
 		if ((bidx == max_line - 2) || (res <= 0) || (b[0] == '\n')) {
 			if (use_syslog) {
 				syslog(LOG_ERR | LOG_USER, "%s", line);
 			}
-			if (b[bidx] == '\n')
+			if (b[0] == '\n')
 				line[bidx++] = '\n';
 			tmp = safe_write(STDERR_FILENO, line, bidx);
 			if (ofd != -1)
