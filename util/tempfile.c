@@ -105,6 +105,7 @@ void unregister_tempdir_for_cleanup(const char *tempdir)
 		pthread_mutex_unlock(&tempdir_lock);
 		return;
 	}
+	free(g_tempdirs[i]);
 	g_tempdirs[i] = g_tempdirs[g_num_tempdirs - 1];
 	tempdirs = realloc(g_tempdirs, sizeof(char*) * g_num_tempdirs - 1);
 	if (tempdirs) {

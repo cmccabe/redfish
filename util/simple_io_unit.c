@@ -112,6 +112,7 @@ static int test_copy_fd_to_fd(const char *tempdir, int *next_id,
 		free(nbuf);
 		return -EIO;
 	}
+	free(nbuf);
 	return 0;
 }
 
@@ -129,6 +130,8 @@ int main(void)
 	EXPECT_ZERO(test_copy_fd_to_fd(tempdir, &next_id, ""));
 	EXPECT_ZERO(test_copy_fd_to_fd(tempdir, &next_id, "foo bar"));
 	bigbuf = malloc(BIGBUF_SZ);
+	memset(bigbuf, 'm', BIGBUF_SZ - 1);
+	bigbuf[BIGBUF_SZ - 1] = '\0';
 	EXPECT_NOT_EQUAL(bigbuf, NULL);
 	EXPECT_ZERO(test_copy_fd_to_fd(tempdir, &next_id, bigbuf));
 	free(bigbuf);

@@ -127,6 +127,10 @@ done:
 			free(my_bob->f);
 			my_bob->f = NULL;
 		}
+		if (my_bob->g) {
+			free(my_bob->g);
+			my_bob->g = NULL;
+		}
 		free(my_bob);
 	}
 	for (i = 0; i < TEST2_NUM_ABBIE; ++i) {
