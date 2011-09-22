@@ -41,3 +41,33 @@ void do_mkdir(const char *dir_name, int mode, char *err, size_t err_len)
 		return;
 	}
 }
+
+int do_mkdir_p(const char *path, int mode)
+{
+	int ret;
+	char *str, full[PATH_MAX], tbuf[PATH_MAX];
+
+	full[0] = '\0';
+	strcpy(tbuf, path);
+	str = tbuf;
+	while (1) {
+		char *tmp, *seg;
+		seg = strtok_r(str, "/", &tmp);
+		if (!seg)
+			break;
+		str = NULL;
+		strcat(full, "/");
+		strcat(full, seg);
+		if (mkdir(full, mode) < 0) {
+			struct stat sbuf;
+			ret = errno;
+			if (ret != EEXIST)
+				return ret;
+			if (stat(full, &sbuf))
+				return -errno;
+			if (!S_ISDIR(sbuf.st_mode))
+				return -ENOTDIR;
+		}
+	}
+	return 0;
+}

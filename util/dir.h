@@ -20,4 +20,14 @@
  */
 void do_mkdir(const char *dir_name, int mode, char *err, size_t err_len);
 
+/** Create a directory and all ancestor directories
+ *
+ * @param path		Directory name
+ * @param mode		Mode to use when creating directories
+ *
+ * @return		0 on success; error code on failure
+ * 			Some directories may be created even on failure.
+ */
+int do_mkdir_p(const char *path, int mode);
+
 #endif
