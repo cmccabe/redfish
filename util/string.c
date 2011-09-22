@@ -111,3 +111,14 @@ void print_lines(FILE *fp, const char **lines)
 		fprintf(fp, "%s\n", *l);
 	}
 }
+
+uint32_t ohash_str(const char *str)
+{
+	uint32_t h = 5381;
+	while (1) {
+		char c = *str++;
+		if (c == '\0')
+			return h;
+		h = ((h << 5) + h) + (c);
+	}
+}

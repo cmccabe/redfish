@@ -11,6 +11,7 @@
 
 #include "util/compiler.h"
 
+#include <stdint.h>  /* for uint32_t* */
 #include <stdio.h>  /* for FILE* */
 #include <unistd.h> /* for size_t */
 
@@ -76,5 +77,13 @@ void write_linearray_to_file(const char *file_name, const char **lines,
  * @param lines		A NULL-terminated array of lines to print
  */
 void print_lines(FILE *fp, const char **lines);
+
+/** Hash a string
+ *
+ * @param str		the string to hash
+ *
+ * @return		the string hash
+ */
+uint32_t ohash_str(const char *str);
 
 #endif

@@ -5,4 +5,5 @@
 add_library(platform
     pipe2.c
     poll.c
+    readdir.c
 )

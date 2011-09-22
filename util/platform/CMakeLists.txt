@@ -6,3 +6,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 else()
     add_subdirectory(posix)
 endif()
+
+add_executable(readdir_unit readdir_unit.c)
+target_link_libraries(readdir_unit util utest)
+add_test(readdir_unit ${CMAKE_CURRENT_BINARY_DIR}/readdir_unit readdir_unit)
