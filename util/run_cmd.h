@@ -69,4 +69,18 @@ int get_colocated_path(const char *argv0, const char *other,
  */
 int do_waitpid(int pid);
 
+/** Escape a string so that the shell won't interpolate it. Uses single quotes.
+ *
+ * It's preferrable to avoid shell interpolation entirely than to rely on this
+ * function. But sometimes that is very hard to do.
+ *
+ * @param src		source string
+ * @param dst		(out param) destination string
+ * @param dst_len	length of dst
+ *
+ * @return		0 on success; -ENAMETOOLONG if the input was too long
+ *			for the output buffer.
+ */
+int shell_escape(const char *src, char *dst, size_t dst_len);
+
 #endif

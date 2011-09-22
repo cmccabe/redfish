@@ -121,6 +121,43 @@ static int test_run_cmd_give_input(const char *argv0, const char *str)
 	return 0;
 }
 
+static int test_shell_escape(void)
+{
+	int i;
+	char out[PATH_MAX];
+	const char *inputs[] = {
+		"foo",
+		"",
+		"it's like this",
+		"it's like that",
+		"Hi\\There",
+		NULL
+	};
+	const char *outputs[] = {
+		"'foo'",
+		"''",
+		"'it'\\''s like this'",
+		"'it'\\''s like that'",
+		"'Hi\\\\There'",
+		NULL
+	};
+	for (i = 0; inputs[i]; ++i) {
+		memset(out, 0, sizeof(out));
+		if (shell_escape(inputs[i], out, sizeof(out))) {
+			fprintf(stderr, "test_shell_escape: error on test "
+				"pattern %d: shell_escape error\n", i);
+			return -EDOM;
+		}
+		if (strcmp(out, outputs[i])) {
+			fprintf(stderr, "test_shell_escape: error on test "
+				"pattern %d: got %s, expected %s\n",
+				i, out, outputs[i]);
+			return -EDOM;
+		}
+	}
+	return 0;
+}
+
 int main(POSSIBLY_UNUSED(int argc), char **argv)
 {
 	EXPECT_ZERO(test_run_cmd());
@@ -129,6 +166,7 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 	EXPECT_ZERO(test_run_cmd_give_input(argv[0], "abc"));
 	EXPECT_ZERO(test_run_cmd_give_input(argv[0], ""));
 	EXPECT_ZERO(test_run_cmd_give_input(argv[0], "foobarbaz"));
+	EXPECT_ZERO(test_shell_escape());
 
 	return EXIT_SUCCESS;
 }

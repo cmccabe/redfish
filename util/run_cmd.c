@@ -215,3 +215,55 @@ int get_colocated_path(const char *argv0, const char *other,
 	return 0;
 }
 
+int shell_escape(const char *src, char *dst, size_t dst_len)
+{
+	int ret = 0;
+	size_t i = 0;
+	if (dst_len == 0)
+		return 0;
+	if (i + 1 >= dst_len) {
+		ret = -ENAMETOOLONG;
+		goto done;
+	}
+	dst[i++] = '\'';
+	while (1) {
+		char c = *src++;
+		if (c == '\0')
+			break;
+		switch (c) {
+		case '\'':
+			if (i + 4 >= dst_len) {
+				ret = -ENAMETOOLONG;
+				goto done;
+			}
+			dst[i++] = '\'';
+			dst[i++] = '\\';
+			dst[i++] = '\'';
+			dst[i++] = '\'';
+			break;
+		case '\\':
+			if (i + 2 >= dst_len) {
+				ret = -ENAMETOOLONG;
+				goto done;
+			}
+			dst[i++] = '\\';
+			dst[i++] = '\\';
+			break;
+		default:
+			if (i + 1 >= dst_len) {
+				ret = -ENAMETOOLONG;
+				goto done;
+			}
+			dst[i++] = c;
+			break;
+		}
+	}
+	if (i + 1 >= dst_len) {
+		ret = -ENAMETOOLONG;
+		goto done;
+	}
+	dst[i++] = '\'';
+done:
+	dst[i++] = '\0';
+	return ret;
+}
