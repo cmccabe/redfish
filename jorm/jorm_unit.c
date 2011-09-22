@@ -20,7 +20,20 @@
 
 #define TEST2_NUM_ABBIE 3
 
-int test1(void)
+static int test_jorm_init(void)
+{
+	struct bob *b1 = JORM_INIT_bob();
+	EXPECT_NOT_EQUAL(b1, NULL);
+	EXPECT_EQUAL(b1->a, JORM_INVAL_INT);
+	EXPECT_EQUAL(b1->b, JORM_INVAL_DOUBLE);
+	EXPECT_EQUAL(b1->c, JORM_INVAL_STR);
+	EXPECT_EQUAL(b1->d, JORM_INVAL_NESTED);
+	EXPECT_EQUAL(b1->e, JORM_INVAL_BOOL);
+	JORM_FREE_bob(b1);
+	return 0;
+}
+
+static int test1(void)
 {
 	int ret;
 	const char *str;
@@ -47,7 +60,7 @@ done:
 	return ret;
 }
 
-int test2(void)
+static int test2(void)
 {
 	int i, ret;
 	const char *str;
@@ -123,7 +136,7 @@ done:
 	return ret;
 }
 
-int test3(void)
+static int test3(void)
 {
 	size_t i;
 	int ret;
@@ -174,7 +187,7 @@ done:
 	return ret;
 }
 
-int test4(void)
+static int test4(void)
 {
 	struct bob *b1 = calloc(1, sizeof(struct bob));
 	struct bob *b2 = calloc(1, sizeof(struct bob));
@@ -232,7 +245,7 @@ int test4(void)
 	return 0;
 }
 
-int test5(void)
+static int test5(void)
 {
 	int ret;
 	char acc[512] = { 0 }, err[512] = { 0 };
@@ -298,6 +311,7 @@ done:
 
 int main(void)
 {
+	EXPECT_ZERO(test_jorm_init());
 	EXPECT_ZERO(test1());
 	EXPECT_ZERO(test2());
 	EXPECT_ZERO(test3());

@@ -19,6 +19,10 @@
 #include JORM_CUR_FILE
 
 #include "jorm/jorm_undef.h"
+#include "jorm/jorm_init.h"
+#include JORM_CUR_FILE
+
+#include "jorm/jorm_undef.h"
 #include "jorm/jorm_tojson.h"
 #include JORM_CUR_FILE
 
