@@ -36,4 +36,6 @@ static inline int IS_ERR(const void *ptr) {
 
 #define FORCE_NEGATIVE(e) ((e > 0) ? -e : e)
 
+#define ONEFISH_TEMP_ERROR 6000
+
 #endif

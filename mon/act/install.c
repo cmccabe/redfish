@@ -44,7 +44,7 @@ static int do_install(struct action_info *ai,
 		return ret;
 	}
 	for (w = g_daemon_workers; *w; ++w) {
-		daemon_worker_ssh(*w, &sem, "echo", "hi", (char*)NULL);
+		daemon_worker_upload_binary(*w, &sem, NULL);
 	}
 	for (i = 0; i < num_daemon; ++i) {
 		sem_wait(&sem);

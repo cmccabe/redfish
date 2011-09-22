@@ -19,6 +19,7 @@ struct worker;
 
 enum {
 	WORKER_MSG_SSH,
+	WORKER_MSG_SSH_UP_BIN,
 };
 
 extern struct worker **g_daemon_workers;
@@ -27,6 +28,12 @@ struct worker_msg_ssh {
 	struct worker_msg m;
 	sem_t *sem;
 	const char *args[0];
+};
+
+struct worker_msg_upload_bin {
+	struct worker_msg m;
+	sem_t *sem;
+	char *bin[0];
 };
 
 /** Initialize the monitor's daemon workers
@@ -50,5 +57,16 @@ void shutdown_daemon_workers(void);
  * @return		0 if the command was queued to be executed
  */
 int daemon_worker_ssh(struct worker *w, sem_t *sem, ...);
+
+/** Tell a daemon worker to upload a binary
+ *
+ * @param w		The daemon worker
+ * @param sem		semaphore to post after executing the command
+ * @param ...		the binary name to upload, or NULL to upload the main
+ *			daemon binary.
+ *
+ * @return		0 if the command was queued to be executed
+ */
+int daemon_worker_upload_binary(struct worker *w, sem_t *sem, const char *bin);
 
 #endif

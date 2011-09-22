@@ -9,6 +9,7 @@
 #include "core/glitch_log.h"
 #include "core/log_config.h"
 #include "core/signal.h"
+#include "jorm/jorm_const.h"
 #include "jorm/json.h"
 #include "mon/action.h"
 #include "mon/daemon_worker.h"
@@ -18,6 +19,7 @@
 #include "mon/worker.h"
 #include "util/compiler.h"
 #include "util/dir.h"
+#include "util/run_cmd.h"
 #include "util/string.h"
 
 #include <errno.h>
@@ -132,21 +134,47 @@ static int main_loop(void)
 	return ret;
 }
 
-static struct mon_config* parse_mon_config(const char *file,
+static struct mon_config* parse_mon_config(const char *argv0, const char *file,
 					   char *err, size_t err_len)
 {
-	struct mon_config *mc;
+	struct mon_config *mc = NULL;
 	struct json_object* jo = parse_json_file(file, err, err_len);
 	if (err[0])
 		return NULL;
 	mc = JORM_FROMJSON_mon_config(jo);
 	json_object_put(jo);
-	if (!mc) {
-		snprintf(err, err_len, "ran out of memory reading "
-			 "config file.\n");
-		return NULL;
+	if (!mc)
+		goto oom_error;
+	if (mc->cluster == JORM_INVAL_NESTED) {
+		snprintf(err, err_len, "no cluster information found in "
+			 "config file!");
+		goto error;
+	}
+	if (mc->cluster->defaults == JORM_INVAL_NESTED) {
+		mc->cluster->defaults = JORM_INIT_mon_daemon();
+		if (!mc->cluster->defaults)
+			goto oom_error;
+	}
+	if (mc->cluster->defaults->src_bindir == JORM_INVAL_STR) {
+		char path[PATH_MAX];
+		int ret = get_colocated_path(argv0, "", path, sizeof(path));
+		if (ret) {
+			snprintf(err, err_len, "error getting path to this "
+				 "binary: %d", ret);
+			goto error;
+		}
+		mc->cluster->defaults->src_bindir = strdup(path);
+		if (!mc->cluster->defaults->src_bindir)
+			goto oom_error;
 	}
 	return mc;
+
+oom_error:
+	snprintf(err, err_len, "out of memory.");
+error:
+	if (mc)
+		JORM_FREE_mon_config(mc);
+	return NULL;
 }
 
 struct daemon_info** create_daemons_array(const struct mon_cluster *cluster,
@@ -161,7 +189,7 @@ struct daemon_info** create_daemons_array(const struct mon_cluster *cluster,
 	if (!di)
 		goto oom_error;
 	for (idx = 0; idx < num_daemons; ++idx) {
-		di[idx] = calloc(1, sizeof(struct daemon_info));
+		di[idx] = JORM_INIT_daemon_info();
 		if (!di[idx])
 			goto oom_error;
 		di[idx]->idx = idx;
@@ -209,7 +237,7 @@ int main(int argc, char **argv)
 		ret = EXIT_FAILURE;
 		goto done;
 	}
-	mc = parse_mon_config(mon_config_file, err, sizeof(err));
+	mc = parse_mon_config(argv[0], mon_config_file, err, sizeof(err));
 	if (err[0]) {
 		glitch_log("error parsing monitor config file '%s': %s\n",
 			mon_config_file, err);
