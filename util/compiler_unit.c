@@ -7,6 +7,7 @@
  */
 
 #include "util/compiler.h"
+#include "util/macro.h"
 #include "util/test.h"
 
 #include <stdlib.h>
@@ -32,6 +33,8 @@ struct total_unaligned {
 	char c;
 }
 );
+
+BUILD_BUG_ON(sizeof(uint32_t) < sizeof(uint16_t))
 
 int main(void)
 {
