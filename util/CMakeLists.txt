@@ -5,6 +5,7 @@ add_library(util
     safe_io.c
     simple_io.c
     string.c
+    str_to_int.c
     tempfile.c
 )
 target_link_libraries(util ${JSON_C_LIBRARY} platform pthread)
@@ -45,3 +46,7 @@ add_test(simple_io_unit ${CMAKE_CURRENT_BINARY_DIR}/simple_io_unit simple_io_uni
 add_executable(dir_unit dir_unit.c)
 target_link_libraries(dir_unit util utest)
 add_test(dir_unit ${CMAKE_CURRENT_BINARY_DIR}/dir_unit dir_unit)
+
+add_executable(str_to_int_unit str_to_int_unit.c)
+target_link_libraries(str_to_int_unit util utest)
+add_test(str_to_int_unit ${CMAKE_CURRENT_BINARY_DIR}/str_to_int_unit str_to_int_unit)
