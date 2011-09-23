@@ -41,24 +41,6 @@ static int test_do_mkdir_p(const char *tempdir, const char *dir_name)
 	return do_mkdir_p(path, 0775);
 }
 
-static int do_touch(const char *tempdir, const char *file_name)
-{
-	FILE *fp;
-	char path[PATH_MAX];
-	if (zsnprintf(path, PATH_MAX, "%s/%s", tempdir, file_name)) {
-		fprintf(stderr, "path too long!\n");
-		return 1;
-	}
-	fp = fopen(path, "w");
-	if (fp == NULL) {
-		int ret = errno;
-		fprintf(stderr, "fopen(%s) failed with error %d\n", path, ret);
-		return 1;
-	}
-	fclose(fp);
-	return 0;
-}
-
 int main(void)
 {
 	char tempdir[PATH_MAX] = { 0 };
@@ -69,14 +51,14 @@ int main(void)
 	EXPECT_ZERO(test_do_mkdir(tempdir, "foo"));
 	EXPECT_ZERO(test_do_mkdir(tempdir, "bar"));
 	EXPECT_ZERO(test_do_mkdir(tempdir, "bar"));
-	do_touch(tempdir, "a_file");
+	EXPECT_ZERO(do_touch2(tempdir, "a_file"));
 	EXPECT_NONZERO(test_do_mkdir(tempdir, "a_file"));
 	EXPECT_NONZERO(test_do_mkdir_p(tempdir, "a_file"));
 	EXPECT_ZERO(test_do_mkdir_p(tempdir, "a_dir/a_dir2/a_dir3"));
 	EXPECT_ZERO(test_do_mkdir_p(tempdir, "blah/blah/blah/blah"));
 	EXPECT_ZERO(test_do_mkdir_p(tempdir, "blah/blah/blah/blah"));
 	EXPECT_ZERO(test_do_mkdir_p(tempdir, "blah/blah/blah/blah2/"));
-	do_touch(tempdir, "blah/blah/blah/blah2/blah3");
+	EXPECT_ZERO(do_touch2(tempdir, "blah/blah/blah/blah2/blah3"));
 	EXPECT_NONZERO(test_do_mkdir_p(tempdir,
 			"blah/blah/blah/blah2/blah3/blah4"));
 	EXPECT_ZERO(test_do_mkdir_p(tempdir, "blah2"));

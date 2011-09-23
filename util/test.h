@@ -11,8 +11,34 @@
 
 #include <stdio.h> /* for fprintf */
 
+/** Abort unless t is true
+ *
+ * @param t		condition to check
+ */
 extern void die_unless(int t);
+
+/** Abort if t is true
+ *
+ * @param t		condition to check
+ */
 extern void die_if(int t);
+
+/** Create a zero-size file at ${file_name}
+ *
+ * @param fname		The file name
+ *
+ * @return		0 on success; error code otherwise
+ */
+extern int do_touch1(const char *fname);
+
+/** Create a zero-size file at ${tempdir}/${file_name}
+ *
+ * @param dir		The dir
+ * @param fname		The file name
+ *
+ * @return		0 on success; error code otherwise
+ */
+extern int do_touch2(const char *dir, const char *fname);
 
 #define EXPECT_ZERO(x) \
 	do { \

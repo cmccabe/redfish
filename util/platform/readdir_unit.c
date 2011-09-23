@@ -21,19 +21,6 @@
 
 #define EXPECTED_MAX 100
 
-static int do_touch(const char *fname)
-{
-	FILE *fp;
-	fp = fopen(fname, "w");
-	if (fp == NULL) {
-		int ret = errno;
-		fprintf(stderr, "fopen(%s) failed with error %d\n", fname, ret);
-		return 1;
-	}
-	fclose(fp);
-	return 0;
-}
-
 static int test_do_readdir_impl(const char *dir, const char **expected)
 {
 	const char **e;
@@ -44,7 +31,7 @@ static int test_do_readdir_impl(const char *dir, const char **expected)
 	do_mkdir(dir, 0775, err, sizeof(err));
 	EXPECT_ZERO(err[0]);
 	for (e = expected; *e; ++e) {
-		do_touch(*e);
+		do_touch1(*e);
 		++num_expected;
 	}
 	EXPECT_ZERO(do_opendir(dir, &dp));
