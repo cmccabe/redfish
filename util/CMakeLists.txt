@@ -50,3 +50,7 @@ add_test(dir_unit ${CMAKE_CURRENT_BINARY_DIR}/dir_unit dir_unit)
 add_executable(str_to_int_unit str_to_int_unit.c)
 target_link_libraries(str_to_int_unit util utest)
 add_test(str_to_int_unit ${CMAKE_CURRENT_BINARY_DIR}/str_to_int_unit str_to_int_unit)
+
+add_executable(macro_unit macro_unit.c)
+target_link_libraries(macro_unit util utest)
+add_test(macro_unit ${CMAKE_CURRENT_BINARY_DIR}/macro_unit macro_unit)
