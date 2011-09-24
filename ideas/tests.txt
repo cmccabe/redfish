@@ -61,3 +61,6 @@ Test 11
 3. Node B tries to read from file A, but it isn't there.
 4. Node A does an hflush
 5. Node B can now read the data that node A has just written.
+
+Run HDFS synthetic load generator
+http://hadoop.apache.org/common/docs/r0.19.1/SLG_user_guide.html
