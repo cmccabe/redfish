@@ -1,6 +1,7 @@
 add_library(util
     config.c
     dir.c
+    path.c
     run_cmd.c
     safe_io.c
     simple_io.c
@@ -54,3 +55,7 @@ add_test(str_to_int_unit ${CMAKE_CURRENT_BINARY_DIR}/str_to_int_unit str_to_int_
 add_executable(macro_unit macro_unit.c)
 target_link_libraries(macro_unit util utest)
 add_test(macro_unit ${CMAKE_CURRENT_BINARY_DIR}/macro_unit macro_unit)
+
+add_executable(path_unit path_unit.c)
+target_link_libraries(path_unit util utest)
+add_test(path_unit ${CMAKE_CURRENT_BINARY_DIR}/path_unit path_unit)
