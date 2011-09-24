@@ -1,7 +1,7 @@
-#add_library(fishc_stub SHARED
-#    stub/stub.c
-#)
-#target_link_libraries(fishc_stub util pthread)
+add_library(fishc_stub SHARED
+    stub/stub.c
+)
+target_link_libraries(fishc_stub util pthread)
 
 add_executable(xattrs_unit stub/xattrs.c stub/xattrs_unit.c)
 target_link_libraries(xattrs_unit util utest)

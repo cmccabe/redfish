@@ -1,3 +1,6 @@
+# libutil needs to use -fPIC so that libutil can be used in the client shared libraries.
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+
 add_library(util
     config.c
     dir.c

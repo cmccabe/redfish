@@ -6,8 +6,8 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#ifndef ONEFISH_CLIENT_STUB_XATTRS_DOT_H
-#define ONEFISH_CLIENT_STUB_XATTRS_DOT_H
+#ifndef ONEFISH_UTIL_PATH_DOT_H
+#define ONEFISH_UTIL_PATH_DOT_H
 
 #include <unistd.h> /* for size_t */
 
