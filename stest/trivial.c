@@ -9,9 +9,11 @@
 #include "stest/stest.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 int main(int argc, char **argv)
 {
+	const char *error;
 	struct stest_custom_opt copt[] = {
 		{
 			.key = "error",
@@ -24,7 +26,8 @@ int main(int argc, char **argv)
 	stest_init(argc, argv, copt, ncopt);
 
 	stest_set_status(10);
-	if (copt_get("error", copt, ncopt) != NULL)
+	error = copt_get("error", copt, ncopt);
+	if (error && strcmp(error, "0"))
 		stest_add_error("something went wrong!\n");
 
 	return stest_finish();
