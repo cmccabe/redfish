@@ -14,10 +14,21 @@
  */
 #define ONEFISH_FIXED_REPL 3
 
+/** Onefish fixed 64 MB local buffer size
+ * TODO: make this adjustable
+ */
+#define ONEFISH_FIXED_LBUF_SZ 67108864
+
 /** Onefish fixed 64 MB chunk size
  * TODO: make this adjustable
  */
-#define ONEFISH_FIXED_CHUNK_SZ 67108864
+#define ONEFISH_FIXED_BLOCK_SZ 67108864
+
+/** Default mode for files */
+#define ONEFISH_DEFAULT_FILE_MODE 0644
+
+/** Default mode for files */
+#define ONEFISH_DEFAULT_DIR_MODE 0755
 
 /** Maximum length of a onefish user name */
 #define ONEFISH_USERNAME_MAX 255

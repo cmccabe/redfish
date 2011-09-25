@@ -49,7 +49,7 @@ enum fish_open_ty {
  * a new user, or change our groups, we need to create a new connection-- which
  * seems reasonable.
  */
-struct ofclient
+struct of_client
 {
 	/** User name. */
 	char *user;
@@ -66,7 +66,7 @@ struct ofclient
 };
 
 /** Represents a OneFish file */
-struct offile
+struct of_file
 {
 	/** Type of open file */
 	enum fish_open_ty ty;
@@ -75,7 +75,7 @@ struct offile
 	int fd;
 };
 
-static int get_stub_path(const struct ofclient *cli, const char *path,
+static int get_stub_path(const struct of_client *cli, const char *path,
 			 char *epath, size_t epath_len)
 {
 	if (path[0] != '/')
@@ -112,7 +112,7 @@ static const char* get_stub_base_dir(void)
 		return sb;
 }
 
-static void onefish_free_ofclient(struct ofclient *cli)
+static void onefish_free_ofclient(struct of_client *cli)
 {
 	char **g;
 	free(cli->user);
@@ -125,10 +125,10 @@ static void onefish_free_ofclient(struct ofclient *cli)
 }
 
 int onefish_connect(POSSIBLY_UNUSED(struct of_mds_locator **mlocs),
-			const char *user, struct ofclient **cli)
+			const char *user, struct of_client **cli)
 {
 	int ret;
-	struct ofclient *zcli = calloc(1, sizeof(struct ofclient));
+	struct of_client *zcli = calloc(1, sizeof(struct of_client));
 	if (!zcli)
 		return -ENOMEM;
 	ret = pthread_mutex_init(&zcli->lock, NULL);
@@ -156,7 +156,7 @@ oom_error:
 	return -ENOMEM; 
 }
 
-static int cli_is_group_member(const struct ofclient *cli, const char *group)
+static int cli_is_group_member(const struct of_client *cli, const char *group)
 {
 	char **g;
 	for (g = cli->group; *g; ++g) {
@@ -166,7 +166,7 @@ static int cli_is_group_member(const struct ofclient *cli, const char *group)
 	return 0;
 }
 
-static int validate_perm(const struct ofclient *cli, const char *fname,
+static int validate_perm(const struct of_client *cli, const char *fname,
 			 int shift)
 {
 	int mode;
@@ -206,7 +206,7 @@ static int validate_perm(const struct ofclient *cli, const char *fname,
 	return -EPERM;
 }
 
-static int recursive_validate_perm(const struct ofclient *cli,
+static int recursive_validate_perm(const struct of_client *cli,
 				const char *fname, int shift)
 {
 	int ret;
@@ -245,13 +245,13 @@ static int set_group(int fd, const char *group)
 	return fxsets(fd, XATTR_FISH_USER, group);
 }
 
-int onefish_create(struct ofclient *cli, const char *path,
-		int mode, POSSIBLY_UNUSED(int bufsz),
-		POSSIBLY_UNUSED(int repl), struct offile **ofe)
+int onefish_create(struct of_client *cli, const char *path,
+	int mode, POSSIBLY_UNUSED(int bufsz), POSSIBLY_UNUSED(int repl),
+	POSSIBLY_UNUSED(int blocksz), struct of_file **ofe)
 {
 	int ret, fd = -1;
 	char epath[PATH_MAX], edir[PATH_MAX];
-	struct offile *zofe = NULL;
+	struct of_file *zofe = NULL;
 
 	ret = get_stub_path(cli, path, epath, PATH_MAX);
 	if (ret)
@@ -269,6 +269,8 @@ int onefish_create(struct ofclient *cli, const char *path,
 		ret = -EIO;
 		goto error;
 	}
+	if (mode == ONEFISH_INVAL_MODE)
+		mode = ONEFISH_DEFAULT_FILE_MODE;
 	ret = set_mode(fd, mode);
 	if (ret)
 		goto error;
@@ -278,7 +280,7 @@ int onefish_create(struct ofclient *cli, const char *path,
 	ret = set_group(fd, cli->group[0]);
 	if (ret)
 		goto error;
-	zofe = malloc(sizeof(struct offile));
+	zofe = malloc(sizeof(struct of_file));
 	if (!zofe) {
 		ret = -ENOMEM;
 		goto error;
@@ -300,11 +302,11 @@ error:
 	return ret;
 }
 
-int onefish_open(struct ofclient *cli, const char *path, struct offile **ofe)
+int onefish_open(struct of_client *cli, const char *path, struct of_file **ofe)
 {
 	int ret, fd = -1;
 	char epath[PATH_MAX];
-	struct offile *zofe = NULL;
+	struct of_file *zofe = NULL;
 
 	ret = get_stub_path(cli, path, epath, PATH_MAX);
 	if (ret)
@@ -321,7 +323,7 @@ int onefish_open(struct ofclient *cli, const char *path, struct offile **ofe)
 		ret = -EIO;
 		goto error;
 	}
-	zofe = malloc(sizeof(struct offile));
+	zofe = malloc(sizeof(struct of_file));
 	if (!zofe) {
 		ret = -ENOMEM;
 		goto error;
@@ -341,7 +343,7 @@ error:
 	return ret;
 }
 
-int onefish_mkdirs(struct ofclient *cli, const char *path, int mode)
+int onefish_mkdirs(struct of_client *cli, const char *path, int mode)
 {
 	int fd, ret;
 	char epath[PATH_MAX];
@@ -396,27 +398,26 @@ done:
 	return ret;
 }
 
-int onefile_get_block_locs(POSSIBLY_UNUSED(struct offile *ofe),
-		POSSIBLY_UNUSED(uint64_t start), POSSIBLY_UNUSED(uint64_t len),
-		struct of_block_loc **blc)
+int onefish_get_block_locs(POSSIBLY_UNUSED(struct of_file *ofe),
+		POSSIBLY_UNUSED(int64_t start), POSSIBLY_UNUSED(int64_t len),
+		char ***blc)
 {
-	struct of_block_loc *zblc = malloc(sizeof(struct of_block_loc));
+	char **zblc = malloc(1 * sizeof(char *));
 	if (!zblc)
 		return -ENOMEM;
-	zblc->host = "localhost";
-	zblc->port = 8080;
+	zblc[0] = "localhost";
 	*blc = zblc;
 	return 1;
 }
 
-void onefile_free_block_locs(struct of_block_loc **blc, int nblc)
+void onefish_free_block_locs(char **blc, int nblc)
 {
 	if (nblc != 1)
 		abort();
 	free(blc);
 }
 
-static int get_file_status(const char *path, struct offile_status *zosa)
+static int get_path_status(const char *path, struct of_path_status *zosa)
 {
 	struct stat sbuf;
 	if (stat(path, &sbuf) < 0) {
@@ -426,7 +427,7 @@ static int get_file_status(const char *path, struct offile_status *zosa)
 	zosa->length = sbuf.st_size;
 	zosa->is_dir = !!S_ISDIR(sbuf.st_mode);
 	zosa->repl = ONEFISH_FIXED_REPL;
-	zosa->block_sz = ONEFISH_FIXED_CHUNK_SZ;
+	zosa->block_sz = ONEFISH_FIXED_BLOCK_SZ;
 	zosa->mtime = sbuf.st_mtime;
 	zosa->atime = sbuf.st_atime;
 	zosa->mode = sbuf.st_mode;
@@ -441,17 +442,17 @@ static int get_file_status(const char *path, struct offile_status *zosa)
 	return 0;
 }
 
-int onefish_get_file_statuses(struct ofclient *cli, const char **paths,
-				struct offile_status** osa)
+int onefish_get_path_statuses(struct of_client *cli, const char **paths,
+				struct of_path_status** osa)
 {
-	struct offile_status* zosa;
+	struct of_path_status* zosa;
 	const char **p;
 	int ret, i, cur_file, num_files = 0;
 
 	for (p = paths; *p; ++p) {
 		num_files++;
 	}
-	zosa = calloc(num_files, sizeof(struct offile_status));
+	zosa = calloc(num_files, sizeof(struct of_path_status));
 	if (!zosa)
 		return -ENOMEM;
 	pthread_mutex_lock(&cli->lock);
@@ -459,16 +460,16 @@ int onefish_get_file_statuses(struct ofclient *cli, const char **paths,
 	for (i = 0; i < num_files; ++i) {
 		char tmp[PATH_MAX];
 		get_stub_path(cli, *p, tmp, PATH_MAX);
-		ret = get_file_status(tmp, &zosa[cur_file]);
+		ret = get_path_status(tmp, &zosa[cur_file]);
 		if (ret) {
-			onefish_free_file_statuses(zosa, cur_file);
+			onefish_free_path_statuses(zosa, cur_file);
 			goto done;
 		}
 		cur_file++;
 	}
 	if (cur_file != num_files) {
-		struct offile_status *xosa;
-		xosa = realloc(zosa, cur_file * sizeof(struct offile_status));
+		struct of_path_status *xosa;
+		xosa = realloc(zosa, cur_file * sizeof(struct of_path_status));
 		if (xosa)
 			zosa = xosa;
 	}
@@ -480,7 +481,7 @@ done:
 	return ret;
 }
 
-void onefish_free_file_statuses(struct offile_status* osa, int nosa)
+void onefish_free_path_statuses(struct of_path_status* osa, int nosa)
 {
 	int i;
 	for (i = 0; i < nosa; ++i) {
@@ -491,13 +492,13 @@ void onefish_free_file_statuses(struct offile_status* osa, int nosa)
 	free(osa);
 }
 
-int onefish_list_directory(struct ofclient *cli, const char *dir,
-			      struct offile_status** osa)
+int onefish_list_directory(struct of_client *cli, const char *dir,
+			      struct of_path_status** osa)
 {
 	struct onefish_dirp *dp = NULL;
 	char epath[PATH_MAX];
 	int i, ret, nosa = 0;
-	struct offile_status *zosa = NULL;
+	struct of_path_status *zosa = NULL;
 
 	if (dir[0] != '/')
 		return -EDOM;
@@ -512,7 +513,7 @@ int onefish_list_directory(struct ofclient *cli, const char *dir,
 	}
 	while (1) {
 		char fname[PATH_MAX];
-		struct offile_status *xosa;
+		struct of_path_status *xosa;
 		struct dirent *de;
 		de = do_readdir(dp);
 		if (!de)
@@ -522,7 +523,7 @@ int onefish_list_directory(struct ofclient *cli, const char *dir,
 		else if (strcmp(de->d_name, ".."))
 			continue;
 		++nosa;
-		xosa = realloc(zosa, nosa * sizeof(struct offile_status));
+		xosa = realloc(zosa, nosa * sizeof(struct of_path_status));
 		if (!xosa) {
 			ret = -ENOMEM;
 			goto free_zosa;
@@ -532,7 +533,7 @@ int onefish_list_directory(struct ofclient *cli, const char *dir,
 			ret = -ENAMETOOLONG;
 			goto free_zosa;
 		}
-		ret = get_file_status(fname, &zosa[nosa - 1]);
+		ret = get_path_status(fname, &zosa[nosa - 1]);
 		if (ret) {
 			nosa--;
 		}
@@ -554,7 +555,7 @@ free_zosa:
 	return ret;
 }
 
-static int onefish_openwr_internal(struct ofclient *cli, const char *path)
+static int onefish_openwr_internal(struct of_client *cli, const char *path)
 {
 	int ret, fd = -1;
 	char epath[PATH_MAX];
@@ -572,7 +573,7 @@ static int onefish_openwr_internal(struct ofclient *cli, const char *path)
 	return fd;
 }
 
-int onefish_set_permission(struct ofclient *cli, const char *path, int mode)
+int onefish_set_permission(struct of_client *cli, const char *path, int mode)
 {
 	int fd, res, ret;
 
@@ -594,7 +595,8 @@ done:
 	return ret;
 }
 
-int onefish_set_owner(struct ofclient *cli, const char *path, const char *owner)
+int onefish_chown(struct of_client *cli, const char *path,
+		  const char *owner, const char *group)
 {
 	int fd, res, ret;
 
@@ -604,9 +606,17 @@ int onefish_set_owner(struct ofclient *cli, const char *path, const char *owner)
 		ret = fd;
 		goto done;
 	}
-	ret = set_user(fd, owner);
-	if (ret) {
-		goto done;
+	if ((owner) && (owner[0])) {
+		ret = set_user(fd, owner);
+		if (ret) {
+			goto done;
+		}
+	}
+	if ((group) && (group[0])) {
+		ret = set_group(fd, group);
+		if (ret) {
+			goto done;
+		}
 	}
 	ret = 0;
 done:
@@ -616,29 +626,36 @@ done:
 	return ret;
 }
 
-//int onefish_set_times(struct ofclient *cli, const char *path,
+//int onefish_set_times(struct of_client *cli, const char *path,
 //		      int64_t mtime, int64_t atime);
 
-void onefish_disconnect(struct ofclient *cli)
+void onefish_disconnect(struct of_client *cli)
 {
 	onefish_free_ofclient(cli);
 }
 
-int onefish_read(struct offile *ofe, uint8_t *data, int len)
+int onefish_read(struct of_file *ofe, uint8_t *data, int len)
 {
 	if (ofe->ty != FISH_OPEN_TY_RD)
 		return -ENOTSUP;
 	return safe_read(ofe->fd, data, len);
 }
 
-int onefish_write(struct offile *ofe, const uint8_t *data, int len)
+int onefish_pread(struct of_file *ofe, uint8_t *data, int len, int64_t off)
+{
+	if (ofe->ty != FISH_OPEN_TY_RD)
+		return -ENOTSUP;
+	return safe_pread(ofe->fd, data, len, off);
+}
+
+int onefish_write(struct of_file *ofe, const uint8_t *data, int len)
 {
 	if (ofe->ty != FISH_OPEN_TY_WR)
 		return -ENOTSUP;
 	return safe_write(ofe->fd, data, len);
 }
 
-int onefish_fseek(struct offile *ofe, uint64_t off)
+int onefish_fseek(struct of_file *ofe, int64_t off)
 {
 	off_t res;
 	if (ofe->ty != FISH_OPEN_TY_RD)
@@ -649,7 +666,7 @@ int onefish_fseek(struct offile *ofe, uint64_t off)
 	return 0;
 }
 
-uint64_t onefish_ftell(struct offile *ofe)
+int64_t onefish_ftell(struct of_file *ofe)
 {
 	off_t res;
 	res = lseek(ofe->fd, 0, SEEK_CUR);
@@ -658,24 +675,24 @@ uint64_t onefish_ftell(struct offile *ofe)
 	return res;
 }
 
-int onefish_flush(struct offile *ofe)
+int onefish_flush(struct of_file *ofe)
 {
 	int res;
 	RETRY_ON_EINTR(res, close(ofe->fd));
 	return res;
 }
 
-int onefish_sync(POSSIBLY_UNUSED(struct offile *ofe))
+int onefish_sync(POSSIBLY_UNUSED(struct of_file *ofe))
 {
 	return 0;
 }
 
-void onefish_free_file(struct offile *ofe)
+void onefish_free_file(struct of_file *ofe)
 {
 	free(ofe);
 }
 
-int onefish_delete(struct ofclient *cli, const char *path)
+int onefish_delete(struct of_client *cli, const char *path)
 {
 	int ret;
 	char epath[PATH_MAX];
@@ -689,7 +706,7 @@ int onefish_delete(struct ofclient *cli, const char *path)
 	return ret;
 }
 
-int onefish_rename(struct ofclient *cli, const char *src, const char *dst)
+int onefish_rename(struct of_client *cli, const char *src, const char *dst)
 {
 	int ret;
 	char esrc[PATH_MAX], edst[PATH_MAX], eddir[PATH_MAX];
@@ -716,7 +733,7 @@ done:
 	return FORCE_NEGATIVE(ret);
 }
 
-int onefish_close(struct offile *ofe)
+int onefish_close(struct of_file *ofe)
 {
 	int ret;
 	ret = onefish_flush(ofe);
