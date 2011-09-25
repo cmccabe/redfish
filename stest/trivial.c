@@ -16,7 +16,7 @@ int main(int argc, char **argv)
 		{
 			.key = "error",
 			.val = NULL,
-			.help = "error=[0/1]     If 1, force an error",
+			.help = "error=[0/1]\n    If 1, force an error\n",
 		},
 	};
 	const int ncopt = sizeof(copt)/sizeof(copt[0]);

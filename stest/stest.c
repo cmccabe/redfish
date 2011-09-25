@@ -28,6 +28,8 @@
 
 static char g_tempdir[PATH_MAX];
 
+static int g_daemonize = 1;
+
 static int g_percent_fd = -1;
 
 static FILE *g_err_fp = NULL;
@@ -54,7 +56,7 @@ static void stest_usage(const char *argv0, struct stest_custom_opt *copt,
 "See http://www.club.cc.cmu.edu/~cmccabe/onefish.html for the most up-to-date",
 "information about OneFish.",
 "",
-"Standard system test options:"
+"Standard system test options:",
 "-f",
 "    Run in the foreground (do not daemonize)",
 "-h",
@@ -69,18 +71,19 @@ NULL
 	for (i = 0; i < ncopt; ++i) {
 		fprintf(stderr, "%s", copt[i].help);
 	}
+	fputs("\n", stderr);
 	exit(exitstatus);
 }
 
 static void stest_parse_argv(int argc, char **argv,
-	struct stest_custom_opt *copt, int ncopt, int *daemonize)
+	struct stest_custom_opt *copt, int ncopt)
 {
 	char **s;
 	int c;
 	while ((c = getopt(argc, argv, "fh")) != -1) {
 		switch (c) {
 		case 'f':
-			*daemonize = 0;
+			g_daemonize = 0;
 			break;
 		case 'h':
 			stest_usage(argv[0], copt, ncopt, EXIT_SUCCESS);
@@ -123,6 +126,9 @@ static void stest_status_files_init(void)
 	if (ret) {
 		fprintf(stderr, "get_tempdir failed with error %d!\n", ret);
 		exit(EXIT_FAILURE);
+	}
+	if (!g_daemonize) {
+		register_tempdir_for_cleanup(g_tempdir);
 	}
 	if (zsnprintf(percent_fname, sizeof(percent_fname),
 		      "%s/percent", g_tempdir)) {
@@ -195,13 +201,11 @@ static void stest_init_signals(const char *argv0)
 void stest_init(int argc, char **argv,
 	struct stest_custom_opt *copt, int ncopt)
 {
-	int daemonize = 1;
-
-	stest_parse_argv(argc, argv, copt, ncopt, &daemonize);
+	stest_parse_argv(argc, argv, copt, ncopt);
 	stest_status_files_init();
 	stest_init_signals(argv[0]);
 	stest_output_start_msg();
-	if (daemonize) {
+	if (g_daemonize) {
 		daemon(0, 0);
 	}
 }
@@ -218,12 +222,18 @@ void stest_set_status(int pdone)
 		pdone = 0;
 	snprintf(buf, sizeof(buf), "%03d", pdone);
 	res = safe_pwrite(g_percent_fd, buf, NUM_PERCENT_DIGITS, 0);
+	if (!g_daemonize) {
+		fprintf(stderr, "percent done: %s\n", buf);
+	}
 }
 
 void stest_add_error(const char *err)
 {
 	fprintf(g_err_fp, "%s", err);
 	g_saw_err = 1;
+	if (!g_daemonize) {
+		fprintf(stderr, "error: %s", err);
+	}
 }
 
 int stest_finish(void)
