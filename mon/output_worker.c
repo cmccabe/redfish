@@ -56,15 +56,13 @@ static void do_bind_and_listen(struct output_worker_data *odata,
 {
 	int ret;
 	struct sockaddr_un address;
-	odata->sock = socket(PF_UNIX, SOCK_STREAM, 0);
+	odata->sock = socket(PF_UNIX, SOCK_CLOEXEC | SOCK_STREAM, 0);
 	if (odata->sock < 0) {
 		ret = errno;
 		snprintf(err, err_len,
 			 "failed to create socket: error %d", ret);
 		goto error;
 	}
-	fcntl(odata->sock, F_SETFD, FD_CLOEXEC);
-
 	memset(&address, 0, sizeof(struct sockaddr_un));
 	if (zsnprintf(address.sun_path, sizeof(address.sun_path),
 				"%s", odata->sock_path)) {
@@ -233,6 +231,7 @@ static void* run_output_worker(void *v)
 void init_output_worker(const char* sock_path, char *err, size_t err_len)
 {
 	struct output_worker_data *odata;
+	pthread_attr_t attr;
 	int ret, i;
 
 	odata = calloc(1, sizeof(struct output_worker_data));
@@ -256,10 +255,11 @@ void init_output_worker(const char* sock_path, char *err, size_t err_len)
 	for (i = 0; i < MON_OUTPUT_WORKER_MAX_CONN; ++i) {
 		odata->cstate[i] = OUTPUT_WORKER_CONN_DISC;
 	}
-	ret = pthread_create(&g_output_worker_thread, NULL,
-		       run_output_worker, (void*)odata);
-	if (ret) {
-		snprintf(err, err_len, "pthread_create failed with "
+	if (pthread_attr_init(&attr) || (pthread_attr_setdetachstate(
+			&attr, PTHREAD_CREATE_DETACHED)) ||
+			pthread_create(&g_output_worker_thread, NULL,
+				run_output_worker, (void*)odata)) {
+		snprintf(err, err_len, "failed to create pthread. "
 			 "error %d\n", ret);
 		goto error_close_sock;
 	}
