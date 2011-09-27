@@ -59,6 +59,10 @@ void harmonize_log_config(struct log_config *lc,
 			 lc->base_dir, err, err_len);
 	if (err[0])
 		return;
+	resolve_log_name("fast_log", "fast.log", &lc->fast_log,
+			 lc->base_dir, err, err_len);
+	if (err[0])
+		return;
 	resolve_log_name("glitch_log", "glitch.log", &lc->glitch_log,
 			 lc->base_dir, err, err_len);
 	if (err[0])

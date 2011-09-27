@@ -10,6 +10,7 @@
 #include "util/safe_io.h"
 #include "core/fast_log.h"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -29,6 +30,8 @@
 
 struct fast_log_buf
 {
+	/** If 1, this is registered in g_fast_log_bufs */
+	int registered;
 	/** Name of this fast_log buffer */
 	char name[FAST_LOG_BUF_NAME_MAX];
 	/** Pointer to an mmap'ed buffer of size FASTLOG_BUF_SZ */
@@ -57,22 +60,33 @@ int fast_log_init(const fast_log_dumper_fn_t *dumpers)
 	return 0;
 }
 
-struct fast_log_buf* fast_log_create(const char *fbname)
+static void fast_log_free(struct fast_log_buf* fb)
 {
-	int i;
+	munmap(fb->buf, FASTLOG_BUF_SZ);
+	free(fb);
+}
+
+struct fast_log_buf* fast_log_create(const char *name)
+{
 	struct fast_log_buf *fb;
 
 	fb = calloc(1, sizeof(struct fast_log_buf));
 	if (!fb)
 		return NULL;
-	snprintf(fb->name, FAST_LOG_BUF_NAME_MAX, "%s", fbname);
-
+	snprintf(fb->name, FAST_LOG_BUF_NAME_MAX, "%s", name);
 	fb->buf = mmap(NULL, FASTLOG_BUF_SZ, PROT_READ | PROT_WRITE,
 				MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if (fb->buf == MAP_FAILED) {
 		free(fb);
 		return NULL;
 	}
+	return fb;
+}
+
+int fast_log_register_buffer(struct fast_log_buf *fb)
+{
+	int i;
+
 	/* Insert into our global list of fast_logs. */
 	pthread_spin_lock(&g_dumpers_lock);
 	for (i = 0; i < MAX_FASTLOG_BUFS; ++i) {
@@ -81,29 +95,30 @@ struct fast_log_buf* fast_log_create(const char *fbname)
 	}
 	if (i == MAX_FASTLOG_BUFS) {
 		pthread_spin_unlock(&g_dumpers_lock);
-		munmap(fb->buf, FASTLOG_BUF_SZ);
-		free(fb);
-		return NULL;
+		return -ENOBUFS;
 	}
+	fb->registered = 1;
 	g_fast_log_bufs[i] = fb;
 	pthread_spin_unlock(&g_dumpers_lock);
-	return fb;
+	return 0;
 }
 
 void fast_log_destroy(struct fast_log_buf* fb)
 {
-	int i;
-	/* Remove from our global list of fast_logs. */
-	pthread_spin_lock(&g_dumpers_lock);
-	for (i = 0; i < MAX_FASTLOG_BUFS; ++i) {
-		if (g_fast_log_bufs[i] == fb) {
-			g_fast_log_bufs[i] = NULL;
-			break;
+	if (fb->registered) {
+		int i;
+
+		/* Remove from our global list of fast_logs. */
+		pthread_spin_lock(&g_dumpers_lock);
+		for (i = 0; i < MAX_FASTLOG_BUFS; ++i) {
+			if (g_fast_log_bufs[i] == fb) {
+				g_fast_log_bufs[i] = NULL;
+				break;
+			}
 		}
+		pthread_spin_unlock(&g_dumpers_lock);
 	}
-	pthread_spin_unlock(&g_dumpers_lock);
-	munmap(fb->buf, FASTLOG_BUF_SZ);
-	free(fb);
+	fast_log_free(fb);
 }
 
 void fast_log(struct fast_log_buf* fb, void *fe)

@@ -295,7 +295,7 @@ int main(int argc, char **argv)
 done_shutdown_daemon_workers:
 	shutdown_daemon_workers();
 done_signal_reset_dispositions:
-	signal_resset_dispositions();
+	signal_shutdown();
 done_close_glitchlog:
 	close_glitch_log();
 free_daemon_info:

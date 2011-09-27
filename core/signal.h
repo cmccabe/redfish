@@ -33,6 +33,6 @@ void signal_init(const char *argv0, char *err, size_t err_len,
 /** Clear all signal handlers, free the alternate signal stack, and disable the
  * crash log.
  */
-void signal_resset_dispositions(void);
+void signal_shutdown(void);
 
 #endif

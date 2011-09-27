@@ -208,30 +208,5 @@ int main(void)
 	EXPECT_ZERO(dump_small_buf(tdir));
 	EXPECT_ZERO(fill_entire_buf(tdir));
 
-//	int res, fd1, fd2;
-//	struct fast_log_buf *scratch, *fb1, *fb2;
-//
-//	scratch = fast_log_create("main");
-//	EXPECT_NOT_EQUAL(scratch, NULL);
-//	fb1 = fast_log_create("main");
-//	EXPECT_NOT_EQUAL(fb1, NULL);
-//	fb2 = fast_log_create("aux");
-//	EXPECT_NOT_EQUAL(fb2, NULL);
-//	fd0 = open_temp_file(tdir);
-//	simple_fast_logs(fb1, 1);
-//	simple_fast_logs(fb2, 2);
-//	fd1 = open_temp_file(tdir);
-//	EXPECT_GE(fd1, 0);
-//	EXPECT_ZERO(fast_log_dump(fb1, scratch, fd1));
-//	fd2 = open_temp_file(tdir);
-//	EXPECT_GE(fd2, 0);
-//	EXPECT_ZERO(fast_log_dump(fb2, scratch, fd2));
-//	fast_log_destroy(scratch);
-//	fast_log_destroy(fb1);
-//	fast_log_destroy(fb2);
-//	RETRY_ON_EINTR(res, close(fd0));
-//	RETRY_ON_EINTR(res, close(fd1));
-//	RETRY_ON_EINTR(res, close(fd2));
-
 	return EXIT_SUCCESS;
 }

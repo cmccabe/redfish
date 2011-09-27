@@ -33,7 +33,7 @@
 struct fast_log_buf;
 
 /** Maximum length of a fast_log buffer name. */
-#define FAST_LOG_BUF_NAME_MAX 32
+#define FAST_LOG_BUF_NAME_MAX 24
 
 /** Maximum number of fast_log types */
 #define FAST_LOG_TYPE_MAX 64
@@ -75,7 +75,7 @@ typedef int (*fast_log_dumper_fn_t)(struct fast_log_entry *fe, int fd);
  *
  * @return		0 on success; error code otherwise.
  */
-int fast_log_init(const fast_log_dumper_fn_t *dumpers);
+extern int fast_log_init(const fast_log_dumper_fn_t *dumpers);
 
 /** Initializes a fast_log buffer.
  *
@@ -84,13 +84,21 @@ int fast_log_init(const fast_log_dumper_fn_t *dumpers);
  *
  * @return		The fast_log on success, or NULL on failure.
  */
-struct fast_log_buf* fast_log_create(const char *fbname);
+extern struct fast_log_buf* fast_log_create(const char *fbname);
+
+/** Registers a fast log buffer to be dumped by fast_log_dump_all
+ *
+ * @param fb		The fastlog buffer to register
+ *
+ * @return		0 on success; error code otherwise
+ */
+extern int fast_log_register_buffer(struct fast_log_buf *fb);
 
 /** Destroys a fast_log buffer.
  *
  * @param fb		The fast_log buffer
  */
-void fast_log_destroy(struct fast_log_buf* fb);
+extern void fast_log_destroy(struct fast_log_buf* fb);
 
 /** Output a fast_log message.
  *
@@ -98,7 +106,7 @@ void fast_log_destroy(struct fast_log_buf* fb);
  * @param fe		The fast_log message to output. Must have
  *			sizeof(struct fast_log_entry)
  */
-void fast_log(struct fast_log_buf* fb, void *fe);
+extern void fast_log(struct fast_log_buf* fb, void *fe);
 
 /** Dump the fast_log
  *
@@ -108,7 +116,7 @@ void fast_log(struct fast_log_buf* fb, void *fe);
  *
  * Returns 0 on success; error code otherwise
  */
-int fast_log_dump(const struct fast_log_buf* fb,
+extern int fast_log_dump(const struct fast_log_buf* fb,
                 struct fast_log_buf* scratch, int fd);
 
 /** Dump all fast_logs
@@ -119,6 +127,6 @@ int fast_log_dump(const struct fast_log_buf* fb,
  *
  * Returns 0 on success; error code otherwise
  */
-int fast_log_dump_all(struct fast_log_buf* scratch, int fd);
+extern int fast_log_dump_all(struct fast_log_buf* scratch, int fd);
 
 #endif

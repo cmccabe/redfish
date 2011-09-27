@@ -6,8 +6,10 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
+#include "core/fast_log.h"
 #include "core/log_config.h"
 #include "core/signal.h"
+#include "util/error.h"
 #include "util/compiler.h"
 #include "util/safe_io.h"
 
@@ -33,6 +35,10 @@ static const int NUM_FATAL_SIGNALS = (sizeof(FATAL_SIGNALS) / sizeof(FATAL_SIGNA
 static stack_t g_alt_stack;
 
 static int g_crash_log_fd = -1;
+
+static int g_fast_log_fd = -1;
+
+static struct fast_log_buf *g_fast_log_scratch = NULL;
 
 static int g_use_syslog = 0;
 
@@ -83,6 +89,8 @@ static void handle_fatal_signal(int sig,
 		regurgitate_fd((char*)bentries, sizeof(bentries),
 				 g_crash_log_fd, -1, g_use_syslog);
 	}
+	/* If fast_log has not been initialized, this will do nothing. */
+	fast_log_dump_all(g_fast_log_scratch, g_fast_log_fd);
 	/* die */
 	raise(sig);
 }
@@ -122,7 +130,6 @@ static void signal_set_dispositions(char *error, size_t error_len)
 			ret = errno;
 			snprintf(error, error_len, "signal_set_dispositions: "
 				"sigaction(%d) failed with error %d", i, ret);
-			signal_resset_dispositions();
 			return;
 		}
 	}
@@ -134,29 +141,47 @@ static void signal_set_dispositions(char *error, size_t error_len)
 		ret = errno;
 		snprintf(error, error_len, "signal_set_dispositions: "
 			"signal(SIGPIPE) failed with error %d", ret);
-		signal_resset_dispositions();
 		return;
 	}
 }
 
-void signal_resset_dispositions(void)
+static int should_close_fd(int fd)
 {
-	int i;
+	if (fd < 0)
+		return 0;
+	if ((fd == STDOUT_FILENO) ||
+		    (fd == STDERR_FILENO) ||
+		    (fd == STDIN_FILENO))
+		return 0;
+	return 1;
+}
+
+void signal_shutdown(void)
+{
+	int res, i;
 	for (i = 0; i < NUM_FATAL_SIGNALS; ++i) {
-		signal(FATAL_SIGNALS[i], SIG_IGN);
+		signal(FATAL_SIGNALS[i], SIG_DFL);
 	}
+	signal(SIGPIPE, SIG_DFL);
 	free(g_alt_stack.ss_sp);
-	if (g_crash_log_fd != -1) {
-		close(g_crash_log_fd);
-		g_crash_log_fd = -1;
+	g_alt_stack.ss_sp = NULL;
+	if (should_close_fd(g_crash_log_fd))
+		RETRY_ON_EINTR(res, close(g_crash_log_fd));
+	g_crash_log_fd = -1;
+	if (should_close_fd(g_fast_log_fd))
+		RETRY_ON_EINTR(res, close(g_fast_log_fd));
+	g_fast_log_fd = -1;
+	if (g_fast_log_scratch) {
+		fast_log_destroy(g_fast_log_scratch);
+		g_fast_log_scratch = NULL;
 	}
+	g_use_syslog = 0;
+	g_fatal_signal_cb = NULL;
 }
 
 void signal_init(const char *argv0, char *err, size_t err_len,
 		 const struct log_config *lc, signal_cb_t fatal_signal_cb)
 {
-	int ret;
-
 	if ((g_alt_stack.ss_sp != NULL) || (g_crash_log_fd != -1)) {
 		snprintf(err, err_len, "signal_init: already "
 			 "initialized!");
@@ -166,22 +191,49 @@ void signal_init(const char *argv0, char *err, size_t err_len,
 		g_crash_log_fd = open(lc->crash_log,
 			O_CREAT | O_TRUNC | O_RDWR, 0640);
 		if (g_crash_log_fd < 0) {
-			ret = errno;
+			int ret = errno;
 			snprintf(err, err_len, "signal_init: open(%s) "
 				 "failed: error %d", lc->crash_log, ret);
+			signal_shutdown();
 			return;
 		}
 	}
 	else {
 		g_crash_log_fd = STDERR_FILENO;
 	}
+	if (lc->fast_log) {
+		g_fast_log_fd = open(lc->fast_log,
+			O_CREAT | O_TRUNC | O_WRONLY, 0640);
+		if (g_fast_log_fd < 0) {
+			int ret = errno;
+			snprintf(err, err_len, "signal_init: open(%s) "
+				 "failed: error %d", lc->crash_log, ret);
+			signal_shutdown();
+			return;
+		}
+	}
+	else {
+		g_fast_log_fd = STDERR_FILENO;
+	}
+	g_fast_log_scratch = fast_log_create("signal_scratch");
+	if (!g_fast_log_scratch) {
+		snprintf(err, err_len, "fast_log_create ran out "
+				"of memory!\n");
+		signal_shutdown();
+		return;
+	}
+
 	g_fatal_signal_cb = fatal_signal_cb;
 	signal_init_altstack(err, err_len, &g_alt_stack);
-	if (err[0])
+	if (err[0]) {
+		signal_shutdown();
 		return;
+	}
 	signal_set_dispositions(err, err_len);
-	if (err[0])
+	if (err[0]) {
+		signal_shutdown();
 		return;
+	}
 	if (lc->use_syslog) {
 		g_use_syslog = 1;
 		openlog(argv0, LOG_NDELAY | LOG_PID, LOG_USER);
