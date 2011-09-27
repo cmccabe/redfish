@@ -110,22 +110,23 @@ extern void fast_log(struct fast_log_buf* fb, void *fe);
 
 /** Dump the fast_log
  *
- * fb: the fast_log to dump
- * scratch: a fast_log allocated with fast_log_init. Its contents will be
- *          overwritten with the contents of fb during the dumping process.
+ * @param fb		the fast_log to dump
+ * @param scratch	a fast_log allocated with fast_log_init. Its contents
+ *			will be overwritten with the contents of fb during the
+ *			dumping process.
  *
- * Returns 0 on success; error code otherwise
+ * @return		0 on success; error code otherwise
  */
 extern int fast_log_dump(const struct fast_log_buf* fb,
                 struct fast_log_buf* scratch, int fd);
 
 /** Dump all fast_logs
  *
- * scratch: a fast_log allocated with fast_log_init. Its contents will be
- *          overwritten with the contents of fast_logs during the dumping
- *          process.
+ * @param scratch	a fast_log allocated with fast_log_init. Its
+ *			contents will be overwritten with the contents of 
+ *			fast_logs during the dumping process.
  *
- * Returns 0 on success; error code otherwise
+ * @return		0 on success; error code otherwise
  */
 extern int fast_log_dump_all(struct fast_log_buf* scratch, int fd);
 
