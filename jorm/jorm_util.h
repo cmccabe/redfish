@@ -9,6 +9,7 @@
 #include "jorm/jorm_const.h"
 
 #include <stdlib.h> /* for calloc, realloc */
+#include <string.h> /* for memmove */
 
 #define JORM_CONTAINER_BEGIN(ty) \
 struct ty* JORM_ARRAY_APPEND_##ty(struct ty ***arr) { \
@@ -36,6 +37,31 @@ struct ty* JORM_ARRAY_APPEND_##ty(struct ty ***arr) { \
 	if (!narr[i]) \
 		return NULL; \
 	return narr[i]; \
+} \
+\
+void JORM_ARRAY_REMOVE_##ty(struct ty ***arr, struct ty *elem) { \
+	struct ty **xarr; \
+	int tw, nw; \
+	if (*arr == NULL) \
+		return; \
+	for (nw = 0, tw = 0; (*arr)[tw]; ++tw) { \
+		if ((*arr)[tw] == elem) { \
+			nw = tw; \
+			break; \
+		} \
+	} \
+	for (; (*arr)[tw]; ++tw) { \
+		; \
+	} \
+	if (nw == tw) \
+		return; \
+	JORM_FREE_##ty((*arr)[nw]); \
+	memmove((*arr) + nw, (*arr) + nw + 1, \
+		sizeof(struct ty*) * (tw - nw - 1)); \
+	(*arr)[tw - 1] = NULL; \
+	xarr = realloc(*arr, sizeof(struct ty*) * tw); \
+	if (xarr) \
+		*arr = xarr; \
 } \
 \
 void JORM_ARRAY_FREE_##ty(struct ty ***arr) { \

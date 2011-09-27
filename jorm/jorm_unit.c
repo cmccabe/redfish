@@ -313,6 +313,32 @@ done:
 	return 0;
 }
 
+static int test_jorm_array_manipulations(void)
+{
+	struct bob **a1 = NULL, **a2 = NULL;
+	struct bob *b, *b2, *b3;
+		
+	b = JORM_ARRAY_APPEND_bob(&a1);
+	EXPECT_NOT_EQUAL(b, NULL);
+	EXPECT_EQUAL(b->a, JORM_INVAL_INT);
+	EXPECT_NOT_EQUAL(a1[0], NULL);
+	JORM_ARRAY_REMOVE_bob(&a1, b);
+	EXPECT_EQUAL(a1[0], NULL);
+	b = JORM_ARRAY_APPEND_bob(&a2);
+	b->a = 1;
+	b2 = JORM_ARRAY_APPEND_bob(&a2);
+	b2->a = 2;
+	b3 = JORM_ARRAY_APPEND_bob(&a2);
+	b3->a = 3;
+	JORM_ARRAY_REMOVE_bob(&a2, b2);
+	EXPECT_EQUAL(a2[0], b);
+	EXPECT_EQUAL(a2[1], b3);
+	EXPECT_EQUAL(a2[2], NULL);
+	JORM_ARRAY_FREE_bob(&a1);
+	JORM_ARRAY_FREE_bob(&a2);
+	return 0;
+}
+
 int main(void)
 {
 	EXPECT_ZERO(test_jorm_init());
@@ -321,5 +347,6 @@ int main(void)
 	EXPECT_ZERO(test3());
 	EXPECT_ZERO(test4());
 	EXPECT_ZERO(test5());
+	EXPECT_ZERO(test_jorm_array_manipulations());
 	return EXIT_SUCCESS;
 }
