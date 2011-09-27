@@ -196,6 +196,62 @@ foo=0x1, bar=0x2, bar=0x3\n";
 	return 0;
 }
 
+static int test_dump_all(const char *tdir)
+{
+	char fname[PATH_MAX];
+	char *expected, buf[4096] = { 0 };
+	const char *expected_lines[] = {
+		"*** FASTLOG one",
+		"foo=0x1, bar=0x2, bar=0x3",
+		"foo=0x10, bar=0x20, bar=0x30",
+		"blah blah",
+		"*** FASTLOG two",
+		"foo=0x1, bar=0x2, bar=0x3",
+		"foo=0x10, bar=0x20, bar=0x30",
+		"blah blah",
+		"*** FASTLOG three",
+		"foo=0x1, bar=0x2, bar=0x3",
+		"foo=0x10, bar=0x20, bar=0x30",
+		"blah blah",
+		NULL
+	};
+	struct fast_log_buf *scratch, *one, *two, *three;
+	int res, fd;
+
+	scratch = fast_log_create("scratch");
+	EXPECT_NOT_EQUAL(scratch, NULL);
+	one = fast_log_create("one");
+	EXPECT_NOT_EQUAL(one, NULL);
+	EXPECT_ZERO(fast_log_register_buffer(one));
+	two = fast_log_create("two");
+	EXPECT_NOT_EQUAL(two, NULL);
+	EXPECT_ZERO(fast_log_register_buffer(two));
+	three = fast_log_create("three");
+	EXPECT_NOT_EQUAL(three, NULL);
+	EXPECT_ZERO(fast_log_register_buffer(three));
+
+	create_some_logs(one, 1);
+	create_some_logs(two, 1);
+	create_some_logs(three, 1);
+
+	EXPECT_ZERO(zsnprintf(fname, sizeof(fname), "%s/all", tdir));
+	fd = open(fname, O_CREAT | O_TRUNC | O_RDWR, 0644);
+	EXPECT_GE(fd, 0);
+	EXPECT_ZERO(fast_log_dump_all(scratch, fd));
+	RETRY_ON_EINTR(res, close(fd));
+
+	fast_log_destroy(one);
+	fast_log_destroy(two);
+	fast_log_destroy(three);
+	fast_log_destroy(scratch);
+	EXPECT_GT(simple_io_read_whole_file_zt(fname, buf, sizeof(buf)), 0);
+
+	expected = linearray_to_str(expected_lines);
+	EXPECT_ZERO(strcmp(buf, expected));
+	free(expected);
+	return 0;
+}
+
 int main(void)
 {
 	char tdir[PATH_MAX];
@@ -207,6 +263,7 @@ int main(void)
 	EXPECT_ZERO(dump_empty_buf(tdir));
 	EXPECT_ZERO(dump_small_buf(tdir));
 	EXPECT_ZERO(fill_entire_buf(tdir));
+	EXPECT_ZERO(test_dump_all(tdir));
 
 	return EXIT_SUCCESS;
 }
