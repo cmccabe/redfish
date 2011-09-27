@@ -1,0 +1,42 @@
+/*
+ * The OneFish distributed filesystem
+ *
+ * Copyright (C) 2011 Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
+ *
+ * This is licensed under the Apache License, Version 2.0.  See file COPYING.
+ */
+
+JORM_CONTAINER_BEGIN(rsem_client_conf)
+	JORM_INT(srv_port)
+	JORM_STR(srv_host)
+	JORM_INT(cli_port_start)
+	JORM_INT(cli_port_end)
+JORM_CONTAINER_END
+
+JORM_CONTAINER_BEGIN(rsem_server_conf)
+	JORM_INT(port)
+	JORM_ARRAY(sems, rsem_conf)
+JORM_CONTAINER_END
+
+JORM_CONTAINER_BEGIN(rsem_conf)
+	JORM_STR(name)
+	JORM_INT(init_val)
+JORM_CONTAINER_END
+
+JORM_CONTAINER_BEGIN(rsem_request)
+	JORM_STR(name)
+	JORM_INT(port)
+JORM_CONTAINER_END
+
+JORM_CONTAINER_BEGIN(rsem_release)
+	JORM_STR(name)
+JORM_CONTAINER_END
+
+JORM_CONTAINER_BEGIN(rsem_grant)
+	JORM_STR(name)
+JORM_CONTAINER_END
+
+JORM_CONTAINER_BEGIN(rsem_waiter)
+	JORM_IGNORE(unsigned long s_addr;)
+	JORM_INT(port)
+JORM_CONTAINER_END
