@@ -8,6 +8,6 @@ add_executable(st_trivial
 )
 target_link_libraries(st_trivial stest)
 
-add_executable(trivial_unit trivial_unit.c trivial_unit.c)
+add_executable(trivial_unit trivial_unit.c)
 target_link_libraries(trivial_unit util utest)
 add_test(trivial_unit ${CMAKE_CURRENT_BINARY_DIR}/trivial_unit trivial_unit)
