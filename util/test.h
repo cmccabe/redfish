@@ -97,6 +97,15 @@ extern int do_touch2(const char *dir, const char *fname);
 		} \
 	} while (0);
 
+#define EXPECT_GE(x, y) \
+	do { \
+		if (x < y) { \
+			fprintf(stderr, "failed on line %d: %s\n",\
+				__LINE__, #x); \
+			return 1; \
+		} \
+	} while (0);
+
 #define EXPECT_GT(x, y) \
 	do { \
 		if (x <= y) { \
