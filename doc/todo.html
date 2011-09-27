@@ -13,6 +13,12 @@
   The mailing list at [mailinglist] has more information.
 
   <ul>
+    <li>util/msleep.c: continue sleeping until the requested amount of time if we get EINTRed. Will need to use gettimeofday for this.</li>
+    <li>O_CLOEXEC: add mutex workaround for systems that don't have O_CLOEXEC (RHEL4, etc.). Make sure O_CLOEXEC is used everywhere it should be</li>
+    <li>better handling for EADDRINUSE conditions in unit tests (randomly pick new ports, etc?) </li>
+    <li>rsem_wait: add timeout parameter</li>
+    <li>rsem_wait: handle more error cases</li>
+    <li>rsem: validate that rsem_post message releases a semaphore that the remote host actually has.</li>
     <li>allow replication to be configurable for OneFish, rather than fixed at 3</li>
     <li>allow chunk size to be configurable for OneFish, rather than fixed at 64 MB</li>
     <li>Create .rpm</li>
