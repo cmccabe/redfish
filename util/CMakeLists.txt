@@ -4,6 +4,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 add_library(util
     config.c
     dir.c
+    msleep.c
     path.c
     run_cmd.c
     safe_io.c
