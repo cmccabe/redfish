@@ -42,7 +42,7 @@ static int test_create_tempdir_and_delete(void)
 	struct stat st_buf;
 	int ret;
 
-	ret = get_tempdir(tempdir, PATH_MAX, 0770);
+	ret = get_tempdir(tempdir, PATH_MAX, 0775);
 	if (ret)
 		return EXIT_FAILURE;
 	ret = register_tempdir_for_cleanup(tempdir);
