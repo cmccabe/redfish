@@ -95,7 +95,7 @@ static int handle_dw_ssh_up_bin(const struct worker_msg_upload_bin *m,
 		ret = shell_escape(tmp, obin_path, sizeof(obin_path));
 		if (ret) {
 			glitch_log("handle_dw_ssh_up_bin: md->dst_bindir "
-				   "path is too long!");
+				   "path is too long!\n");
 			ret = -EDOM;
 			goto done;
 		}

@@ -233,7 +233,7 @@ int main(int argc, char **argv)
 	parse_argv(argc, argv, &daemonize, &mon_config_file, &ai);
 	g_mon_info.acts = argv_to_action_info(argv + optind, err, sizeof(err));
 	if (err[0]) {
-		glitch_log("%s", err);
+		glitch_log("%s\n", err);
 		ret = EXIT_FAILURE;
 		goto done;
 	}
@@ -253,7 +253,7 @@ int main(int argc, char **argv)
 	}
 	harmonize_log_config(mc->lc, err, sizeof(err), 1, 1);
 	if (err[0]) {
-		glitch_log("log_config error: %s", err);
+		glitch_log("log_config error: %s\n", err);
 		ret = EXIT_FAILURE;
 		goto free_daemon_info;
 	}

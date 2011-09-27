@@ -111,7 +111,7 @@ int main(int argc, char **argv)
 	}
 	harmonize_log_config(d->lc, err, sizeof(err), 1, 1);
 	if (err[0]) {
-		glitch_log("log_config error: %s", err);
+		glitch_log("log_config error: %s\n", err);
 		ret = EXIT_FAILURE;
 		goto free_daemon;
 	}
