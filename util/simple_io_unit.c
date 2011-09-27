@@ -48,10 +48,10 @@ static int read_then_write_file(const char *tempdir, int *next_id,
 	if (!buf) {
 		return -ENOMEM;
 	}
-	res = simple_io_read_whole_file(file_name, buf, buf_sz);
+	res = simple_io_read_whole_file_zt(file_name, buf, buf_sz);
 	if (res < 0) {
 		free(buf);
-		fprintf(stderr, "simple_io_read_whole_file failed with "
+		fprintf(stderr, "simple_io_read_whole_file_zt failed with "
 			"error %Zd\n", res);
 		return res;
 	}
@@ -103,7 +103,7 @@ static int test_copy_fd_to_fd(const char *tempdir, int *next_id,
 
 	nbuf = calloc(1, buf_len + 1);
 	EXPECT_NOT_EQUAL(nbuf, NULL);
-	res = simple_io_read_whole_file(dst_file, nbuf, buf_len + 1);
+	res = simple_io_read_whole_file_zt(dst_file, nbuf, buf_len + 1);
 	if (res < 0) {
 		free(nbuf);
 		return res;

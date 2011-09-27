@@ -47,9 +47,9 @@ static int test_stderr_output(const char *tempdir)
 		return -err;
 	}
 	glitch_log(TEST_STR);
-	ret = simple_io_read_whole_file(tempfile, buf, sizeof(buf));
+	ret = simple_io_read_whole_file_zt(tempfile, buf, sizeof(buf));
 	if (ret < 0) {
-		printf("simple_io_read_whole_file(%s) failed: error %d\n",
+		printf("simple_io_read_whole_file_zt(%s) failed: error %d\n",
 		       tempfile, ret);
 		return ret;
 	}
@@ -69,7 +69,7 @@ static int test_log_output(const char *log)
 	glitch_log(TEST_STR2);
 
 	/* Check the log file that should be written */
-	EXPECT_POSITIVE(simple_io_read_whole_file(log, buf, sizeof(buf)));
+	EXPECT_POSITIVE(simple_io_read_whole_file_zt(log, buf, sizeof(buf)));
 	snprintf(expected_buf, sizeof(expected_buf), "%s%s",
 		 TEST_STR, TEST_STR2);
 	if (strcmp(buf, expected_buf) != 0) {

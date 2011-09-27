@@ -32,7 +32,7 @@ static int validate_crash_log(const char *crash_log, int sig)
 	snprintf(expected_prefix, sizeof(expected_prefix),
 		"HANDLE_FATAL_SIGNAL(sig=%d, name=", sig);
 	memset(prefix, 0, sizeof(prefix));
-	ret = simple_io_read_whole_file(crash_log, prefix, sizeof(prefix));
+	ret = simple_io_read_whole_file_zt(crash_log, prefix, sizeof(prefix));
 	if (ret < 0) {
 		fprintf(stderr, "failed to open crash log file '%s': "
 			"error %d\n", crash_log, ret);

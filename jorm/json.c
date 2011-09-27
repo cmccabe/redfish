@@ -84,7 +84,7 @@ struct json_object* parse_json_file(const char *file_name,
 	}
 	buf = malloc(stbuf.st_size + 1);
 	buf[stbuf.st_size] = '\0';
-	res = simple_io_read_whole_file(file_name, buf, (int)stbuf.st_size);
+	res = simple_io_read_whole_file_zt(file_name, buf, (int)stbuf.st_size);
 	if (res < 0) {
 		snprintf(err, err_len, "failed to read '%s': error %Zd\n",
 			 file_name, res);

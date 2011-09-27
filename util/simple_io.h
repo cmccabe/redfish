@@ -21,7 +21,7 @@
  *
  * Returns the number of bytes read on success; error code otherwise.
  */
-ssize_t simple_io_read_whole_file(const char *file, char *buf, int sz);
+ssize_t simple_io_read_whole_file_zt(const char *file, char *buf, int sz);
 
 /** Copy_to_fd failed because of an error on the source fd. */
 #define COPY_FD_TO_FD_SRCERR 0x08000000

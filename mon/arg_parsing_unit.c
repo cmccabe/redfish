@@ -53,7 +53,7 @@ static int write_file_test1(const char *fishmon, const char *conf,
 	EXPECT_ZERO(zsnprintf(farg, sizeof(farg), "file_name=%s", fname));
 	EXPECT_ZERO(run_cmd(fishmon, "-c", conf, FISHMON_WFT_ARGS,
 			    "write_file_test", farg, (char*)NULL));
-	EXPECT_POSITIVE(simple_io_read_whole_file(fname, buf, sizeof(buf)));
+	EXPECT_POSITIVE(simple_io_read_whole_file_zt(fname, buf, sizeof(buf)));
 	EXPECT_ZERO(strcmp(buf, "sample_text"));
 	return 0;
 }
@@ -66,7 +66,7 @@ static int write_file_test2(const char *fishmon, const char *conf,
 	EXPECT_ZERO(zsnprintf(farg, sizeof(farg), "file_name=%s", fname));
 	EXPECT_ZERO(run_cmd(fishmon, "-c", conf, FISHMON_WFT_ARGS,
 		"write_file_test", farg, "text=foobar", (char*)NULL));
-	EXPECT_POSITIVE(simple_io_read_whole_file(fname, buf, sizeof(buf)));
+	EXPECT_POSITIVE(simple_io_read_whole_file_zt(fname, buf, sizeof(buf)));
 	EXPECT_ZERO(strcmp(buf, "foobar"));
 	return 0;
 }
@@ -84,9 +84,9 @@ static int write_file_test3(const char *fishmon, const char *conf,
 	EXPECT_ZERO(run_cmd(fishmon, "-c", conf, FISHMON_WFT_ARGS,
 		"write_file_test", farg1, "text=farg1",
 		"write_file_test", farg2, "text=farg2", (char*)NULL));
-	EXPECT_POSITIVE(simple_io_read_whole_file(fname1, buf, sizeof(buf)));
+	EXPECT_POSITIVE(simple_io_read_whole_file_zt(fname1, buf, sizeof(buf)));
 	EXPECT_ZERO(strcmp(buf, "farg1"));
-	EXPECT_POSITIVE(simple_io_read_whole_file(fname2, buf, sizeof(buf)));
+	EXPECT_POSITIVE(simple_io_read_whole_file_zt(fname2, buf, sizeof(buf)));
 	EXPECT_ZERO(strcmp(buf, "farg2"));
 	return 0;
 }

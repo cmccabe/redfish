@@ -102,7 +102,7 @@ static int dump_empty_buf(const char *tdir)
 
 	fast_log_destroy(empty);
 	fast_log_destroy(scratch);
-	EXPECT_GT(simple_io_read_whole_file(fname, buf, sizeof(buf)), 0);
+	EXPECT_GT(simple_io_read_whole_file_zt(fname, buf, sizeof(buf)), 0);
 	EXPECT_ZERO(strcmp(buf, expected));
 	return 0;
 }
@@ -156,7 +156,7 @@ blah blah\n";
 
 	fast_log_destroy(small);
 	fast_log_destroy(scratch);
-	EXPECT_GT(simple_io_read_whole_file(fname, buf, sizeof(buf)), 0);
+	EXPECT_GT(simple_io_read_whole_file_zt(fname, buf, sizeof(buf)), 0);
 	EXPECT_ZERO(strcmp(buf, expected));
 	return 0;
 }
@@ -191,7 +191,7 @@ foo=0x1, bar=0x2, bar=0x3\n";
 	RETRY_ON_EINTR(res, close(fd));
 	fast_log_destroy(full);
 	fast_log_destroy(scratch);
-	EXPECT_GT(simple_io_read_whole_file(fname, buf, sizeof(buf)), 0);
+	EXPECT_GT(simple_io_read_whole_file_zt(fname, buf, sizeof(buf)), 0);
 	EXPECT_ZERO(strncmp(buf, expected, strlen(expected)));
 	return 0;
 }

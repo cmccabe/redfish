@@ -75,13 +75,13 @@ static int test_get_colocated_path(char *argv0)
 
 	ret = get_colocated_path(argv0, "run_cmd_unit",
 			   path, sizeof(path));
-	buf1_sz = simple_io_read_whole_file(argv0, buf1, sizeof(buf1));
+	buf1_sz = simple_io_read_whole_file_zt(argv0, buf1, sizeof(buf1));
 	if (buf1_sz < 0) {
 		fprintf(stderr, "test_get_colocated_path: failed to read binary "
 			"from '%s'\n", argv0);
 		return buf1_sz;
 	}
-	buf2_sz = simple_io_read_whole_file(path, buf2, sizeof(buf2));
+	buf2_sz = simple_io_read_whole_file_zt(path, buf2, sizeof(buf2));
 	if (buf2_sz < 0) {
 		fprintf(stderr, "test_get_colocated_path: failed to read binary "
 			"from '%s'\n", argv0);

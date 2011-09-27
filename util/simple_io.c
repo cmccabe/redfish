@@ -17,7 +17,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-ssize_t simple_io_read_whole_file(const char *fname, char *buf, int sz)
+ssize_t simple_io_read_whole_file_zt(const char *fname, char *buf, int sz)
 {
 	ssize_t res;
 	int fd = open(fname, O_RDONLY);
