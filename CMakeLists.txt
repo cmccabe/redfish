@@ -22,6 +22,10 @@ set(CMAKE_C_FLAGS_DEBUG "-g -O0 -fstack-protector -Werror")
 set(CMAKE_CURRENT_BINARY_DIR, builds)
 
 set(ONEFISH_CLIENT_LIB "fishc_real" CACHE STRING "For developers only. Which client library implementation to use (fishc_stub, fishc_hdfs, or fishc_real)")
+set(ONEFISH_SO_REUSEADDR_HACK 0 CACHE INT "For developers only. Set to 1 to use a hack which makes running unit tests easier.")
+if (ONEFISH_SO_REUSEADDR_HACK EQUAL 1)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DONEFISH_SO_REUSEADDR_HACK=1")
+endif (ONEFISH_SO_REUSEADDR_HACK EQUAL 1)
 
 # Find libjson-c
 find_path(JSON_C_INCLUDE_DIR "json/json.h")

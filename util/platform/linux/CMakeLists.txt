@@ -5,4 +5,5 @@ add_library(platform
     epoll.c
     pipe2.c
     readdir.c
+    socket.c
 )
