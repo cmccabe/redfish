@@ -9,4 +9,5 @@ cmake \
 -DCTEST_MEMORYCHECK_COMMAND_OPTIONS:STRING="--trace-children=yes \
 --quiet --tool=memcheck --leak-check=yes --show-reachable=yes \
 --num-callers=100 --verbose --demangle" \
+${@} \
 "${DIRNAME}/.."
