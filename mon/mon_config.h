@@ -6,8 +6,8 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#ifndef ONEFISH__MON_CONFIG_DOT_H
-#define ONEFISH__MON_CONFIG_DOT_H
+#ifndef ONEFISH_MON_MON_CONFIG_DOT_H
+#define ONEFISH_MON_MON_CONFIG_DOT_H
 
 #include "core/log_config.h"
 
