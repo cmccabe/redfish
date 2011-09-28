@@ -6,6 +6,7 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
+#include "client/fishc.h"
 #include "stest/stest.h"
 
 #include <stdlib.h>
@@ -14,7 +15,8 @@
 
 int main(int argc, char **argv)
 {
-	//struct of_client *cli;
+	int ret;
+	struct of_client *cli = NULL;
 	struct of_mds_locator **mlocs;
 	const char *user, *error;
 	struct stest_custom_opt copt[] = {
@@ -28,18 +30,22 @@ int main(int argc, char **argv)
 	const int ncopt = sizeof(copt)/sizeof(copt[0]);
 
 	stest_init(argc, argv, copt, ncopt, &user, &mlocs);
+	ret = onefish_connect(mlocs, user, &cli);
+	if (ret) {
+		stest_add_error("onefish_connect: failed to connect: "
+				"error %d\n", ret);
+	}
 	stest_mlocs_free(mlocs);
 
 	stest_set_status(10);
 	error = copt_get("error", copt, ncopt);
 
-//	int onefish_connect(struct of_mds_locator **mlocs, const char *user,
-//				&cli);
-
 	if (error && strcmp(error, "0")) {
 		_exit(1);
 	}
-	//onefish_disconnect(cli);
+	if (cli) {
+		onefish_disconnect(cli);
+	}
 
 	return stest_finish();
 }

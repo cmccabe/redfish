@@ -11,7 +11,7 @@ target_link_libraries(st_trivial stest)
 add_executable(st_startup
     startup.c
 )
-target_link_libraries(st_startup stest)
+target_link_libraries(st_startup ${ONEFISH_CLIENT_LIB} stest)
 
 add_executable(trivial_unit trivial_unit.c)
 target_link_libraries(trivial_unit util utest)

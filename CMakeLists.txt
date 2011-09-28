@@ -21,6 +21,8 @@ set(CMAKE_C_FLAGS_RELEASE "-O3 -Wuninitialized")
 set(CMAKE_C_FLAGS_DEBUG "-g -O0 -fstack-protector -Werror")
 set(CMAKE_CURRENT_BINARY_DIR, builds)
 
+set(ONEFISH_CLIENT_LIB "fishc_real" CACHE STRING "For developers only. Which client library implementation to use (fishc_stub, fishc_hdfs, or fishc_real)")
+
 # Find libjson-c
 find_path(JSON_C_INCLUDE_DIR "json/json.h")
 find_library(JSON_C_LIBRARY json)
