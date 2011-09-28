@@ -22,6 +22,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -325,12 +326,18 @@ void stest_set_status(int pdone)
 	}
 }
 
-void stest_add_error(const char *err)
+void stest_add_error(const char *fmt, ...)
 {
-	fprintf(g_err_fp, "%s", err);
+	va_list ap;
+
+	va_start(ap, fmt);
+	vfprintf(g_err_fp, fmt, ap);
+	va_end(ap);
 	g_saw_err = 1;
 	if (!g_daemonize) {
-		fprintf(stderr, "error: %s", err);
+		va_start(ap, fmt);
+		vfprintf(stderr, fmt, ap);
+		va_end(ap);
 	}
 }
 

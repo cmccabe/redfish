@@ -9,6 +9,8 @@
 #ifndef ONEFISH_STEST_STEST_DOT_H
 #define ONEFISH_STEST_STEST_DOT_H
 
+#include "util/compiler.h"
+
 struct of_mds_locator;
 
 struct stest_custom_opt
@@ -70,9 +72,10 @@ extern void stest_set_status(int pdone);
 
 /** Log an error that happened during our test.
  *
- * @param err		The error
+ * @param err		The format string
+ * @param ...		Printf-style arguments
  */
-extern void stest_add_error(const char *err);
+extern void stest_add_error(const char *fmt, ...) PRINTF_FORMAT(1, 2);
 
 /** Should be called at the end of a system test main().
  *
