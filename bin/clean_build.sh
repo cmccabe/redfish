@@ -13,8 +13,16 @@ die() {
     exit 1
 }
 
+get_num_cpus() {
+    ncpus=1
+    if [ -e /proc/cpuinfo ]; then
+        ncpus=`cat /proc/cpuinfo | grep '^processor' | wc -l`
+    fi
+}
+
 [ -d ./.git ] || die "must be run from a git repository"
 
+get_num_cpus
 CURPWD=`pwd`
 CURGIT=`readlink -f "${CURPWD}"`
 [ -d "${CURGIT}" ] || die "readlink -f failed?"
@@ -24,11 +32,17 @@ trap "rm -rf ${TMPDIR}; exit" INT TERM EXIT
 cd "${TMPDIR}" || die "failed to cd to ${TMPDIR}"
 git clone -- "${CURGIT}" git || die "failed to git clone ${REMOTE}"
 cd git || die "failed to cd to git"
-mkdir build || die "failed to mkdir build"
-cd build || die "failed to cd to build"
-cmake .. || die "cmake failed!"
-make || die "make failed"
-make test || die "make test failed"
+for c in fishc_stub; do
+    rm -rf build
+    mkdir build || die "failed to mkdir build"
+    cd build || die "failed to cd to build"
+    cmake -DONEFISH_SO_REUSEADDR_HACK=1 \
+          -DONEFISH_CLIENT_LIB=$c \
+          .. || die "cmake failed!"
+    make -j "${ncpus}" || die "make failed"
+    make test || die "make test failed"
+    cd ..
+done
 echo "**** CLEAN BUILD SUCCESS ***"
 
 exit 0
