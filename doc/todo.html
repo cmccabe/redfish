@@ -13,6 +13,7 @@
   The mailing list at [mailinglist] has more information.
 
   <ul>
+    <li>extern cleanup -- add extern to function declarations in headers</li>
     <li>guaranteed signal-safe implementations of snprintf and strlen for fastlog</li>
     <li>util/msleep.c: continue sleeping until the requested amount of time if we get EINTRed. Will need to use gettimeofday for this.</li>
     <li>O_CLOEXEC: add mutex workaround for systems that don't have O_CLOEXEC (RHEL4, etc.). Make sure O_CLOEXEC is used everywhere it should be</li>
