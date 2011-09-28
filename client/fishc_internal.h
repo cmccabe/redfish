@@ -9,6 +9,9 @@
 #ifndef ONEFISH_CLIENT_FISHC_IMPL_DOT_H
 #define ONEFISH_CLIENT_FISHC_IMPL_DOT_H
 
+/** Default MDS port */
+#define ONEFISH_DEFAULT_MDS_PORT 9000
+
 /** Onefish replication count
  * TODO: make this adjustable
  */

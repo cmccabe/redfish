@@ -22,7 +22,7 @@ struct of_client;
 /** Represents the location of a metadata server */
 struct of_mds_locator
 {
-	const char *host;
+	char *host;
 	int port;
 };
 

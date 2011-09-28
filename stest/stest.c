@@ -6,12 +6,16 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
+#include "client/fishc.h"
+#include "client/fishc_internal.h"
 #include "core/log_config.h"
 #include "core/signal.h"
 #include "stest/stest.h"
 #include "util/compiler.h"
 #include "util/error.h"
+#include "util/macro.h"
 #include "util/safe_io.h"
+#include "util/str_to_int.h"
 #include "util/string.h"
 #include "util/tempfile.h"
 
@@ -25,6 +29,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#define STEST_DEFAULT_USER "onefish"
+#define NUM_PERCENT_DIGITS 3
 
 static char g_tempdir[PATH_MAX];
 
@@ -75,20 +82,90 @@ NULL
 	exit(exitstatus);
 }
 
+static void mlocs_append(struct of_mds_locator ***mlocs, const char *s,
+			 char *err, size_t err_len)
+{
+	int tn;
+	struct of_mds_locator *zm = NULL, **m;
+	char *colon;
+	char err2[512] = { 0 };
+
+	zm = calloc(1, sizeof(struct of_mds_locator));
+	if (!zm)
+		goto oom;
+	zm->host = strdup(s);
+	if (!zm->host)
+		goto oom;
+	colon = rindex(zm->host, ':');
+	if (!colon) {
+		snprintf(err, err_len, "error parsing metadata server "
+			 "locator '%s': couldn't find colon!\nMetadata "
+			 "server locators must have the format "
+			 "hostname:port\n", s);
+		goto error;
+	}
+	*colon = '\0';
+	str_to_int(colon + 1, 10, &zm->port, err2, sizeof(err2));
+	if (err2[0]) {
+		snprintf(err, err_len, "error parsing metadata server "
+			 "locator '%s': couldn't parse port as a "
+			 "number! error: '%s'\nMetadata server "
+			"locators must have the format "
+			"hostname:port\n", s, err2);
+		goto error;
+	}
+	for (tn = 0, m = *mlocs; *m; ++m) {
+		tn++;
+	}
+	m = realloc(*mlocs, (tn + 2) * sizeof(struct of_mds_locator*));
+	if (!m)
+		goto oom;
+	*mlocs = m;
+	m[tn] = zm;
+	m[tn + 1] = NULL;
+	return;
+oom:
+	snprintf(err, err_len, "mlocs_append: out of memory\n");
+error:
+	free(zm->host);
+	free(zm);
+}
+
 static void stest_parse_argv(int argc, char **argv,
-	struct stest_custom_opt *copt, int ncopt)
+	struct stest_custom_opt *copt, int ncopt,
+	const char **user, struct of_mds_locator ***mlocs)
 {
 	char **s;
 	int c;
-	while ((c = getopt(argc, argv, "fh")) != -1) {
+	*user = NULL;
+	*mlocs = calloc(1, sizeof(struct of_mds_locator*));;
+	if (!*mlocs) {
+		fprintf(stderr, "out of memory.\n"); 
+		exit(EXIT_FAILURE);
+	}
+	while ((c = getopt(argc, argv, "fhm:u:")) != -1) {
 		switch (c) {
 		case 'f':
 			g_daemonize = 0;
 			break;
 		case 'h':
 			stest_usage(argv[0], copt, ncopt, EXIT_SUCCESS);
+			break;
+		case 'm': {
+			char err[512] = { 0 };
+			mlocs_append(mlocs, optarg, err, sizeof(err));
+			if (err[0]) {
+				fprintf(stderr, "%s", err);
+				exit(EXIT_FAILURE);
+			}
+			break;
+		}
+		case 'u':
+			*user = optarg;
+			break;
 		case '?':
 			stest_usage(argv[0], copt, ncopt, EXIT_FAILURE);
+			break;
 		}
 	}
 	for (s = argv + optind; *s; ++s) {
@@ -115,6 +192,19 @@ static void stest_parse_argv(int argc, char **argv,
 			stest_usage(argv[0], copt, ncopt, EXIT_FAILURE);
 		}
 		copt[i].val = eq;
+	}
+	if (*user == NULL) {
+		*user = STEST_DEFAULT_USER;
+	}
+	if ((*mlocs)[0] == NULL) {
+		const char *default_mloc =
+			"localhost:" TO_STR2(ONEFISH_DEFAULT_MDS_PORT);
+		char err[512] = { 0 };
+		mlocs_append(mlocs, default_mloc, err, sizeof(err));
+		if (err[0]) {
+			fprintf(stderr, "%s", err);
+			exit(EXIT_FAILURE);
+		}
 	}
 }
 
@@ -199,9 +289,10 @@ static void stest_init_signals(const char *argv0)
 }
 
 void stest_init(int argc, char **argv,
-	struct stest_custom_opt *copt, int ncopt)
+		struct stest_custom_opt *copt, int ncopt,
+		const char **user, struct of_mds_locator ***mlocs)
 {
-	stest_parse_argv(argc, argv, copt, ncopt);
+	stest_parse_argv(argc, argv, copt, ncopt, user, mlocs);
 	stest_status_files_init();
 	stest_init_signals(argv[0]);
 	stest_output_start_msg();
@@ -210,7 +301,14 @@ void stest_init(int argc, char **argv,
 	}
 }
 
-#define NUM_PERCENT_DIGITS 3
+void stest_mlocs_free(struct of_mds_locator **mlocs)
+{
+	struct of_mds_locator **m;
+	for (m = mlocs; *m; ++m) {
+		free(*m);
+	}
+	free(mlocs);
+}
 
 void stest_set_status(int pdone)
 {

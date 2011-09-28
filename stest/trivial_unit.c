@@ -26,5 +26,8 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 	EXPECT_ZERO(run_cmd(st_trivial, "-f", (char*)NULL));
 	EXPECT_ZERO(run_cmd(st_trivial, "-f", "error=0", (char*)NULL));
 	EXPECT_NONZERO(run_cmd(st_trivial, "-f", "error=1", (char*)NULL));
+	EXPECT_ZERO(run_cmd(st_trivial, "-m", "localhost:8080",
+			"-m", "foobarhost:8081", "-u", "myuser",
+			"-f", "error=0", (char*)NULL));
 	return 0;
 }

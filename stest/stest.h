@@ -9,6 +9,8 @@
 #ifndef ONEFISH_STEST_STEST_DOT_H
 #define ONEFISH_STEST_STEST_DOT_H
 
+struct of_mds_locator;
+
 struct stest_custom_opt
 {
 	/** Pointer to a key which identifies the option */
@@ -45,10 +47,20 @@ const char *copt_get(const char *key, struct stest_custom_opt *copt,
  *			non-mandatory. Custom options not found on the
  *			commandline will not have their entries in copt
  *			altered.
+ * @param user		(out-param) The username to connect as. Statically
+ *			allocated.
+ * @param mlocs		(out-param) an array of mds locators. Dynamically
+ *			allocated.
  * @param ncopt		number of custom options
  */
 extern void stest_init(int argc, char **argv, struct stest_custom_opt *copt,
-		       int ncopt);
+		       int ncopt, const char **user, struct of_mds_locator ***mlocs);
+
+/** Free mlocs array returned from stest_init
+ *
+ * @param mlocs		the mlocs array returned from stest_init
+ */
+void stest_mlocs_free(struct of_mds_locator **mlocs);
 
 /** Set the stest done status
  *

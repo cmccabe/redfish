@@ -10,16 +10,19 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 int main(int argc, char **argv)
 {
+	//struct of_client *cli;
 	struct of_mds_locator **mlocs;
 	const char *user, *error;
 	struct stest_custom_opt copt[] = {
 		{
-			.key = "error",
+			.key = "crash",
 			.val = NULL,
-			.help = "error=[0/1]\n    If 1, force an error\n",
+			.help = "error=[0/1]\n"
+				"If 1, crash without properly disconnecting\n",
 		},
 	};
 	const int ncopt = sizeof(copt)/sizeof(copt[0]);
@@ -29,8 +32,14 @@ int main(int argc, char **argv)
 
 	stest_set_status(10);
 	error = copt_get("error", copt, ncopt);
-	if (error && strcmp(error, "0"))
-		stest_add_error("something went wrong!\n");
+
+//	int onefish_connect(struct of_mds_locator **mlocs, const char *user,
+//				&cli);
+
+	if (error && strcmp(error, "0")) {
+		_exit(1);
+	}
+	//onefish_disconnect(cli);
 
 	return stest_finish();
 }
