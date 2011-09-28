@@ -11,6 +11,7 @@
 #include "rsem/rsem_cli.h"
 #include "util/error.h"
 #include "util/msleep.h"
+#include "util/platform/socket.h"
 #include "util/safe_io.h"
 
 #include <arpa/inet.h>
@@ -142,9 +143,9 @@ static int rsem_post_impl(struct rsem_client *rcli, const char *name)
 		glitch_log("rsem_post_impl: out of memory\n");
 		goto done;
 	}
-	zfd = socket(AF_INET, SOCK_CLOEXEC | SOCK_STREAM, 0);
+	zfd = do_socket(AF_INET, SOCK_STREAM, 0, WANT_O_CLOEXEC);
 	if (zfd < 0) {
-		ret = -errno;
+		ret = zfd;
 		glitch_log("rsem_post_impl: socket error: %d\n", ret);
 		goto done;
 	}
@@ -314,10 +315,9 @@ int rsem_wait(struct rsem_client *rcli, const char *name)
 		zsock = -1;
 		goto done;
 	}
-	zfd = socket(AF_INET, SOCK_CLOEXEC | SOCK_STREAM, 0);
+	zfd = do_socket(AF_INET, SOCK_STREAM, 0, WANT_O_CLOEXEC);
 	if (zfd < 0) {
-		ret = -errno;
-		glitch_log("rsem_wait: socket error: %d\n", ret);
+		glitch_log("rsem_wait: socket error: %d\n", zfd);
 		ret = EIO;
 		goto done;
 	}

@@ -12,6 +12,7 @@
 #include "util/macro.h"
 #include "util/error.h"
 #include "util/platform/pipe2.h"
+#include "util/platform/socket.h"
 #include "util/safe_io.h"
 #include "util/string.h"
 
@@ -191,9 +192,9 @@ static int wake_waiter(struct rsem *rl, struct rsem_waiter *w)
 		ret = -ENOMEM;
 		goto done;
 	}
-	zfd = socket(AF_INET, SOCK_STREAM, 0);
+	zfd = do_socket(AF_INET, SOCK_STREAM, 0, WANT_O_CLOEXEC);
 	if (zfd < 0) {
-		ret = -errno;
+		ret = zfd;
 		glitch_log("wake_waiter: socket error: %d\n", ret);
 		goto done;
 	}

@@ -9,6 +9,7 @@
 #include "core/glitch_log.h"
 #include "rsem/rsem.h"
 #include "util/error.h"
+#include "util/platform/socket.h"
 #include "util/safe_io.h"
 
 #define JORM_CUR_FILE "rsem/rsem.jorm"
@@ -73,9 +74,9 @@ int do_bind_and_listen(int port, char *err, size_t err_len)
 {
 	int ret, zfd;
 	struct sockaddr_in address;
-	zfd = socket(AF_INET, SOCK_CLOEXEC | SOCK_STREAM, 0);
+	zfd = do_socket(AF_INET, SOCK_STREAM, 0, WANT_O_CLOEXEC);
 	if (zfd < 0) {
-		ret = errno;
+		ret = zfd;
 		snprintf(err, err_len,
 			 "failed to create socket: error %d", ret);
 		goto error;

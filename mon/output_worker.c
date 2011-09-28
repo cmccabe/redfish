@@ -13,6 +13,7 @@
 #include "util/error.h"
 #include "util/macro.h"
 #include "util/platform/pipe2.h"
+#include "util/platform/socket.h"
 #include "util/run_cmd.h"
 #include "util/safe_io.h"
 #include "util/string.h"
@@ -56,11 +57,10 @@ static void do_bind_and_listen(struct output_worker_data *odata,
 {
 	int ret;
 	struct sockaddr_un address;
-	odata->sock = socket(PF_UNIX, SOCK_CLOEXEC | SOCK_STREAM, 0);
+	odata->sock = do_socket(PF_UNIX, SOCK_STREAM, 0, WANT_O_CLOEXEC);
 	if (odata->sock < 0) {
-		ret = errno;
 		snprintf(err, err_len,
-			 "failed to create socket: error %d", ret);
+			 "failed to create socket: error %d", odata->sock);
 		goto error;
 	}
 	memset(&address, 0, sizeof(struct sockaddr_un));
