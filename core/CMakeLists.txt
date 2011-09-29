@@ -1,8 +1,9 @@
 add_library(core
     daemon.c
     fast_log.c
-    log_config.c
     glitch_log.c
+    log_config.c
+    pid_file.c
     signal.c
 )
 target_link_libraries(core jorm util pthread)
