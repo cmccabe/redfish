@@ -70,7 +70,7 @@ static void stest_usage(const char *argv0, struct stest_custom_opt *copt,
 "-h",
 "    Show this help message",
 "-m <hostname>:<port>",
-"    Add metadata server location.
+"    Add metadata server location.",
 "-u <username>",
 "    Set the OneFish username to connect as.",
 NULL
@@ -109,7 +109,7 @@ static void stest_parse_argv(int argc, char **argv,
 			break;
 		case 'm': {
 			char err[512] = { 0 };
-			mlocs_append(mlocs, optarg, err, sizeof(err));
+			onefish_mlocs_append(mlocs, optarg, err, sizeof(err));
 			if (err[0]) {
 				fprintf(stderr, "%s", err);
 				exit(EXIT_FAILURE);
@@ -156,7 +156,7 @@ static void stest_parse_argv(int argc, char **argv,
 		const char *default_mloc =
 			"localhost:" TO_STR2(ONEFISH_DEFAULT_MDS_PORT);
 		char err[512] = { 0 };
-		mlocs_append(mlocs, default_mloc, err, sizeof(err));
+		onefish_mlocs_append(mlocs, default_mloc, err, sizeof(err));
 		if (err[0]) {
 			fprintf(stderr, "%s", err);
 			exit(EXIT_FAILURE);

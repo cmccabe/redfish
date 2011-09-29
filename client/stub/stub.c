@@ -145,9 +145,15 @@ int onefish_connect(POSSIBLY_UNUSED(struct of_mds_locator **mlocs),
 	zcli->base = strdup(get_stub_base_dir());
 	if (!zcli->base)
 		goto oom_error;
+	if (access(zcli->base, R_OK | W_OK | X_OK)) {
+		onefish_free_ofclient(zcli);
+		return -ENOTDIR;
+	}
 	ret = check_xattr_support(zcli->base);
-	if (ret)
-		goto oom_error;
+	if (ret) {
+		onefish_free_ofclient(zcli);
+		return ret;
+	}
 	*cli = zcli;
 	return 0;
 
@@ -634,21 +640,21 @@ void onefish_disconnect(struct of_client *cli)
 	onefish_free_ofclient(cli);
 }
 
-int onefish_read(struct of_file *ofe, uint8_t *data, int len)
+int onefish_read(struct of_file *ofe, void *data, int len)
 {
 	if (ofe->ty != FISH_OPEN_TY_RD)
 		return -ENOTSUP;
 	return safe_read(ofe->fd, data, len);
 }
 
-int onefish_pread(struct of_file *ofe, uint8_t *data, int len, int64_t off)
+int onefish_pread(struct of_file *ofe, void *data, int len, int64_t off)
 {
 	if (ofe->ty != FISH_OPEN_TY_RD)
 		return -ENOTSUP;
 	return safe_pread(ofe->fd, data, len, off);
 }
 
-int onefish_write(struct of_file *ofe, const uint8_t *data, int len)
+int onefish_write(struct of_file *ofe, const void *data, int len)
 {
 	if (ofe->ty != FISH_OPEN_TY_WR)
 		return -ENOTSUP;

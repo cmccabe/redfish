@@ -9,7 +9,9 @@
 #ifndef ONEFISH_CLIENT_FISHC_DOT_H
 #define ONEFISH_CLIENT_FISHC_DOT_H
 
-#include <stdint.h>
+#include <stdint.h> /* for int64_t */
+
+#include <unistd.h> /* for size_t */
 
 #define ONEFISH_INVAL_MODE 01000
 
@@ -221,7 +223,7 @@ void onefish_disconnect(struct of_client *cli);
  * @return		the number of bytes read on success; a negative error
  *			code on failure.
  */
-int onefish_read(struct of_file *ofe, uint8_t *data, int len);
+int onefish_read(struct of_file *ofe, void *data, int len);
 
 /** Reads data from a onefish file
  *
@@ -233,7 +235,7 @@ int onefish_read(struct of_file *ofe, uint8_t *data, int len);
  * @return		the number of bytes read on success; a negative error
  *			code on failure.
  */
-int onefish_pread(struct of_file *ofe, uint8_t *data, int len, int64_t off);
+int onefish_pread(struct of_file *ofe, void *data, int len, int64_t off);
 
 /** Writes data to a onefish file
  *
@@ -243,7 +245,7 @@ int onefish_pread(struct of_file *ofe, uint8_t *data, int len, int64_t off);
  *
  * @return		0 on success; error code otherwise
  */
-int onefish_write(struct of_file *ofe, const uint8_t *data, int len);
+int onefish_write(struct of_file *ofe, const void *data, int len);
 
 /** Set the current position in a file
  * This works only for files opened in read-only mode.

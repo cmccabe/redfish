@@ -84,4 +84,43 @@ extern void stest_add_error(const char *fmt, ...) PRINTF_FORMAT(1, 2);
  */
 extern int stest_finish(void);
 
+#define ST_EXPECT_ZERO(expr) \
+	do { \
+		int __e__ = expr; \
+		if (__e__) { \
+			stest_add_error("failed on file %s, line %d: %s\n" \
+					"expected 0, got %d\n", \
+					__FILE__, __LINE__, #expr, __e__); \
+			return 1; \
+		} \
+	} while(0);
+
+#define ST_EXPECT_NONZERO(expr) \
+	do { \
+		if (!expr) { \
+			stest_add_error("failed on file %s, line %d: %s\n", \
+					"expected nonzero, got 0\n", \
+					__FILE__, __LINE__, #expr); \
+			return 1; \
+		} \
+	} while(0);
+
+#define ST_EXPECT_EQUAL(expr1,  expr2) \
+	do { \
+		if ((expr1) != (expr2)) { \
+			stest_add_error("failed on file %s, line %d\n", \
+					__FILE__, __LINE__); \
+			return 1; \
+		} \
+	} while(0);
+
+#define ST_EXPECT_NOT_EQUAL(expr1, expr2) \
+	do { \
+		if ((expr1) == (expr2)) { \
+			stest_add_error("failed on file %s, line %d\n", \
+					__FILE__, __LINE__); \
+			return 1; \
+		} \
+	} while(0);
+
 #endif

@@ -57,7 +57,7 @@ int check_xattr_support(const char *base)
 		return -errno;
 	RETRY_ON_EINTR(ret, close(fd));
 	ret = check_xattr_support_impl(fname);
-	//unlink(fname);
+	unlink(fname);
 	return ret;
 }
 

@@ -7,6 +7,7 @@
  */
 
 #include "client/fishc.h"
+#include "util/str_to_int.h"
 
 #include <stdio.h>
 #include <stdlib.h>

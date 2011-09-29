@@ -313,7 +313,7 @@ void onefish_disconnect(struct of_client *cli)
 	hdfsDisconnect(cli->fs);
 }
 
-int onefish_read(struct of_file *ofe, uint8_t *data, int len)
+int onefish_read(struct of_file *ofe, void *data, int len)
 {
 	tSize res = hdfsRead(ofe->cli, ofe->file, data, len);
 	if (res < 0) {
@@ -322,7 +322,7 @@ int onefish_read(struct of_file *ofe, uint8_t *data, int len)
 	return (int)res;
 }
 
-int onefish_pread(struct of_file *ofe, uint8_t *data, int len, int64_t off)
+int onefish_pread(struct of_file *ofe, void *data, int len, int64_t off)
 {
 	tSize res = hdfsRead(ofe->cli, ofe->file, off, data, len);
 	if (res < 0) {
@@ -331,7 +331,7 @@ int onefish_pread(struct of_file *ofe, uint8_t *data, int len, int64_t off)
 	return (int)res;
 }
 
-int onefish_write(struct of_file *ofe, const uint8_t *data, int len)
+int onefish_write(struct of_file *ofe, const void *data, int len)
 {
 	tSize res = hdfsWrite(ofe->cli, ofe->file, data, len);
 	if (res < 0) {
