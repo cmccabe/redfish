@@ -2,6 +2,7 @@ cscope.files
 cscope.out
 *.swp
 *.swo
+*.pyc
 build/
 ideas/
 junk/
