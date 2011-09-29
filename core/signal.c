@@ -8,6 +8,7 @@
 
 #include "core/fast_log.h"
 #include "core/log_config.h"
+#include "core/pid_file.h"
 #include "core/signal.h"
 #include "util/error.h"
 #include "util/compiler.h"
@@ -29,8 +30,9 @@
 #include <unistd.h>
 
 static const int FATAL_SIGNALS[] = { SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT,
-	SIGXCPU, SIGXFSZ, SIGSYS, SIGINT };
-static const int NUM_FATAL_SIGNALS = (sizeof(FATAL_SIGNALS) / sizeof(FATAL_SIGNALS[0]));
+	SIGTERM, SIGXCPU, SIGXFSZ, SIGSYS, SIGINT };
+static const int NUM_FATAL_SIGNALS =
+	( sizeof(FATAL_SIGNALS) / sizeof(FATAL_SIGNALS[0]) );
 
 static stack_t g_alt_stack;
 
@@ -89,6 +91,8 @@ static void handle_fatal_signal(int sig,
 		regurgitate_fd((char*)bentries, sizeof(bentries),
 				 g_crash_log_fd, -1, g_use_syslog);
 	}
+	/* If the pid file has not been set up, this will do nothing. */
+	delete_pid_file();
 	/* If fast_log has not been initialized, this will do nothing. */
 	fast_log_dump_all(g_fast_log_scratch, g_fast_log_fd);
 	/* die */
