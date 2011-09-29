@@ -44,3 +44,6 @@ add_test(xattrs_unit ${CMAKE_CURRENT_BINARY_DIR}/xattrs_unit xattrs_unit)
 #IF(${ONEFISH_CLIENT_LIB} STREQUAL fishc_real)
 #    set_target_properties(fishc_real PROPERTIES OUTPUT_NAME fishc)
 #ENDIF(${ONEFISH_CLIENT_LIB} STREQUAL fishc_real)
+
+INSTALL(FILES fishc.h DESTINATION include)
+INSTALL(TARGETS ${ONEFISH_CLIENT_LIB} LIBRARY DESTINATION lib)
