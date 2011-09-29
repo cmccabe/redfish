@@ -85,9 +85,12 @@ void harmonize_log_config(struct log_config *lc,
 	}
 	if (want_mkdir) {
 		if (lc->base_dir) {
-			do_mkdir(lc->base_dir, 0755, err, sizeof(err));
-			if (err[0])
+			int ret = do_mkdir_p(lc->base_dir, 0755);
+			if (ret) {
+				snprintf(err, err_len, "do_mkdir(%s) "
+					 "returned %d\n", lc->base_dir, ret);
 				return;
+			}
 		}
 	}
 }
