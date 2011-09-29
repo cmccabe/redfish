@@ -60,6 +60,16 @@ struct of_path_status
 int onefish_connect(struct of_mds_locator **mlocs, const char *user,
 			struct of_client **cli);
 
+/** Apend an entry to a dynamically allocated list of mlocs
+ *
+ * @param mlocs		The list of mlocs
+ * @param s		The entry to append, a C string in host:port format
+ * @param err		(out param) error buffer
+ * @param err_len	length of err buffer
+ */
+extern void onefish_mlocs_append(struct of_mds_locator ***mlocs, const char *s,
+				char *err, size_t err_len);
+
 /** Create a file in OneFish
  *
  * @param cli		The OneFish client
