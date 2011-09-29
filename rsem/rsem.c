@@ -7,6 +7,7 @@
  */
 
 #include "core/glitch_log.h"
+#include "core/log_config.h"
 #include "rsem/rsem.h"
 #include "util/error.h"
 #include "util/platform/socket.h"

@@ -16,3 +16,11 @@ target_link_libraries(rsem_srv rsem)
 add_executable(rsem_unit rsem_unit.c)
 target_link_libraries(rsem_unit rsem_srv rsem_cli utest)
 add_test(rsem_unit ${CMAKE_CURRENT_BINARY_DIR}/rsem_unit rsem_unit)
+
+add_executable(fishrsemd
+    fishrsemd.c
+)
+target_link_libraries(fishrsemd
+    rsem_srv
+)
+INSTALL(TARGETS fishrsemd DESTINATION bin)
