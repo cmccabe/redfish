@@ -9,6 +9,7 @@
 #include "core/daemon.h"
 #include "core/glitch_log.h"
 #include "core/log_config.h"
+#include "core/pid_file.h"
 #include "core/signal.h"
 #include "jorm/json.h"
 #include "util/compiler.h"
@@ -90,7 +91,7 @@ static struct daemon* parse_osd_config(const char *file,
 static int main_loop(void)
 {
 	glitch_log("starting osd\n");
-	sleep(10);
+	sleep(100);
 	return 0;
 }
 
@@ -127,12 +128,18 @@ int main(int argc, char **argv)
 			ret = errno;
 			glitch_log("daemon: error: %d\n", ret);
 			ret = EXIT_FAILURE;
-			goto done_signal_reset_dispositions;
+			goto done_signal_shutdown;
 		}
+	}
+	create_pid_file(d->lc, err, sizeof(err));
+	if (err[0]) {
+		glitch_log("create_pid_file error: %s\n", err);
+		ret = EXIT_FAILURE;
+		goto done_signal_shutdown;
 	}
 	ret = main_loop();
 
-done_signal_reset_dispositions:
+done_signal_shutdown:
 	signal_shutdown();
 done_close_glitchlog:
 	close_glitch_log();
