@@ -11,7 +11,8 @@
 #define ONEFISH_UTIL_PLATFORM_SOCKET_DOT_H
 
 enum {
-	WANT_O_CLOEXEC = 0x1
+	WANT_O_CLOEXEC = 0x1,
+	WANT_TCP_NODELAY = 0x2,
 };
 
 /** Similar to the traditional POSIX socket(2) call, but hides some

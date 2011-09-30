@@ -33,5 +33,10 @@ int do_socket(int domain, int type, int proto, int flags)
 			   &optval, sizeof(optval));
 	}
 #endif
+	if (flags & WANT_TCP_NODELAY) {
+		int optval = 1;
+		setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
+			   &optval, sizeof(optval));
+	}
 	return fd;
 }
