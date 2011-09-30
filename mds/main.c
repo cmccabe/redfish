@@ -99,14 +99,14 @@ int main(int argc, char **argv)
 {
 	char err[512] = { 0 };
 	int ret, daemonize = 1;
-	const char *mds_config_file = NULL;
+	const char *config_file = NULL;
 	struct daemon *d;
 
-	parse_argv(argc, argv, &daemonize, &mds_config_file);
-	d = parse_mds_config(mds_config_file, err, sizeof(err));
+	parse_argv(argc, argv, &daemonize, &config_file);
+	d = parse_mds_config(config_file, err, sizeof(err));
 	if (err[0]) {
-		glitch_log("error parsing monitor config file '%s': %s\n",
-			mds_config_file, err);
+		glitch_log("error parsing config file '%s': %s\n",
+			config_file, err);
 		ret = EXIT_FAILURE;
 		goto done;
 	}
