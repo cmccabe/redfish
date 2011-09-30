@@ -45,6 +45,15 @@ ELSE(JSON_C_INCLUDE_DIR AND JSON_C_LIBRARY)
     MESSAGE(FATAL_ERROR "Failed to find libjson-c. Try installing libjson-c with apt-get or yum, or install it manually from http://oss.metaparadigm.com/json-c/")
 ENDIF(JSON_C_INCLUDE_DIR AND JSON_C_LIBRARY)
 
+# Find libev
+find_path(LIBEV_INCLUDE_DIR ev.h HINTS "/usr/include/libev")
+find_library(LIBEV_LIBRARIES NAMES ev)
+IF(LIBEV_INCLUDE_DIR AND LIBEV_LIBRARIES)
+ELSE(LIBEV_INCLUDE_DIR AND LIBEV_LIBRARIES)
+    MESSAGE(FATAL_ERROR "Failed to find libev. Try installing libev with apt-get or yum, or install it manually from http://software.schmorp.de/pkg/libev.html")
+ENDIF(LIBEV_INCLUDE_DIR AND LIBEV_LIBRARIES)
+
+# Find curses
 find_package(Curses REQUIRED)
 
 # Set up include paths
@@ -52,6 +61,7 @@ include_directories(
     ${CURSES_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${JSON_C_INCLUDE_DIR}
+    ${LIBEV_INCLUDE_DIR}
 )
 
 add_subdirectory(client)

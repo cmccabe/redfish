@@ -11,8 +11,10 @@
 
 #include <stdint.h>
 
+#define MAX_CHUNK_SZ 134217728
+
 int onechunk_set_prefix(const char *prefix);
-int onechunk_write(uint64_t bid, const char *data, int count, int offset);
-int onechunk_read(uint64_t bid, char *data, int count, int offset);
+int onechunk_write(uint64_t bid, const void *data, int count, int offset);
+int onechunk_read(uint64_t bid, void *data, int count, int offset);
 
 #endif

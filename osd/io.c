@@ -38,7 +38,7 @@ int onechunk_set_prefix(const char *prefix)
 	return 0;
 }
 
-int onechunk_write(uint64_t bid, const char *data, int count, int offset)
+int onechunk_write(uint64_t bid, const void *data, int count, int offset)
 {
 	int ret, fd, tmp;
 	char path[PATH_MAX];
@@ -65,7 +65,7 @@ int onechunk_write(uint64_t bid, const char *data, int count, int offset)
 	return ret;
 }
 
-int onechunk_read(uint64_t bid, char *data, int count, int offset)
+int onechunk_read(uint64_t bid, void *data, int count, int offset)
 {
 	int ret, fd, tmp;
 	char path[PATH_MAX];

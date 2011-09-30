@@ -5,8 +5,10 @@ target_link_libraries(io util)
 
 add_executable(fishosd
     main.c
+    net.c
 )
 target_link_libraries(fishosd
+    ${LIBEV_LIBRARIES}
     core
     io
     jorm
