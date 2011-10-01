@@ -49,11 +49,11 @@ BUILD_BUG_ON(sizeof(struct foo_bar_baz_entry) !=
 
 static int dump_foo_bar_baz(struct fast_log_entry *f, int fd)
 {
+	int ret;
 	struct foo_bar_baz_entry *fe = (struct foo_bar_baz_entry*)f;
-	char buf[512];
-	snprintf(buf, sizeof(buf), "foo=0x%"PRIx64 ", bar=0x%"PRIx64
+	ret = dprintf(fd, "foo=0x%"PRIx64 ", bar=0x%"PRIx64
 		 ", bar=0x%" PRIx64 "\n", fe->foo, fe->bar, fe->baz);
-	return safe_write(fd, buf, strlen(buf));
+	return ret < 0;
 }
 
 /***** gar_entry *******/
