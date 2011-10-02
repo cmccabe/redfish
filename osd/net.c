@@ -26,8 +26,6 @@
 #include <stdio.h>
 #include <sys/socket.h>
 
-#define PORT_NO 3033
-#define BUFFER_SIZE 1024
 #define NUM_OSD_PROC_THREADS 16
 
 #define MAX_OSD_NET_QUEUE_LEN 1024
@@ -200,20 +198,28 @@ static void accept_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		return;
 	}
 	client_len = sizeof(client_addr);
+	pthread_mutex_lock(&g_osd_net_queue_lock);
+	if (g_osd_net_queue_len == -1) {
+		/* shutting down */
+		pthread_mutex_unlock(&g_osd_net_queue_lock);
+		return;
+	}
 	fd = accept(w->fd, (struct sockaddr *)&client_addr, &client_len);
 	if (fd < 0) {
+		pthread_mutex_unlock(&g_osd_net_queue_lock);
 		ret = -errno;
 		glitch_log("accept_cb: error %d\n", ret);
 		return;
 	}
-	pthread_mutex_lock(&g_osd_net_queue_lock);
-	if (g_osd_net_queue_len == -1) {
+	if (g_osd_net_queue_len == MAX_OSD_NET_QUEUE_LEN) {
+		/* The queue is too long... */
+		pthread_mutex_unlock(&g_osd_net_queue_lock);
 		RETRY_ON_EINTR(ret, close(w->fd));
+		return;
 	}
-	else {
-		g_osd_net_queue[g_osd_net_queue_len] = w->fd;
-		pthread_cond_signal(&g_osd_net_queue_cond);
-	}
+	g_osd_net_queue[g_osd_net_queue_len] = w->fd;
+	g_osd_net_queue_len++;
+	pthread_cond_signal(&g_osd_net_queue_cond);
 	pthread_mutex_unlock(&g_osd_net_queue_lock);
 }
 
