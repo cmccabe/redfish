@@ -8,6 +8,9 @@
 
 #include "core/daemon.h"
 #include "core/glitch_log.h"
+#include "msg/client.h"
+#include "msg/generic.h"
+#include "msg/osd.h"
 #include "osd/io.h"
 #include "osd/net.h"
 #include "util/error.h"
@@ -42,69 +45,68 @@ static int g_osd_net_queue_len = -1;
 static void handle_request_chunk(int fd)
 {
 	int ret, res, olen;
-	uint32_t ty;
-	struct mmm_request_chunk req;
-	struct mmm_request_chunk_reply *out;
-	struct mmm_request_chunk_nack nack;
+	uint32_t ty, req_start, req_len;
+	uint64_t req_chunk_id;
+	struct mmm_fetch_chunk_req req;
+	struct mmm_fetch_chunk_resp *out;
+	struct mmm_nack nack;
 
 	res = safe_read(fd, &req, sizeof(req));
 	if (res != sizeof(req)) {
 		glitch_log("safe_read of mmm_request_chunk returned %d\n", res);
 		return;
 	}
-	req.chunk_id = be64toh(req.chunk_id);
-	req.start = be32toh(req.start);
-	req.len = be32toh(req.len);
-	if (req.len == 0)
-		req.len = MAX_CHUNK_SZ;
+	req_chunk_id = be64toh(req.chunk_id);
+	req_start = be32toh(req.start);
+	req_len = be32toh(req.len);
+	if (req_len == 0)
+		req_len = MAX_CHUNK_SZ;
 
 	/* FIXME: should be using sendfile here, or at least direct copy to
 	 * socket */ 
-	out = malloc(sizeof(*out) + req.len);
+	out = malloc(sizeof(*out) + req_len);
 	if (!out) {
 		ret = -ENOMEM;
 		goto send_error;
 	}
-	olen = onechunk_read(req.chunk_id, &out->data, req.len, req.start);
+	olen = onechunk_read(req_chunk_id, &out->data, req_len, req_start);
 	if (olen < 0) {
 		ret = olen;
 		free(out);
 		goto send_error;
 	}
-	out->chunk_id = htobe64(req.chunk_id);
+	out->chunk_id = req.chunk_id;
 	out->len = htobe32(olen);
 
-	ty = htobe32(MMM_REQUEST_CHUNK_REPLY);
+	ty = htobe32(MMM_FETCH_CHUNK_RESP);
 	ret = safe_write(fd, &ty, sizeof(ty));
 	if (ret) {
-		glitch_log("safe_write of MMM_REQUEST_CHUNK_REPLY "
+		glitch_log("safe_write of MMM_FETCH_CHUNK_RESP "
 			   "returned %d\n", ret);
 		return;
 	}
 	ret = safe_write(fd, out, sizeof(*out) + olen);
 	free(out);
 	if (ret) {
-		glitch_log("safe_write of mmm_request_chunk_reply "
+		glitch_log("safe_write of mmm_fetch_chunk_resp "
 				"returned %d\n", ret);
 		return;
 	}
 	return;
 
 send_error:
-	ty = htobe32(MMM_REQUEST_CHUNK_NACK);
+	ty = htobe32(MMM_NACK);
 	ret = safe_write(fd, &ty, sizeof(ty));
 	if (ret) {
-		glitch_log("safe_write of MMM_REQUEST_CHUNK_NACK returned "
+		glitch_log("safe_write of MMM_NACK returned "
 			   "%d\n", ret);
 		return;
 	}
 	memset(&nack, 0, sizeof(nack)); 
-	nack.chunk_id = htobe64(req.chunk_id);
-	nack.err = htobe32(ret);
+	nack.error = htobe32(ret);
 	ret = safe_write(fd, &nack, sizeof(nack));
 	if (ret) {
-		glitch_log("safe_write of mmm_request_chunk_nack "
-			   "returned %d\n", ret);
+		glitch_log("safe_write of mmm_nack returned %d\n", ret);
 		return;
 	}
 }
@@ -112,47 +114,52 @@ send_error:
 static void handle_put_chunk(int fd)
 {
 	int ret;
-	uint32_t ty;
-	struct mmm_put_chunk m;
-	struct mmm_put_chunk_reply mrep;
+	uint64_t req_chunk_id;
+	uint32_t ty, req_len;
+	struct mmm_put_chunk_req req;
+	struct mmm_nack nack;
 	char *min;
 
-	ret = safe_read(fd, &m, sizeof(m));
-	if (ret != sizeof(m)) {
-		glitch_log("safe_read of mmm_put_chunk returned %d\n", ret);
+	ret = safe_read(fd, &req, sizeof(req));
+	if (ret != sizeof(req)) {
+		glitch_log("safe_read of mmm_put_chunk_req returned %d\n", ret);
 		return;
 	}
-	m.chunk_id = be64toh(m.chunk_id);
-	m.len = be32toh(m.len);
+	req_chunk_id = be64toh(req.chunk_id);
+	req_len = be32toh(req.len);
 
 	/* FIXME: should be using copy_to_fd here, or something */
-	min = malloc(m.len);
+	min = malloc(req_len);
 	if (!min) {
 		ret = -ENOMEM;
-		goto do_send;
+		goto send_error;
 	}
-	ret = onechunk_write(m.chunk_id, min, m.len, 0);
+	ret = onechunk_write(req_chunk_id, min, req_len, 0);
+	free(min);
 	if (ret < 0) {
-		free(min);
-		goto do_send;
+		goto send_error;
 	}
-	ret = 0;
-
-do_send:
-	ty = htobe32(MMM_PUT_CHUNK_REPLY);
+	ty = htobe32(MMM_ACK);
 	ret = safe_write(fd, &ty, sizeof(ty));
 	if (ret) {
-		glitch_log("safe_write of MMM_GET_CHUNK_ACK returned %d\n",
-			   ret);
+		glitch_log("safe_write of MMM_ACK returned %d\n", ret);
 		return;
 	}
-	memset(&mrep, 0, sizeof(mrep)); 
-	mrep.chunk_id = htobe64(m.chunk_id);
-	mrep.err = htobe32(ret);
-	ret = safe_write(fd, &mrep, sizeof(mrep));
+	return;
+
+send_error:
+	ty = htobe32(MMM_NACK);
+	ret = safe_write(fd, &ty, sizeof(ty));
 	if (ret) {
-		glitch_log("safe_write of mmm_get_chunk_ack returned %d\n",
-			   ret);
+		glitch_log("safe_write of MMM_NACK returned "
+			   "%d\n", ret);
+		return;
+	}
+	memset(&nack, 0, sizeof(nack)); 
+	nack.error = htobe32(ret);
+	ret = safe_write(fd, &nack, sizeof(nack));
+	if (ret) {
+		glitch_log("safe_write of mmm_nack returned %d\n", ret);
 		return;
 	}
 }
@@ -169,10 +176,10 @@ static void osd_process_conn(int fd)
 	}
 	ty = ntohl(ty);
 	switch (ty) {
-	case MMM_REQUEST_CHUNK:
+	case MMM_FETCH_CHUNK_REQ:
 		handle_request_chunk(fd);
 		return;
-	case MMM_PUT_CHUNK:
+	case MMM_PUT_CHUNK_REQ:
 		handle_put_chunk(fd);
 		return;
 	default:
