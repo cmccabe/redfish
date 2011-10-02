@@ -29,6 +29,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <utime.h>
 
 enum fish_open_ty {
 	FISH_OPEN_TY_RD,
@@ -579,7 +580,7 @@ static int onefish_openwr_internal(struct of_client *cli, const char *path)
 	return fd;
 }
 
-int onefish_set_permission(struct of_client *cli, const char *path, int mode)
+int onefish_chmod(struct of_client *cli, const char *path, int mode)
 {
 	int fd, res, ret;
 
@@ -632,8 +633,23 @@ done:
 	return ret;
 }
 
-//int onefish_set_times(struct of_client *cli, const char *path,
-//		      int64_t mtime, int64_t atime);
+int onefish_utimes(struct of_client *cli, const char *path,
+		      int64_t mtime, int64_t atime)
+{
+	int ret;
+	char epath[PATH_MAX];
+	struct utimbuf tbuf;
+	memset(&tbuf, 0, sizeof(tbuf));
+	tbuf.actime = (time_t)atime;
+	tbuf.modtime = (time_t)mtime;
+	ret = get_stub_path(cli, path, epath, PATH_MAX);
+	if (ret)
+		return ret;
+	pthread_mutex_lock(&cli->lock);
+	ret = utime(epath, &tbuf);
+	pthread_mutex_unlock(&cli->lock);
+	return ret;
+}
 
 void onefish_disconnect(struct of_client *cli)
 {

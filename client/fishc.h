@@ -182,7 +182,7 @@ int onefish_list_directory(struct of_client *cli, const char *dir,
  *
  * @return		0 on success; error code otherwise
  */
-int onefish_set_permission(struct of_client *cli, const char *path, int mode);
+int onefish_chmod(struct of_client *cli, const char *path, int mode);
 
 /** Changes the owner and group of a file or directory.
  *
@@ -205,8 +205,8 @@ int onefish_chown(struct of_client *cli, const char *path,
  *
  * @return		0 on success; error code otherwise
  */
-int onefish_set_times(struct of_client *cli, const char *path,
-		      int64_t mtime, int64_t atime);
+int onefish_utimes(struct of_client *cli, const char *path,
+		int64_t mtime, int64_t atime);
 
 /** Destroy a OneFish client instance and free the memory associated with it.
  *
