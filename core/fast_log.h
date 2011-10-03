@@ -123,7 +123,7 @@ extern int fast_log_dump(const struct fast_log_buf* fb,
 /** Dump all fast_logs
  *
  * @param scratch	a fast_log allocated with fast_log_init. Its
- *			contents will be overwritten with the contents of 
+ *			contents will be overwritten with the contents of
  *			fast_logs during the dumping process.
  *
  * @return		0 on success; error code otherwise

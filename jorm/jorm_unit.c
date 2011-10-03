@@ -317,7 +317,7 @@ static int test_jorm_array_manipulations(void)
 {
 	struct bob **a1 = NULL, **a2 = NULL;
 	struct bob *b, *b2, *b3;
-		
+
 	b = JORM_ARRAY_APPEND_bob(&a1);
 	EXPECT_NOT_EQUAL(b, NULL);
 	EXPECT_EQUAL(b->a, JORM_INVAL_INT);

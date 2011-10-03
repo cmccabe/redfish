@@ -65,7 +65,7 @@ struct redfish_block_loc
  * We will begin by querying the supplied list of hosts, asking each one for a
  * current shard map to get us started.
  *
- * @param mlocs		A NULL-terminated list of metadata server locations to 
+ * @param mlocs		A NULL-terminated list of metadata server locations to
  *			connect to
  * @param user		The user to connect as
  * @param cli		(out-parameter): the new redfish_client instance.

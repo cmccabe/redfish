@@ -81,18 +81,18 @@ static int test_copy_fd_to_fd(const char *tempdir, int *next_id,
 	*next_id = *next_id + 1;
 	ifp = fopen(src_file, "w");
 	if (!ifp) {
-		ret = errno; 
+		ret = errno;
 		return ret;
 	}
 	EXPECT_EQUAL(fwrite(buf, 1, buf_len, ifp), buf_len);
 	ifp = freopen(src_file, "r", ifp);
 	if (!ifp) {
-		ret = errno; 
+		ret = errno;
 		return ret;
 	}
 	ofp = fopen(dst_file, "w");
 	if (!ofp) {
-		ret = errno; 
+		ret = errno;
 		fclose(ifp);
 		return ret;
 	}

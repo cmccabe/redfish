@@ -44,7 +44,7 @@ void Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishConnect(
 	int ret;
 	const char *chost = NULL, *cuser = NULL;
 	struct redfish_client *cli  = NULL;
-	
+
 	cli = get_ptr(jenv, jobj, "m_cli");
 	if (cli != NULL) {
 		/* already initialized */

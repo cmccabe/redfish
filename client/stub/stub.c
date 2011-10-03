@@ -161,7 +161,7 @@ int redfish_connect(POSSIBLY_UNUSED(struct redfish_mds_locator **mlocs),
 
 oom_error:
 	redfish_free_ofclient(zcli);
-	return -ENOMEM; 
+	return -ENOMEM;
 }
 
 static int cli_is_group_member(const struct redfish_client *cli, const char *group)
@@ -412,7 +412,7 @@ int redfish_get_block_locs(POSSIBLY_UNUSED(struct redfish_client *cli),
 {
 	int ret;
 	struct redfish_block_loc **zblc = NULL;
-	
+
 	zblc = calloc(1, 2 * sizeof(struct redfish_block_loc *));
 	if (!zblc) {
 		ret = -ENOMEM;

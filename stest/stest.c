@@ -96,7 +96,7 @@ static void stest_parse_argv(int argc, char **argv,
 	*user = NULL;
 	*mlocs = calloc(1, sizeof(struct redfish_mds_locator*));;
 	if (!*mlocs) {
-		fprintf(stderr, "out of memory.\n"); 
+		fprintf(stderr, "out of memory.\n");
 		exit(EXIT_FAILURE);
 	}
 	while ((c = getopt(argc, argv, "fhm:u:")) != -1) {
@@ -305,5 +305,5 @@ int stest_finish(void)
 	g_percent_fd = -1;
 	fclose(g_err_fp);
 	g_err_fp = NULL;
-	return (g_saw_err) ? EXIT_FAILURE : EXIT_SUCCESS; 
+	return (g_saw_err) ? EXIT_FAILURE : EXIT_SUCCESS;
 }

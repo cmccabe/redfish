@@ -101,7 +101,7 @@ int main(void)
 	};
 	struct rsem_conf *rsem_conf_arr[] =
 		{ &rsem_conf[0], &rsem_conf[1], &rsem_conf[2], NULL };
-	
+
 	signal(SIGPIPE, SIG_IGN);
 	memset(&cli_conf, 0, sizeof(cli_conf));
 	cli_conf.srv_port = RSEM_UNIT_SRV_PORT;

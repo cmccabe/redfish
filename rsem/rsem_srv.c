@@ -105,7 +105,7 @@ static int handle_take_rsem(struct rsem_server *rss, int fd,
 	int ret;
 	struct rsem *rl;
 	struct rsem_waiter *w;
-	
+
 	rl = get_rsem(rss->rls, rss->nrls, lreq->name);
 	if (!rl) {
 		return write_u32("handle_take_rsem", fd,

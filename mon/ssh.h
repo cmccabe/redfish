@@ -44,7 +44,7 @@ int ssh_exec(const char *host, char *out, size_t out_len, const char **cmd);
  * machine.
  *
  * Remember:
- * - Parameters will be shell-expanded 
+ * - Parameters will be shell-expanded
  * - Just because this succeeds, doesn't mean your command will succeed! Check
  *   do_waitpid.
  * - This blocks until ssh connects.

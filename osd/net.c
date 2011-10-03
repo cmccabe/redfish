@@ -61,7 +61,7 @@ static void handle_request_chunk(int fd)
 		req_len = MAX_CHUNK_SZ;
 
 	/* FIXME: should be using sendfile here, or at least direct copy to
-	 * socket */ 
+	 * socket */
 	out = malloc(sizeof(*out) + req_len);
 	if (!out) {
 		ret = -ENOMEM;
@@ -100,7 +100,7 @@ send_error:
 			   "%d\n", ret);
 		return;
 	}
-	memset(&nack, 0, sizeof(nack)); 
+	memset(&nack, 0, sizeof(nack));
 	nack.error = htobe32(ret);
 	ret = safe_write(fd, &nack, sizeof(nack));
 	if (ret) {
@@ -153,7 +153,7 @@ send_error:
 			   "%d\n", ret);
 		return;
 	}
-	memset(&nack, 0, sizeof(nack)); 
+	memset(&nack, 0, sizeof(nack));
 	nack.error = htobe32(ret);
 	ret = safe_write(fd, &nack, sizeof(nack));
 	if (ret) {
@@ -266,7 +266,7 @@ static void shutdown_osd_proc_threads(int nthreads)
 static int init_osd_proc_threads(void)
 {
 	int ret, nthreads;
-	
+
 	for (nthreads = 0; nthreads < NUM_OSD_PROC_THREADS; ++nthreads) {
 		memset(&g_osd_proc_threads, 0, sizeof(g_osd_proc_threads));
 		ret = pthread_create(&g_osd_proc_threads[nthreads], NULL,

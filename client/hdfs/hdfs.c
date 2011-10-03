@@ -194,7 +194,7 @@ int redfish_get_block_locs(struct redfish_client *cli, const char *path,
 		for (a = *str; *a; ++a) {
 			na++;
 		}
-		zblc[i] = calloc(sizeof(struct redfish_block_loc) + 
+		zblc[i] = calloc(sizeof(struct redfish_block_loc) +
 				(sizeof(struct(redfish_block_host)) * na));
 		// FIXME: the libhdfs API doesn't give us enough information to
 		// fill start and len out correctly.
@@ -257,7 +257,7 @@ int redfish_get_path_status(struct redfish_client *cli, const char *path,
 {
 	int ret;
 	hdfsFileInfo *hi
-		
+
 	hi = hdfsGetPathInfo(cli->fs, path);
 	if (!hi) {
 		ret = -ENOENT;
@@ -278,12 +278,12 @@ int redfish_list_directory(struct redfish_client *cli, const char *dir,
 
 	hi = hdfsListDirectory(cli->fs, dir, &nosa);
 	if (!hi) {
-		ret = -EIO; 
+		ret = -EIO;
 		goto error;
 	}
 	zosa = calloc(nosa, sizeof(struct offile_status));
 	if (!zosa) {
-		ret = -ENOMEM; 
+		ret = -ENOMEM;
 		goto error;
 	}
 	for (i = 0; i < nosa; ++i) {

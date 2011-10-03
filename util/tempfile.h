@@ -12,7 +12,7 @@
  *
  * @param tempdir	(out param) name buffer
  * @param name_max	length of tempdir buffer
- * @param mode		mode to use in mkdir 
+ * @param mode		mode to use in mkdir
  *
  * @return		0 on success; error code otherwise
  */

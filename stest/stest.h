@@ -40,7 +40,7 @@ const char *copt_get(const char *key, struct stest_custom_opt *copt,
  *
  * Custom options are given on the commandline as key=val.
  *
- * Will abort the program if a parse error is encountered. 
+ * Will abort the program if a parse error is encountered.
  *
  * @param argc		argc as passed to main
  * @param argv		argv as passed to main

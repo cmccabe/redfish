@@ -31,7 +31,7 @@ void create_pid_file(const struct log_config *lc, char *err, size_t err_len)
 	uint64_t pid;
 
 	if (lc->pid_file == NULL)
-		return; 
+		return;
 	if (g_pid_file[0]) {
 		snprintf(err, err_len, "create_pid_file was called twice!");
 		return;
