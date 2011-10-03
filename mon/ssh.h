@@ -1,13 +1,13 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright (C) 2011 Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#ifndef ONEFISH_MON_SSH_DOT_H
-#define ONEFISH_MON_SSH_DOT_H
+#ifndef REDFISH_MON_SSH_DOT_H
+#define REDFISH_MON_SSH_DOT_H
 
 #include <unistd.h> /* for size_t */
 
@@ -17,8 +17,8 @@
  * the network without using ssh.
  */
 
-#define ONEFISH_SSH_ERR 0x100
-#define ONEFISH_SSH_ARG_ERR 0x101
+#define REDFISH_SSH_ERR 0x100
+#define REDFISH_SSH_ARG_ERR 0x101
 
 /** Run an ssh command on a remote machine.
  *
@@ -35,7 +35,7 @@
  * @param out_len	The length of the out buffer.
  * @param cmd	        The command as a NULL-terminated array of strings
  *
- * Returns the error code of the process, or a special ONEFISH_SSH error code.
+ * Returns the error code of the process, or a special REDFISH_SSH error code.
  */
 int ssh_exec(const char *host, char *out, size_t out_len, const char **cmd);
 

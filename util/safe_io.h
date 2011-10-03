@@ -1,13 +1,13 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright (C) 2011 Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
  * * This is licensed under the Apache License, Version 2.0.
  */
 
-#ifndef ONEFISH_UTIL_SAFE_IO
-#define ONEFISH_UTIL_SAFE_IO
+#ifndef REDFISH_UTIL_SAFE_IO
+#define REDFISH_UTIL_SAFE_IO
 
 #include "util/compiler.h"
 

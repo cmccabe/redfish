@@ -1,17 +1,17 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright (C) 2011 Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#ifndef ONEFISH_STEST_STEST_DOT_H
-#define ONEFISH_STEST_STEST_DOT_H
+#ifndef REDFISH_STEST_STEST_DOT_H
+#define REDFISH_STEST_STEST_DOT_H
 
 #include "util/compiler.h"
 
-struct of_mds_locator;
+struct redfish_mds_locator;
 
 struct stest_custom_opt
 {
@@ -56,13 +56,13 @@ const char *copt_get(const char *key, struct stest_custom_opt *copt,
  * @param ncopt		number of custom options
  */
 extern void stest_init(int argc, char **argv, struct stest_custom_opt *copt,
-		       int ncopt, const char **user, struct of_mds_locator ***mlocs);
+		       int ncopt, const char **user, struct redfish_mds_locator ***mlocs);
 
 /** Free mlocs array returned from stest_init
  *
  * @param mlocs		the mlocs array returned from stest_init
  */
-void stest_mlocs_free(struct of_mds_locator **mlocs);
+void stest_mlocs_free(struct redfish_mds_locator **mlocs);
 
 /** Set the stest done status
  *

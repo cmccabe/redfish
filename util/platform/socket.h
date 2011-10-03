@@ -1,14 +1,14 @@
 
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright (C) 2011 Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#ifndef ONEFISH_UTIL_PLATFORM_SOCKET_DOT_H
-#define ONEFISH_UTIL_PLATFORM_SOCKET_DOT_H
+#ifndef REDFISH_UTIL_PLATFORM_SOCKET_DOT_H
+#define REDFISH_UTIL_PLATFORM_SOCKET_DOT_H
 
 enum {
 	WANT_O_CLOEXEC = 0x1,
@@ -21,7 +21,7 @@ enum {
  * @param domain	socket domain
  * @param type		socket type
  * @param proto		socket proto
- * @param flags		onefish socket flags
+ * @param flags		redfish socket flags
  *
  * @return		A socket on success; or a negative error code on error.
  */

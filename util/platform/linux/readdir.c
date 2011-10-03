@@ -1,5 +1,5 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright (C) 2011 Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
@@ -17,23 +17,23 @@
  * What a sane idea.
  */
 
-int  do_opendir(const char *name, struct onefish_dirp** dp)
+int  do_opendir(const char *name, struct redfish_dirp** dp)
 {
 	DIR *rdp = opendir(name);
 	if (!rdp)
 		return -errno;
-	*dp = (struct onefish_dirp*)rdp;
+	*dp = (struct redfish_dirp*)rdp;
 	return 0;
 }
 
-struct dirent *do_readdir(struct onefish_dirp *dp)
+struct dirent *do_readdir(struct redfish_dirp *dp)
 {
 	DIR *rdp = (DIR*)dp;
 
 	return readdir(rdp);
 }
 
-void do_closedir(struct onefish_dirp *dp)
+void do_closedir(struct redfish_dirp *dp)
 {
 	DIR *rdp = (DIR*)dp;
 	closedir(rdp);

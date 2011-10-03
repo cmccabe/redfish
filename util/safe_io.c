@@ -1,5 +1,5 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright 2011, New Dream Network
  *

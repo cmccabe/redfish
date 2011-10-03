@@ -1,4 +1,4 @@
-To build OneFish, you must have a C compiler and the CMake build system
+To build RedFish, you must have a C compiler and the CMake build system
 installed.
 
 CMake can be installed in most Linux distributions with 
@@ -6,7 +6,7 @@ CMake can be installed in most Linux distributions with
 
 See http://www.cmake.org for details about CMake.
 
-To build and install OneFish:
+To build and install RedFish:
 mkdir build
 cd build
 cmake ..

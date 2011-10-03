@@ -1,5 +1,5 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright 2011, Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
@@ -25,7 +25,7 @@ static int test_do_readdir_impl(const char *dir, const char **expected)
 {
 	const char **e;
 	char err[512] = { 0 };
-	struct onefish_dirp *dp;
+	struct redfish_dirp *dp;
 	int num_expected = 0, num_found = 0;
 
 	do_mkdir(dir, 0775, err, sizeof(err));

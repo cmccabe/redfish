@@ -1,5 +1,5 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright (C) 2011 Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
@@ -16,8 +16,8 @@
 int main(int argc, char **argv)
 {
 	int ret;
-	struct of_client *cli = NULL;
-	struct of_mds_locator **mlocs;
+	struct redfish_client *cli = NULL;
+	struct redfish_mds_locator **mlocs;
 	const char *user, *error;
 	struct stest_custom_opt copt[] = {
 		{
@@ -30,9 +30,9 @@ int main(int argc, char **argv)
 	const int ncopt = sizeof(copt)/sizeof(copt[0]);
 
 	stest_init(argc, argv, copt, ncopt, &user, &mlocs);
-	ret = onefish_connect(mlocs, user, &cli);
+	ret = redfish_connect(mlocs, user, &cli);
 	if (ret) {
-		stest_add_error("onefish_connect: failed to connect: "
+		stest_add_error("redfish_connect: failed to connect: "
 				"error %d\n", ret);
 	}
 	stest_mlocs_free(mlocs);
@@ -44,7 +44,7 @@ int main(int argc, char **argv)
 		_exit(1);
 	}
 	if (cli) {
-		onefish_disconnect(cli);
+		redfish_disconnect(cli);
 	}
 
 	return stest_finish();

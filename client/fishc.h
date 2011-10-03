@@ -1,38 +1,38 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright 2011, Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
  * * This is licensed under the Apache License, Version 2.0.
  */
 
-#ifndef ONEFISH_CLIENT_FISHC_DOT_H
-#define ONEFISH_CLIENT_FISHC_DOT_H
+#ifndef REDFISH_CLIENT_FISHC_DOT_H
+#define REDFISH_CLIENT_FISHC_DOT_H
 
 #include <stdint.h> /* for int64_t */
 
 #include <unistd.h> /* for size_t */
 
-#define ONEFISH_INVAL_MODE 01000
+#define REDFISH_INVAL_MODE 01000
 
-/** Represents a onefish client. Generally you will have one of these for each
+/** Represents a redfish client. Generally you will have one of these for each
  * process that is accessing the filesystem.
  * It can be shared among multiple threads.
  */
-struct of_client;
+struct redfish_client;
 
 /** Represents the location of a metadata server */
-struct of_mds_locator
+struct redfish_mds_locator
 {
 	char *host;
 	int port;
 };
 
-/** Represents an open onefish file. */
-struct of_file;
+/** Represents an open redfish file. */
+struct redfish_file;
 
-/** Represents the status of a OneFish file. */
-struct of_path_status
+/** Represents the status of a RedFish file. */
+struct redfish_stat
 {
 	char *path;
 	int64_t length;
@@ -46,21 +46,21 @@ struct of_path_status
 	char *group;
 };
 
-struct of_block_host
+struct redfish_block_host
 {
 	int port;
 	char *hostname;
 };
 
-struct of_block_loc
+struct redfish_block_loc
 {
 	int64_t start;
 	int64_t len;
 	int num_hosts;
-	struct of_block_host hosts[0];
+	struct redfish_block_host hosts[0];
 };
 
-/** Initialize a OneFish client instance.
+/** Initialize a RedFish client instance.
  *
  * We will begin by querying the supplied list of hosts, asking each one for a
  * current shard map to get us started.
@@ -68,13 +68,13 @@ struct of_block_loc
  * @param mlocs		A NULL-terminated list of metadata server locations to 
  *			connect to
  * @param user		The user to connect as
- * @param cli		(out-parameter): the new of_client instance.
+ * @param cli		(out-parameter): the new redfish_client instance.
  *
  * @return		0 on success; error code otherwise
- *			On success, *cli will contain a valid onefish client.
+ *			On success, *cli will contain a valid redfish client.
  */
-int onefish_connect(struct of_mds_locator **mlocs, const char *user,
-			struct of_client **cli);
+int redfish_connect(struct redfish_mds_locator **mlocs, const char *user,
+			struct redfish_client **cli);
 
 /** Apend an entry to a dynamically allocated list of mlocs
  *
@@ -83,12 +83,12 @@ int onefish_connect(struct of_mds_locator **mlocs, const char *user,
  * @param err		(out param) error buffer
  * @param err_len	length of err buffer
  */
-extern void onefish_mlocs_append(struct of_mds_locator ***mlocs, const char *s,
+extern void redfish_mlocs_append(struct redfish_mds_locator ***mlocs, const char *s,
 				char *err, size_t err_len);
 
-/** Create a file in OneFish
+/** Create a file in RedFish
  *
- * @param cli		The OneFish client
+ * @param cli		The RedFish client
  * @param path		The file path
  * @param mode		The file mode
  * @param bufsz		The buffer size to use for the new file.
@@ -97,47 +97,47 @@ extern void onefish_mlocs_append(struct of_mds_locator ***mlocs, const char *s,
  *			0 means to use the default number of replicas
  * @param blocksz	The size of the blocks to use
  *			0 means to use the default block size
- * @param ofe		(out-parameter) the OneFish file
+ * @param ofe		(out-parameter) the RedFish file
  *
  * @return		0 on success; error code otherwise
- *			On success, *ofe will contain a valid onefish file.
+ *			On success, *ofe will contain a valid redfish file.
  */
-int onefish_create(struct of_client *cli, const char *path,
-	int mode, int bufsz, int repl, int blocksz, struct of_file **ofe);
+int redfish_create(struct redfish_client *cli, const char *path,
+	int mode, int bufsz, int repl, int blocksz, struct redfish_file **ofe);
 
-/** Open a OneFish file for reading
+/** Open a RedFish file for reading
  *
- * @param cli		The OneFish client
+ * @param cli		The RedFish client
  * @param path		The file path
- * @param ofe		(out-parameter) the OneFish file
+ * @param ofe		(out-parameter) the RedFish file
  *
  * @return		0 on success; error code otherwise
- *			On success, *ofe will contain a valid onefish file.
+ *			On success, *ofe will contain a valid redfish file.
  */
-int onefish_open(struct of_client *cli, const char *path,
-		struct of_file **ofe);
+int redfish_open(struct redfish_client *cli, const char *path,
+		struct redfish_file **ofe);
 
-/** Create a regular directory or directories in OneFish.
+/** Create a regular directory or directories in RedFish.
  *
  * Similar to mkdir -p, we will create the relevant directory as well as any
  * ancestor directories.
  *
- * @param cli		the OneFish client to use
+ * @param cli		the RedFish client to use
  * @param mode		The permission to use when creating the directories.
- *			If this is ONEFISH_INVAL_MODE, the default mode will
+ *			If this is REDFISH_INVAL_MODE, the default mode will
  *			be used.
- * @param ofe		(out-parameter): the onefish file
+ * @param ofe		(out-parameter): the redfish file
  *
  * Returns: 0 on success; error code otherwise
- * On success, *cli will contain a valid onefish file.
+ * On success, *cli will contain a valid redfish file.
  */
-int onefish_mkdirs(struct of_client *cli, const char *path, int mode);
+int redfish_mkdirs(struct redfish_client *cli, const char *path, int mode);
 
 /** Get the block locations
  *
  * Get the block locations where a given file is being stored.
  *
- * @param cli		the OneFish client
+ * @param cli		the RedFish client
  * @paths path		path
  * @param start		Start location in the file
  * @param len		Length of the region of the file to examine
@@ -145,108 +145,108 @@ int onefish_mkdirs(struct of_client *cli, const char *path, int mode);
  *			pointers to block locations on success.
  * @return		negative number on error; 0 on success
  */
-int onefish_get_block_locs(struct of_client *cli, const char *path,
-	int64_t start, int64_t len, struct of_block_loc ***blc);
+int redfish_get_block_locs(struct redfish_client *cli, const char *path,
+	int64_t start, int64_t len, struct redfish_block_loc ***blc);
 
 /** Free the array of block locations
  *
  * @param blc		The array of block locations
  */
-void onefish_free_block_locs(struct of_block_loc **blc);
+void redfish_free_block_locs(struct redfish_block_loc **blc);
 
 /** Given a path, returns file status information
  *
- * @param cli		the OneFish client
+ * @param cli		the RedFish client
  * @paths path		path
  * @param osa		(out-parameter): file status
  *
  * @return		0 on success; error code otherwise
  */
-int onefish_get_path_status(struct of_client *cli, const char *path,
-				struct of_path_status* osa);
+int redfish_get_path_status(struct redfish_client *cli, const char *path,
+				struct redfish_stat* osa);
 
 /** Given a directory name, return a list of status objects corresponding
  * to the objects in that directory.
  *
- * @param cli		the OneFish client
+ * @param cli		the RedFish client
  * @param dir		the directory to get a listing from
  * @param osa		(out-parameter) NULL-terminated array of statuses
  *
  * @return		0 on success; error code otherwise
  */
-int onefish_list_directory(struct of_client *cli, const char *dir,
-			      struct of_path_status** osa);
+int redfish_list_directory(struct redfish_client *cli, const char *dir,
+			      struct redfish_stat** osa);
 
-/** Frees the status data returned by onefish_list_directory
+/** Frees the status data returned by redfish_list_directory
  *
  * @param osa		array of file statuses
  * @param nosa		Length of osa
  */
-void onefish_free_path_statuses(struct of_path_status* osa, int nosa);
+void redfish_free_path_statuses(struct redfish_stat* osa, int nosa);
 
 /** Changes the permission bits for a file or directory.
  *
- * @param cli		the OneFish client
+ * @param cli		the RedFish client
  * @param path		the path
  * @param mode		the new permission bits
  *
  * @return		0 on success; error code otherwise
  */
-int onefish_chmod(struct of_client *cli, const char *path, int mode);
+int redfish_chmod(struct redfish_client *cli, const char *path, int mode);
 
 /** Changes the owner and group of a file or directory.
  *
- * @param cli		the OneFish client
+ * @param cli		the RedFish client
  * @param path		the path
  * @param owner		the new owner name, or NULL to leave owner unchanged
  * @param group		the new group name, or NULL to leave group unchanged
  *
  * @return		0 on success; error code otherwise
  */
-int onefish_chown(struct of_client *cli, const char *path,
+int redfish_chown(struct redfish_client *cli, const char *path,
 		  const char *owner, const char *group);
 
 /** Changes the mtime and atime of a file
  *
- * @param cli		the OneFish client
+ * @param cli		the RedFish client
  * @param path		the path
  * @param mtime		the new mtime, or -1 if the time should not be changed.
  * @param atime		the new atime, or -1 if the time should not be changed.
  *
  * @return		0 on success; error code otherwise
  */
-int onefish_utimes(struct of_client *cli, const char *path,
+int redfish_utimes(struct redfish_client *cli, const char *path,
 		int64_t mtime, int64_t atime);
 
-/** Destroy a OneFish client instance and free the memory associated with it.
+/** Destroy a RedFish client instance and free the memory associated with it.
  *
- * @param cli		the OneFish client to destroy
+ * @param cli		the RedFish client to destroy
  */
-void onefish_disconnect(struct of_client *cli);
+void redfish_disconnect(struct redfish_client *cli);
 
-/** Reads data from a onefish file
+/** Reads data from a redfish file
  *
- * @param ofe		the OneFish file
+ * @param ofe		the RedFish file
  * @param data		a buffer to read into
  * @param len		the maximum length of the data to read
  *
  * @return		the number of bytes read on success; a negative error
  *			code on failure.
  */
-int onefish_read(struct of_file *ofe, void *data, int len);
+int redfish_read(struct redfish_file *ofe, void *data, int len);
 
-/** Returns the number of bytes that can be read from the OneFish file without
+/** Returns the number of bytes that can be read from the RedFish file without
  * blocking.
  *
- * @param ofe		the OneFish file
+ * @param ofe		the RedFish file
  *
  * @return		the number of bytes available to read
  */
-int32_t onefish_available(struct of_file *ofe);
+int32_t redfish_available(struct redfish_file *ofe);
 
-/** Reads data from a onefish file
+/** Reads data from a redfish file
  *
- * @param ofe		the OneFish file
+ * @param ofe		the RedFish file
  * @param data		a buffer to read into
  * @param len		the maximum length of the data to read
  * @param off		offset to read data from
@@ -254,90 +254,90 @@ int32_t onefish_available(struct of_file *ofe);
  * @return		the number of bytes read on success; a negative error
  *			code on failure.
  */
-int onefish_pread(struct of_file *ofe, void *data, int len, int64_t off);
+int redfish_pread(struct redfish_file *ofe, void *data, int len, int64_t off);
 
-/** Writes data to a onefish file
+/** Writes data to a redfish file
  *
- * @param ofe		the OneFish file
+ * @param ofe		the RedFish file
  * @param data		the data to write
  * @param len		the length of the data to write
  *
  * @return		0 on success; error code otherwise
  */
-int onefish_write(struct of_file *ofe, const void *data, int len);
+int redfish_write(struct redfish_file *ofe, const void *data, int len);
 
 /** Set the current position in a file
  * This works only for files opened in read-only mode.
  *
- * @param ofe		the OneFish file
+ * @param ofe		the RedFish file
  * @param off		the desired new offset
  *
  * @return		0 on success; error code otherwise
  */
-int onefish_fseek_abs(struct of_file *ofe, int64_t off);
+int redfish_fseek_abs(struct redfish_file *ofe, int64_t off);
 
 /** Set the current position in a file
  * This works only for files opened in read-only mode.
  *
- * @param ofe		the OneFish file
+ * @param ofe		the RedFish file
  * @param delta		the desired change in offset
  * @param out		(out param) the actual change in offset that was made
  *
  * @return		0 on success; error code otherwise
  */
-int onefish_fseek_rel(struct of_file *ofe, int64_t delta, int64_t *out);
+int redfish_fseek_rel(struct redfish_file *ofe, int64_t delta, int64_t *out);
 
 /** Get the current position in a file
  *
- * @param ofe		the OneFish file
+ * @param ofe		the RedFish file
  *
  * Returns the current position in the file
  */
-int64_t onefish_ftell(struct of_file *ofe);
+int64_t redfish_ftell(struct redfish_file *ofe);
 
 /** Persist block locations on the metadata servers, and send all outstanding
  * data to all datanodes in the pipeline.
  *
- * @param ofe		The onefish file to flush
+ * @param ofe		The redfish file to flush
  *
  * @return		0 on success; error code otherwise
  */
-int onefish_flush(struct of_file *ofe);
+int redfish_flush(struct redfish_file *ofe);
 
 /** Block until the data is really written to disk on by the chunkservers.
  *
- * @param ofe		The onefish file to sync
+ * @param ofe		The redfish file to sync
  *
  * @return		0 on success; error code otherwise
  */
-int onefish_sync(struct of_file *ofe);
+int redfish_sync(struct redfish_file *ofe);
 
-/** Freed the memory and internal state associated with a onefish file.
+/** Freed the memory and internal state associated with a redfish file.
  *
  * You usually do not want to call this function directly, except when handling
- * errors. It is usually easier to call onefish_close.
+ * errors. It is usually easier to call redfish_close.
  *
- * @param ofe		the OneFish file
+ * @param ofe		the RedFish file
  */
-void onefish_free_file(struct of_file *ofe);
+void redfish_free_file(struct redfish_file *ofe);
 
 /** Delete a file
  *
- * @param cli		the onefish client
+ * @param cli		the redfish client
  * @param path		the file to unlink
  *
  * @return		0 on success; error code otherwise
  */
-int onefish_unlink(struct of_client *cli, const char *path);
+int redfish_unlink(struct redfish_client *cli, const char *path);
 
 /** Delete a file of directory subtree
  *
- * @param cli		the onefish client
+ * @param cli		the redfish client
  * @param path		the file or subtree to remove
  *
  * @return		0 on success; error code otherwise
  */
-int onefish_unlink_tree(struct of_client *cli, const char *path);
+int redfish_unlink_tree(struct redfish_client *cli, const char *path);
 
 /** Rename a file or directory
  *
@@ -346,22 +346,22 @@ int onefish_unlink_tree(struct of_client *cli, const char *path);
  *
  * @return		0 on success; error code otherwise
  */
-int onefish_rename(struct of_client *cli, const char *src, const char *dst);
+int redfish_rename(struct redfish_client *cli, const char *src, const char *dst);
 
-/** Closes a OneFish file.
+/** Closes a RedFish file.
  * For files opened for writing or appending, this triggers any locally
  * buffered data to be written out to the metadata servers. Basically, this
- * call is equivalent to onefish_flush followed by onefish_free_file.
+ * call is equivalent to redfish_flush followed by redfish_free_file.
  *
  * For files opened for reading, this call is identical to
- * onefish_free_file.
+ * redfish_free_file.
  *
- * @param ofe		the OneFish file
+ * @param ofe		the RedFish file
  *
- * @return		0 on success; error code if onefish_flush failed.
- *			Either way, the of_file is freed.
+ * @return		0 on success; error code if redfish_flush failed.
+ *			Either way, the redfish_file is freed.
  */
-int onefish_close(struct of_file *ofe);
+int redfish_close(struct redfish_file *ofe);
 
 /* TODO: add copy_from_local_file
  * TODO: add move_from_local_file
@@ -373,7 +373,7 @@ int onefish_close(struct of_file *ofe);
  * TODO: implement get capacity / get used
  * TODO: implement list_dir with filtering
  * TODO: add block size changing functionality
-int onefish_set_replication(struct of_client *cli, const char *path, int repl)
+int redfish_set_replication(struct redfish_client *cli, const char *path, int repl)
  */
 
 #endif

@@ -68,7 +68,7 @@ class DaemonIter(object):
             if has_label(self.darr[self.idx], self.label):
                 return Daemon(self.darr[self.idx])
 
-""" Represents a OneFish daemon.
+""" Represents a RedFish daemon.
 FIXME: this code doesn't yet handle goofy filenames correctly
 FIXME: should distinguish between command failures and ssh failures
 """
@@ -95,7 +95,7 @@ class Daemon(object):
                     "ssh -o PasswordAuthentication=no -x",
                     (self.jo["host"] + ":" + remote_path),
                     local_path])
-    """ Generate a OneFish config file for this daemon """ 
+    """ Generate a RedFish config file for this daemon """ 
     def generate_daemon_conf(self, cmd):
         jd = {}
         CKEYS = [

@@ -1,13 +1,13 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright (C) Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#ifndef ONEIFHS_CHUNK_IO_H
-#define ONEIFHS_CHUNK_IO_H
+#ifndef REDFISH_OSD_IO_DOT_H
+#define REDFISH_OSD_IO_DOT_H
 
 #include <stdint.h>
 

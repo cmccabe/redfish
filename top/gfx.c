@@ -1,5 +1,5 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright 2011, Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
@@ -30,7 +30,7 @@ struct fscreen* gfx_fscreen_create(const struct top_state *ts)
 	sn->scroll_pos = 0;
 
 	sn->header = fscreen_makeline(COLOR_PAIR(4) | A_REVERSE,
-		"OneFish", COLOR_PAIR(4) | A_REVERSE,
+		"RedFish", COLOR_PAIR(4) | A_REVERSE,
 		ts->conn_status, COLOR_PAIR(4) | A_REVERSE,
 		(char*)NULL);
 	if (!sn->header) {
@@ -52,7 +52,7 @@ struct fscreen* gfx_fscreen_create(const struct top_state *ts)
 void gfx_set_title_bar_to_disconnected(struct fscreen *sn, char *err)
 {
 	char *t, tbar[512];
-	snprintf(tbar, sizeof(tbar), "OneFish [disconnected: %s]", err);
+	snprintf(tbar, sizeof(tbar), "RedFish [disconnected: %s]", err);
 	t = strdup(tbar);
 	if (t) {
 		free(sn->header->segs->text);

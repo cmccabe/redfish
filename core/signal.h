@@ -1,13 +1,13 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright (C) 2011 Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#ifndef ONEFISH_CORE_SIGNAL_DOT_H
-#define ONEFISH_CORE_SIGNAL_DOT_H
+#ifndef REDFISH_CORE_SIGNAL_DOT_H
+#define REDFISH_CORE_SIGNAL_DOT_H
 
 #include <unistd.h> /* for size_t */
 
@@ -15,7 +15,7 @@ struct log_config;
 
 typedef void (*signal_cb_t)(int);
 
-/** Install the signal handlers for a OneFish daemon.
+/** Install the signal handlers for a RedFish daemon.
  *
  * @param err			a buffer to write any errors to
  * @param err_len		length of the error buffer

@@ -1,5 +1,5 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright (C) 2011 Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
@@ -27,7 +27,7 @@ int do_socket(int domain, int type, int proto, int flags)
 	if (fd < 0) {
 		return -errno;
 	}
-#ifdef ONEFISH_SO_REUSEADDR_HACK
+#ifdef REDFISH_SO_REUSEADDR_HACK
 	{
 		int optval = 1;
 		setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,

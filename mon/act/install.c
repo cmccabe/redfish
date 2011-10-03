@@ -1,5 +1,5 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright 2011, Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
@@ -20,7 +20,7 @@
 static const char *install_names[] = { "install", NULL };
 
 static const char *install_desc[] = {
-"install: install new onefish software",
+"install: install new redfish software",
 "    The install action copies binaries to all configured nodes. The ",
 "    binaries will be copied from the same directory as the monitor ",
 "    executable.",

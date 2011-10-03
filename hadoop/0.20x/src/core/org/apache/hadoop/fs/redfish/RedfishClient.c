@@ -43,7 +43,7 @@ void Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishConnect(
 {
 	int ret;
 	const char *chost = NULL, *cuser = NULL;
-	struct of_client *cli  = NULL;
+	struct redfish_client *cli  = NULL;
 	
 	cli = get_ptr(jenv, jobj, "m_cli");
 	if (cli != NULL) {
@@ -63,7 +63,7 @@ void Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishConnect(
 	}
 
 	... set up mlocs ...
-	ret = onefish_connect(mlocs, cuser, &cli);
+	ret = redfish_connect(mlocs, cuser, &cli);
 	if (ret)
 		goto done;
 	set_ptr(jenv, jobj, "m_cli", cli);

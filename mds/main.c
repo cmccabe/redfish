@@ -1,5 +1,5 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright 2011, Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
@@ -24,9 +24,9 @@
 static void usage(int exitstatus)
 {
 	static const char *usage_lines[] = {
-"fishmds: the OneFish metadata server",
-"See http://www.club.cc.cmu.edu/~cmccabe/onefish.html for the most up-to-date",
-"information about OneFish.",
+"fishmds: the RedFish metadata server",
+"See http://www.club.cc.cmu.edu/~cmccabe/redfish.html for the most up-to-date",
+"information about RedFish.",
 "",
 "fishmds usage:",
 "-c <mds-configuration-file>",

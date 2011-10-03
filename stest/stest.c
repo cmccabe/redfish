@@ -1,5 +1,5 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright (C) 2011 Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
@@ -31,7 +31,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define STEST_DEFAULT_USER "onefish"
+#define STEST_DEFAULT_USER "redfish"
 #define NUM_PERCENT_DIGITS 3
 
 static char g_tempdir[PATH_MAX];
@@ -58,11 +58,11 @@ static void stest_usage(const char *argv0, struct stest_custom_opt *copt,
 			int ncopt, int exitstatus)
 {
 	int i;
-	fprintf(stderr, "%s: a OneFish system test\n", argv0);
+	fprintf(stderr, "%s: a RedFish system test\n", argv0);
 	{
 		static const char *usage_lines[] = {
-"See http://www.club.cc.cmu.edu/~cmccabe/onefish.html for the most up-to-date",
-"information about OneFish.",
+"See http://www.club.cc.cmu.edu/~cmccabe/redfish.html for the most up-to-date",
+"information about RedFish.",
 "",
 "Standard system test options:",
 "-f",
@@ -72,7 +72,7 @@ static void stest_usage(const char *argv0, struct stest_custom_opt *copt,
 "-m <hostname>:<port>",
 "    Add metadata server location.",
 "-u <username>",
-"    Set the OneFish username to connect as.",
+"    Set the RedFish username to connect as.",
 NULL
 		};
 		print_lines(stderr, usage_lines);
@@ -89,12 +89,12 @@ NULL
 
 static void stest_parse_argv(int argc, char **argv,
 	struct stest_custom_opt *copt, int ncopt,
-	const char **user, struct of_mds_locator ***mlocs)
+	const char **user, struct redfish_mds_locator ***mlocs)
 {
 	char **s;
 	int c;
 	*user = NULL;
-	*mlocs = calloc(1, sizeof(struct of_mds_locator*));;
+	*mlocs = calloc(1, sizeof(struct redfish_mds_locator*));;
 	if (!*mlocs) {
 		fprintf(stderr, "out of memory.\n"); 
 		exit(EXIT_FAILURE);
@@ -109,7 +109,7 @@ static void stest_parse_argv(int argc, char **argv,
 			break;
 		case 'm': {
 			char err[512] = { 0 };
-			onefish_mlocs_append(mlocs, optarg, err, sizeof(err));
+			redfish_mlocs_append(mlocs, optarg, err, sizeof(err));
 			if (err[0]) {
 				fprintf(stderr, "%s", err);
 				exit(EXIT_FAILURE);
@@ -154,9 +154,9 @@ static void stest_parse_argv(int argc, char **argv,
 	}
 	if ((*mlocs)[0] == NULL) {
 		const char *default_mloc =
-			"localhost:" TO_STR2(ONEFISH_DEFAULT_MDS_PORT);
+			"localhost:" TO_STR2(REDFISH_DEFAULT_MDS_PORT);
 		char err[512] = { 0 };
-		onefish_mlocs_append(mlocs, default_mloc, err, sizeof(err));
+		redfish_mlocs_append(mlocs, default_mloc, err, sizeof(err));
 		if (err[0]) {
 			fprintf(stderr, "%s", err);
 			exit(EXIT_FAILURE);
@@ -246,7 +246,7 @@ static void stest_init_signals(const char *argv0)
 
 void stest_init(int argc, char **argv,
 		struct stest_custom_opt *copt, int ncopt,
-		const char **user, struct of_mds_locator ***mlocs)
+		const char **user, struct redfish_mds_locator ***mlocs)
 {
 	stest_parse_argv(argc, argv, copt, ncopt, user, mlocs);
 	stest_status_files_init();
@@ -257,9 +257,9 @@ void stest_init(int argc, char **argv,
 	}
 }
 
-void stest_mlocs_free(struct of_mds_locator **mlocs)
+void stest_mlocs_free(struct redfish_mds_locator **mlocs)
 {
-	struct of_mds_locator **m;
+	struct redfish_mds_locator **m;
 	for (m = mlocs; *m; ++m) {
 		free(*m);
 	}

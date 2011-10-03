@@ -36,8 +36,8 @@ for c in fishc_stub; do
     rm -rf build
     mkdir build || die "failed to mkdir build"
     cd build || die "failed to cd to build"
-    cmake -DONEFISH_SO_REUSEADDR_HACK=1 \
-          -DONEFISH_CLIENT_LIB=$c \
+    cmake -DREDFISH_SO_REUSEADDR_HACK=1 \
+          -DREDFISH_CLIENT_LIB=$c \
           .. || die "cmake failed!"
     make -j "${ncpus}" || die "make failed"
     make test || die "make test failed"

@@ -1,5 +1,5 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright 2011, Colin McCabe <cmccabe@alumni.cmu.edu>
  *
@@ -25,16 +25,16 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#define ONECHUNK_PATH_SUFFIX_SZ (sizeof("01/23456789abcdef"))
+static char g_prefix[PATH_MAX] = { 0 };
 
-static char onechunk_prefix[PATH_MAX] = { 0 };
+#define PATH_SUFFIX_SZ (sizeof("01/23456789abcdef"))
 
 int onechunk_set_prefix(const char *prefix)
 {
-	if (strlen(prefix) + ONECHUNK_PATH_SUFFIX_SZ + 2 > PATH_MAX) {
+	if (strlen(prefix) + PATH_SUFFIX_SZ + 2 > PATH_MAX) {
 		return -ENAMETOOLONG;
 	}
-	snprintf(onechunk_prefix, PATH_MAX, "%s", prefix);
+	snprintf(g_prefix, PATH_MAX, "%s", prefix);
 	return 0;
 }
 
@@ -43,7 +43,7 @@ int onechunk_write(uint64_t bid, const void *data, int count, int offset)
 	int ret, fd, tmp;
 	char path[PATH_MAX];
 	while (1) {
-		snprintf(path, PATH_MAX, "%s/%02x/%014" PRIx64, onechunk_prefix,
+		snprintf(path, PATH_MAX, "%s/%02x/%014" PRIx64, g_prefix,
 			 (int)(bid & 0xff), (bid >> 16));
 		fd = open(path, O_APPEND | O_WRONLY | O_CREAT, 0660);
 		if (fd != -1)
@@ -51,7 +51,7 @@ int onechunk_write(uint64_t bid, const void *data, int count, int offset)
 		ret = errno;
 		if (ret != ENOENT)
 			return ret;
-		snprintf(path, PATH_MAX, "%s/%02x", onechunk_prefix,
+		snprintf(path, PATH_MAX, "%s/%02x", g_prefix,
 			 (int)(bid & 0xff));
 		if (mkdir(path, 0770) == -1) {
 			ret = errno;
@@ -69,7 +69,7 @@ int onechunk_read(uint64_t bid, void *data, int count, int offset)
 {
 	int ret, fd, tmp;
 	char path[PATH_MAX];
-	snprintf(path, PATH_MAX, "%s/%02x/%014" PRIx64, onechunk_prefix,
+	snprintf(path, PATH_MAX, "%s/%02x/%014" PRIx64, g_prefix,
 		 (int)(bid & 0xff), (bid >> 16));
 	fd = open(path, O_APPEND | O_RDONLY, 0660);
 	if (fd == -1) {

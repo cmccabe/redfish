@@ -1,13 +1,13 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright 2011, Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#ifndef ONEFISH_SIMPLE_IO_DOT_H
-#define ONEFISH_SIMPLE_IO_DOT_H
+#ifndef REDFISH_SIMPLE_IO_DOT_H
+#define REDFISH_SIMPLE_IO_DOT_H
 
 #include <unistd.h> /* for ssize_t */
 

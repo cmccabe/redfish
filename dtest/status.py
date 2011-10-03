@@ -18,7 +18,7 @@ parser.add_option("-c", "--cluster-config", dest="cluster_conf")
 parser.add_option("-9", "--kill-9", action="store_true", dest="kill9")
 (opts, args) = parser.parse_args()
 if opts.cluster_conf == None:
-    sys.stderr.write("you must give a OneFish cluster configuration file\n")
+    sys.stderr.write("you must give a RedFish cluster configuration file\n")
     sys.exit(1)
 
 jo = load_conf_file(opts.cluster_conf)

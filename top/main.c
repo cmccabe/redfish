@@ -1,5 +1,5 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright 2011, Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
@@ -31,9 +31,9 @@ static int g_winch_fd[2] = { -1, -1 };
 static void usage(int exitstatus)
 {
 	static const char *usage_lines[] = {
-"fishtop: the OneFish cluster monitor view.",
-"See http://www.club.cc.cmu.edu/~cmccabe/onefish.html for the most up-to-date",
-"information about OneFish.",
+"fishtop: the RedFish cluster monitor view.",
+"See http://www.club.cc.cmu.edu/~cmccabe/redfish.html for the most up-to-date",
+"information about RedFish.",
 "",
 "fishtop is a curses-based cluster monitor viewer. You would normally not run ",
 "it directly, but instead invoke it through fishmon. See the help for fishmon.",

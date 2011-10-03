@@ -1,5 +1,5 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright (C) 2011 Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
@@ -13,7 +13,7 @@
 
 int main(int argc, char **argv)
 {
-	struct of_mds_locator **mlocs;
+	struct redfish_mds_locator **mlocs;
 	const char *user, *error;
 	struct stest_custom_opt copt[] = {
 		{

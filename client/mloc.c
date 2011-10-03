@@ -1,5 +1,5 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright 2011, Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
@@ -14,15 +14,15 @@
 #include <string.h>
 #include <strings.h>
 
-void onefish_mlocs_append(struct of_mds_locator ***mlocs, const char *s,
+void redfish_mlocs_append(struct redfish_mds_locator ***mlocs, const char *s,
 			 char *err, size_t err_len)
 {
 	int tn;
-	struct of_mds_locator *zm = NULL, **m;
+	struct redfish_mds_locator *zm = NULL, **m;
 	char *colon;
 	char err2[512] = { 0 };
 
-	zm = calloc(1, sizeof(struct of_mds_locator));
+	zm = calloc(1, sizeof(struct redfish_mds_locator));
 	if (!zm)
 		goto oom;
 	zm->host = strdup(s);
@@ -49,7 +49,7 @@ void onefish_mlocs_append(struct of_mds_locator ***mlocs, const char *s,
 	for (tn = 0, m = *mlocs; *m; ++m) {
 		tn++;
 	}
-	m = realloc(*mlocs, (tn + 2) * sizeof(struct of_mds_locator*));
+	m = realloc(*mlocs, (tn + 2) * sizeof(struct redfish_mds_locator*));
 	if (!m)
 		goto oom;
 	*mlocs = m;
@@ -63,14 +63,14 @@ error:
 	free(zm);
 }
 
-void onefish_free_block_locs(struct of_block_loc **blc)
+void redfish_free_block_locs(struct redfish_block_loc **blc)
 {
-	struct of_block_loc **i;
+	struct redfish_block_loc **i;
 
 	i = blc;
 	while (1) {
 		int j;
-		struct of_block_loc *b = *i;
+		struct redfish_block_loc *b = *i;
 		if (!b)
 			break;
 		for (j = 0; j < b->num_hosts; ++j) {

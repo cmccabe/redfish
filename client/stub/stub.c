@@ -1,5 +1,5 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright 2011, Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
@@ -44,14 +44,14 @@ enum fish_open_ty {
 #define XATTR_FISH_GROUP "user.fish_group"
 #define XATTR_FISH_MODE "user.fish_mode"
 
-/** Represents a OneFish client.
+/** Represents a RedFish client.
  *
  * You can treat the data fields in this structure as constant between
- * onefish_connect and onefish_disconnect. In other words, in order to login as
+ * redfish_connect and redfish_disconnect. In other words, in order to login as
  * a new user, or change our groups, we need to create a new connection-- which
  * seems reasonable.
  */
-struct of_client
+struct redfish_client
 {
 	/** User name. */
 	char *user;
@@ -67,8 +67,8 @@ struct of_client
 	pthread_mutex_t lock;
 };
 
-/** Represents a OneFish file */
-struct of_file
+/** Represents a RedFish file */
+struct redfish_file
 {
 	/** Type of open file */
 	enum fish_open_ty ty;
@@ -77,7 +77,7 @@ struct of_file
 	int fd;
 };
 
-static int get_stub_path(const struct of_client *cli, const char *path,
+static int get_stub_path(const struct redfish_client *cli, const char *path,
 			 char *epath, size_t epath_len)
 {
 	if (path[0] != '/')
@@ -114,7 +114,7 @@ static const char* get_stub_base_dir(void)
 		return sb;
 }
 
-static void onefish_free_ofclient(struct of_client *cli)
+static void redfish_free_ofclient(struct redfish_client *cli)
 {
 	char **g;
 	free(cli->user);
@@ -126,11 +126,11 @@ static void onefish_free_ofclient(struct of_client *cli)
 	free(cli);
 }
 
-int onefish_connect(POSSIBLY_UNUSED(struct of_mds_locator **mlocs),
-			const char *user, struct of_client **cli)
+int redfish_connect(POSSIBLY_UNUSED(struct redfish_mds_locator **mlocs),
+			const char *user, struct redfish_client **cli)
 {
 	int ret;
-	struct of_client *zcli = calloc(1, sizeof(struct of_client));
+	struct redfish_client *zcli = calloc(1, sizeof(struct redfish_client));
 	if (!zcli)
 		return -ENOMEM;
 	ret = pthread_mutex_init(&zcli->lock, NULL);
@@ -148,23 +148,23 @@ int onefish_connect(POSSIBLY_UNUSED(struct of_mds_locator **mlocs),
 	if (!zcli->base)
 		goto oom_error;
 	if (access(zcli->base, R_OK | W_OK | X_OK)) {
-		onefish_free_ofclient(zcli);
+		redfish_free_ofclient(zcli);
 		return -ENOTDIR;
 	}
 	ret = check_xattr_support(zcli->base);
 	if (ret) {
-		onefish_free_ofclient(zcli);
+		redfish_free_ofclient(zcli);
 		return ret;
 	}
 	*cli = zcli;
 	return 0;
 
 oom_error:
-	onefish_free_ofclient(zcli);
+	redfish_free_ofclient(zcli);
 	return -ENOMEM; 
 }
 
-static int cli_is_group_member(const struct of_client *cli, const char *group)
+static int cli_is_group_member(const struct redfish_client *cli, const char *group)
 {
 	char **g;
 	for (g = cli->group; *g; ++g) {
@@ -174,7 +174,7 @@ static int cli_is_group_member(const struct of_client *cli, const char *group)
 	return 0;
 }
 
-static int validate_perm(const struct of_client *cli, const char *fname,
+static int validate_perm(const struct redfish_client *cli, const char *fname,
 			 int shift)
 {
 	int mode;
@@ -188,7 +188,7 @@ static int validate_perm(const struct of_client *cli, const char *fname,
 	if (mode & (1 << (shift + 6))) {
 		int ret;
 		char *user;
-		if (xgets(fname, XATTR_FISH_USER, ONEFISH_USERNAME_MAX,
+		if (xgets(fname, XATTR_FISH_USER, REDFISH_USERNAME_MAX,
 				&user)) {
 			return -EIO;
 		}
@@ -201,7 +201,7 @@ static int validate_perm(const struct of_client *cli, const char *fname,
 	if (mode & (1 << (shift + 3))) {
 		int ret;
 		char *group;
-		if (xgets(fname, XATTR_FISH_GROUP, ONEFISH_GROUPNAME_MAX,
+		if (xgets(fname, XATTR_FISH_GROUP, REDFISH_GROUPNAME_MAX,
 				&group)) {
 			return -EIO;
 		}
@@ -214,7 +214,7 @@ static int validate_perm(const struct of_client *cli, const char *fname,
 	return -EPERM;
 }
 
-static int recursive_validate_perm(const struct of_client *cli,
+static int recursive_validate_perm(const struct redfish_client *cli,
 				const char *fname, int shift)
 {
 	int ret;
@@ -253,13 +253,13 @@ static int set_group(int fd, const char *group)
 	return fxsets(fd, XATTR_FISH_USER, group);
 }
 
-int onefish_create(struct of_client *cli, const char *path,
+int redfish_create(struct redfish_client *cli, const char *path,
 	int mode, POSSIBLY_UNUSED(int bufsz), POSSIBLY_UNUSED(int repl),
-	POSSIBLY_UNUSED(int blocksz), struct of_file **ofe)
+	POSSIBLY_UNUSED(int blocksz), struct redfish_file **ofe)
 {
 	int ret, fd = -1;
 	char epath[PATH_MAX], edir[PATH_MAX];
-	struct of_file *zofe = NULL;
+	struct redfish_file *zofe = NULL;
 
 	ret = get_stub_path(cli, path, epath, PATH_MAX);
 	if (ret)
@@ -277,8 +277,8 @@ int onefish_create(struct of_client *cli, const char *path,
 		ret = -EIO;
 		goto error;
 	}
-	if (mode == ONEFISH_INVAL_MODE)
-		mode = ONEFISH_DEFAULT_FILE_MODE;
+	if (mode == REDFISH_INVAL_MODE)
+		mode = REDFISH_DEFAULT_FILE_MODE;
 	ret = set_mode(fd, mode);
 	if (ret)
 		goto error;
@@ -288,7 +288,7 @@ int onefish_create(struct of_client *cli, const char *path,
 	ret = set_group(fd, cli->group[0]);
 	if (ret)
 		goto error;
-	zofe = malloc(sizeof(struct of_file));
+	zofe = malloc(sizeof(struct redfish_file));
 	if (!zofe) {
 		ret = -ENOMEM;
 		goto error;
@@ -310,11 +310,11 @@ error:
 	return ret;
 }
 
-int onefish_open(struct of_client *cli, const char *path, struct of_file **ofe)
+int redfish_open(struct redfish_client *cli, const char *path, struct redfish_file **ofe)
 {
 	int ret, fd = -1;
 	char epath[PATH_MAX];
-	struct of_file *zofe = NULL;
+	struct redfish_file *zofe = NULL;
 
 	ret = get_stub_path(cli, path, epath, PATH_MAX);
 	if (ret)
@@ -331,7 +331,7 @@ int onefish_open(struct of_client *cli, const char *path, struct of_file **ofe)
 		ret = -EIO;
 		goto error;
 	}
-	zofe = malloc(sizeof(struct of_file));
+	zofe = malloc(sizeof(struct redfish_file));
 	if (!zofe) {
 		ret = -ENOMEM;
 		goto error;
@@ -351,7 +351,7 @@ error:
 	return ret;
 }
 
-int onefish_mkdirs(struct of_client *cli, const char *path, int mode)
+int redfish_mkdirs(struct redfish_client *cli, const char *path, int mode)
 {
 	int fd, ret;
 	char epath[PATH_MAX];
@@ -406,20 +406,20 @@ done:
 	return ret;
 }
 
-int onefish_get_block_locs(POSSIBLY_UNUSED(struct of_client *cli),
+int redfish_get_block_locs(POSSIBLY_UNUSED(struct redfish_client *cli),
 		POSSIBLY_UNUSED(const char *path), int64_t start, int64_t len,
-		struct of_block_loc ***blc)
+		struct redfish_block_loc ***blc)
 {
 	int ret;
-	struct of_block_loc **zblc = NULL;
+	struct redfish_block_loc **zblc = NULL;
 	
-	zblc = calloc(1, 2 * sizeof(struct of_block_loc *));
+	zblc = calloc(1, 2 * sizeof(struct redfish_block_loc *));
 	if (!zblc) {
 		ret = -ENOMEM;
 		goto error;
 	}
-	zblc[0] = calloc(1, sizeof(struct of_block_loc) +
-			 sizeof(struct of_block_host));
+	zblc[0] = calloc(1, sizeof(struct redfish_block_loc) +
+			 sizeof(struct redfish_block_host));
 	if (!zblc[0]) {
 		ret = -ENOMEM;
 		goto error;
@@ -438,11 +438,11 @@ int onefish_get_block_locs(POSSIBLY_UNUSED(struct of_client *cli),
 
 error:
 	if (zblc)
-		onefish_free_block_locs(zblc);
+		redfish_free_block_locs(zblc);
 	return ret;
 }
 
-static int get_path_status(const char *path, struct of_path_status *zosa)
+static int get_path_status(const char *path, struct redfish_stat *zosa)
 {
 	struct stat sbuf;
 	if (stat(path, &sbuf) < 0) {
@@ -451,8 +451,8 @@ static int get_path_status(const char *path, struct of_path_status *zosa)
 	zosa->path = strdup(path);
 	zosa->length = sbuf.st_size;
 	zosa->is_dir = !!S_ISDIR(sbuf.st_mode);
-	zosa->repl = ONEFISH_FIXED_REPL;
-	zosa->block_sz = ONEFISH_FIXED_BLOCK_SZ;
+	zosa->repl = REDFISH_FIXED_REPL;
+	zosa->block_sz = REDFISH_FIXED_BLOCK_SZ;
 	zosa->mtime = sbuf.st_mtime;
 	zosa->atime = sbuf.st_atime;
 	zosa->mode = sbuf.st_mode;
@@ -467,8 +467,8 @@ static int get_path_status(const char *path, struct of_path_status *zosa)
 	return 0;
 }
 
-int onefish_get_path_status(struct of_client *cli, const char *path,
-				struct of_path_status* osa)
+int redfish_get_path_status(struct redfish_client *cli, const char *path,
+				struct redfish_stat* osa)
 {
 	char epath[PATH_MAX];
 	int ret;
@@ -480,13 +480,13 @@ int onefish_get_path_status(struct of_client *cli, const char *path,
 	return ret;
 }
 
-int onefish_list_directory(struct of_client *cli, const char *dir,
-			      struct of_path_status** osa)
+int redfish_list_directory(struct redfish_client *cli, const char *dir,
+			      struct redfish_stat** osa)
 {
-	struct onefish_dirp *dp = NULL;
+	struct redfish_dirp *dp = NULL;
 	char epath[PATH_MAX];
 	int i, ret, nosa = 0;
-	struct of_path_status *zosa = NULL;
+	struct redfish_stat *zosa = NULL;
 
 	if (dir[0] != '/')
 		return -EDOM;
@@ -501,7 +501,7 @@ int onefish_list_directory(struct of_client *cli, const char *dir,
 	}
 	while (1) {
 		char fname[PATH_MAX];
-		struct of_path_status *xosa;
+		struct redfish_stat *xosa;
 		struct dirent *de;
 		de = do_readdir(dp);
 		if (!de)
@@ -511,7 +511,7 @@ int onefish_list_directory(struct of_client *cli, const char *dir,
 		else if (strcmp(de->d_name, ".."))
 			continue;
 		++nosa;
-		xosa = realloc(zosa, nosa * sizeof(struct of_path_status));
+		xosa = realloc(zosa, nosa * sizeof(struct redfish_stat));
 		if (!xosa) {
 			ret = -ENOMEM;
 			goto free_zosa;
@@ -543,7 +543,7 @@ free_zosa:
 	return ret;
 }
 
-void onefish_free_path_statuses(struct of_path_status* osa, int nosa)
+void redfish_free_path_statuses(struct redfish_stat* osa, int nosa)
 {
 	int i;
 	for (i = 0; i < nosa; ++i) {
@@ -554,7 +554,7 @@ void onefish_free_path_statuses(struct of_path_status* osa, int nosa)
 	free(osa);
 }
 
-static int onefish_openwr_internal(struct of_client *cli, const char *path)
+static int redfish_openwr_internal(struct redfish_client *cli, const char *path)
 {
 	int ret, fd = -1;
 	char epath[PATH_MAX];
@@ -572,12 +572,12 @@ static int onefish_openwr_internal(struct of_client *cli, const char *path)
 	return fd;
 }
 
-int onefish_chmod(struct of_client *cli, const char *path, int mode)
+int redfish_chmod(struct redfish_client *cli, const char *path, int mode)
 {
 	int fd, res, ret;
 
 	pthread_mutex_lock(&cli->lock);
-	fd = onefish_openwr_internal(cli, path);
+	fd = redfish_openwr_internal(cli, path);
 	if (fd < 0) {
 		ret = fd;
 		goto done;
@@ -594,13 +594,13 @@ done:
 	return ret;
 }
 
-int onefish_chown(struct of_client *cli, const char *path,
+int redfish_chown(struct redfish_client *cli, const char *path,
 		  const char *owner, const char *group)
 {
 	int fd, res, ret;
 
 	pthread_mutex_lock(&cli->lock);
-	fd = onefish_openwr_internal(cli, path);
+	fd = redfish_openwr_internal(cli, path);
 	if (fd < 0) {
 		ret = fd;
 		goto done;
@@ -625,7 +625,7 @@ done:
 	return ret;
 }
 
-int onefish_utimes(struct of_client *cli, const char *path,
+int redfish_utimes(struct redfish_client *cli, const char *path,
 		      int64_t mtime, int64_t atime)
 {
 	int ret;
@@ -643,19 +643,19 @@ int onefish_utimes(struct of_client *cli, const char *path,
 	return ret;
 }
 
-void onefish_disconnect(struct of_client *cli)
+void redfish_disconnect(struct redfish_client *cli)
 {
-	onefish_free_ofclient(cli);
+	redfish_free_ofclient(cli);
 }
 
-int onefish_read(struct of_file *ofe, void *data, int len)
+int redfish_read(struct redfish_file *ofe, void *data, int len)
 {
 	if (ofe->ty != FISH_OPEN_TY_RD)
 		return -ENOTSUP;
 	return safe_read(ofe->fd, data, len);
 }
 
-int32_t onefish_available(struct of_file *ofe)
+int32_t redfish_available(struct redfish_file *ofe)
 {
 	struct stat sbuf;
 	if (fstat(ofe->fd, &sbuf) < 0) {
@@ -669,21 +669,21 @@ int32_t onefish_available(struct of_file *ofe)
 	}
 }
 
-int onefish_pread(struct of_file *ofe, void *data, int len, int64_t off)
+int redfish_pread(struct redfish_file *ofe, void *data, int len, int64_t off)
 {
 	if (ofe->ty != FISH_OPEN_TY_RD)
 		return -ENOTSUP;
 	return safe_pread(ofe->fd, data, len, off);
 }
 
-int onefish_write(struct of_file *ofe, const void *data, int len)
+int redfish_write(struct redfish_file *ofe, const void *data, int len)
 {
 	if (ofe->ty != FISH_OPEN_TY_WR)
 		return -ENOTSUP;
 	return safe_write(ofe->fd, data, len);
 }
 
-int onefish_fseek(struct of_file *ofe, int64_t off)
+int redfish_fseek(struct redfish_file *ofe, int64_t off)
 {
 	off_t res;
 	if (ofe->ty != FISH_OPEN_TY_RD)
@@ -694,7 +694,7 @@ int onefish_fseek(struct of_file *ofe, int64_t off)
 	return 0;
 }
 
-int64_t onefish_ftell(struct of_file *ofe)
+int64_t redfish_ftell(struct redfish_file *ofe)
 {
 	off_t res;
 	res = lseek(ofe->fd, 0, SEEK_CUR);
@@ -703,24 +703,24 @@ int64_t onefish_ftell(struct of_file *ofe)
 	return res;
 }
 
-int onefish_flush(struct of_file *ofe)
+int redfish_flush(struct redfish_file *ofe)
 {
 	int res;
 	RETRY_ON_EINTR(res, close(ofe->fd));
 	return res;
 }
 
-int onefish_sync(POSSIBLY_UNUSED(struct of_file *ofe))
+int redfish_sync(POSSIBLY_UNUSED(struct redfish_file *ofe))
 {
 	return 0;
 }
 
-void onefish_free_file(struct of_file *ofe)
+void redfish_free_file(struct redfish_file *ofe)
 {
 	free(ofe);
 }
 
-int onefish_unlink(struct of_client *cli, const char *path)
+int redfish_unlink(struct redfish_client *cli, const char *path)
 {
 	int ret;
 	char epath[PATH_MAX];
@@ -734,7 +734,7 @@ int onefish_unlink(struct of_client *cli, const char *path)
 	return ret;
 }
 
-int onefish_unlink_tree(struct of_client *cli, const char *path)
+int redfish_unlink_tree(struct redfish_client *cli, const char *path)
 {
 	int ret;
 	char epath[PATH_MAX];
@@ -749,7 +749,7 @@ int onefish_unlink_tree(struct of_client *cli, const char *path)
 	return ret;
 }
 
-int onefish_rename(struct of_client *cli, const char *src, const char *dst)
+int redfish_rename(struct redfish_client *cli, const char *src, const char *dst)
 {
 	int ret;
 	char esrc[PATH_MAX], edst[PATH_MAX], eddir[PATH_MAX];
@@ -776,10 +776,10 @@ done:
 	return FORCE_NEGATIVE(ret);
 }
 
-int onefish_close(struct of_file *ofe)
+int redfish_close(struct redfish_file *ofe)
 {
 	int ret;
-	ret = onefish_flush(ofe);
-	onefish_free_file(ofe);
+	ret = redfish_flush(ofe);
+	redfish_free_file(ofe);
 	return ret;
 }

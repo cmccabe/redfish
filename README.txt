@@ -1,19 +1,19 @@
-The OneFish Distributed Filesystem
+The RedFish Distributed Filesystem
 ==============================================================================
-OneFish is a distributed filesystem built with the needs of Hadoop in mind.
+RedFish is a distributed filesystem built with the needs of Hadoop in mind.
 
-See http://www.club.cc.cmu.edu/~cmccabe/onefish.html for the most up-to-date
-information about OneFish.
+See http://www.club.cc.cmu.edu/~cmccabe/redfish.html for the most up-to-date
+information about RedFish.
 
 Requirements
 ==============================================================================
-OneFish requires libjson-c.
+RedFish requires CMake, libjson-c, and libev.
 
 See INSTALL.txt for details about installation.
 
 License
 ==============================================================================
-OneFish is licensed under the Apach License version 2.0. See LICENSE.txt for
+RedFish is licensed under the Apache License version 2.0. See LICENSE.txt for
 details.
 
 

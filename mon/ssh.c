@@ -1,5 +1,5 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright 2011, Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
@@ -59,8 +59,8 @@ int ssh_exec(const char *host, char *out, size_t out_len, const char **cmd)
 {
 	int idx = 0, ret;
 	const char* cvec[MAX_CVEC];
-	const char canary[] = "ONEFISH_CONNECTED";
-	const char canary_plus_newline[] = "ONEFISH_CONNECTED\n";
+	const char canary[] = "REDFISH_CONNECTED";
+	const char canary_plus_newline[] = "REDFISH_CONNECTED\n";
 
 	if (out_len < sizeof(canary_plus_newline))
 		return -EDOM;
@@ -71,7 +71,7 @@ int ssh_exec(const char *host, char *out, size_t out_len, const char **cmd)
 	if (ret == 0)
 		return 0;
 	if (memcmp(out, canary_plus_newline, sizeof(canary_plus_newline))) {
-		return FORCE_NEGATIVE(ONEFISH_SSH_ERR);
+		return FORCE_NEGATIVE(REDFISH_SSH_ERR);
 	}
 	memmove(out, out + sizeof(canary_plus_newline),
 		out_len - sizeof(canary_plus_newline));

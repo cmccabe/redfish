@@ -1,5 +1,5 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright 2011, Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
@@ -31,16 +31,16 @@
 static void usage(int exitstatus)
 {
 	static const char *usage_lines[] = {
-"fishmon: the OneFish cluster monitoring and testing tool.",
-"See http://www.club.cc.cmu.edu/~cmccabe/onefish.html for the most up-to-date",
-"information about OneFish.",
+"fishmon: the RedFish cluster monitoring and testing tool.",
+"See http://www.club.cc.cmu.edu/~cmccabe/redfish.html for the most up-to-date",
+"information about RedFish.",
 "",
 "fishmon usage:",
 "-A",
 "    Show administrative action descriptions",
 "-c <monitor-configuration-file>",
 "    Set the monitor configuration file. This file contains information ",
-"    about the OneFish cluster we're going to be interacting with.",
+"    about the RedFish cluster we're going to be interacting with.",
 "-f",
 "    Run in the foreground (do not daemonize)",
 "-h",
@@ -199,10 +199,10 @@ struct daemon_info** create_daemons_array(const struct mon_cluster *cluster,
 			goto error;
 		}
 		if (strcmp(cluster->daemons[idx]->type, "mds") == 0) {
-			di[idx]->type = ONEFISH_DAEMON_TYPE_MDS;
+			di[idx]->type = REDFISH_DAEMON_TYPE_MDS;
 		}
 		else if (strcmp(cluster->daemons[idx]->type, "osd") == 0) {
-			di[idx]->type = ONEFISH_DAEMON_TYPE_OSD;
+			di[idx]->type = REDFISH_DAEMON_TYPE_OSD;
 		}
 		else {
 			snprintf(err, err_len, "error parsing type of daemon "

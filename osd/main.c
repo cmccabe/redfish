@@ -1,5 +1,5 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright 2011, Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
@@ -25,9 +25,9 @@
 static void usage(int exitstatus)
 {
 	static const char *usage_lines[] = {
-"fishosd: the OneFish object storage daemon",
-"See http://www.club.cc.cmu.edu/~cmccabe/onefish.html for the most up-to-date",
-"information about OneFish.",
+"fishosd: the RedFish object storage daemon",
+"See http://www.club.cc.cmu.edu/~cmccabe/redfish.html for the most up-to-date",
+"information about RedFish.",
 "",
 "fishosd usage:",
 "-c <osd-configuration-file>",

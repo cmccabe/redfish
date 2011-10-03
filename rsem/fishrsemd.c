@@ -1,5 +1,5 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright 2011, Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
@@ -27,9 +27,9 @@
 static void usage(int exitstatus)
 {
 	static const char *usage_lines[] = {
-"fishrsemd: the OneFish remote semaphore server",
-"See http://www.club.cc.cmu.edu/~cmccabe/onefish.html for the most up-to-date",
-"information about OneFish.",
+"fishrsemd: the RedFish remote semaphore server",
+"See http://www.club.cc.cmu.edu/~cmccabe/redfish.html for the most up-to-date",
+"information about RedFish.",
 "",
 "fishrsemd usage:",
 "-c <semaphore-configuration-file>",

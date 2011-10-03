@@ -1,5 +1,5 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright 2011, Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
@@ -33,7 +33,7 @@ uint64_t parse_file_size(const char *str, char *out, size_t out_len)
 	num_len = strspn(str, "0123456789");
 	if (num_len == 0) {
 		snprintf(out, out_len, "A file size must begin with a number.");
-		return ONEFISH_INVAL_FILE_SIZE;
+		return REDFISH_INVAL_FILE_SIZE;
 	}
 	suffix = str + num_len;
 	if (suffix[0] == '\0') {
@@ -50,5 +50,5 @@ uint64_t parse_file_size(const char *str, char *out, size_t out_len)
 	}
 	snprintf(out, out_len, "Unrecognized file size suffix '%s'. "
 		 "Valid suffixes are KB, MB, and GB.", suffix);
-	return ONEFISH_INVAL_FILE_SIZE;
+	return REDFISH_INVAL_FILE_SIZE;
 }

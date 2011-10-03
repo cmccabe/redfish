@@ -1,5 +1,5 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright (C) 2011 Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
@@ -128,7 +128,7 @@ static int handle_dw_ssh_up_bin(const struct worker_msg_upload_bin *m,
 		else {
 			glitch_log("handle_dw_ssh_up_bin: copy_fd_to_fd "
 				   "failed with error '%d'\n", ret);
-			ret = -ONEFISH_TEMP_ERROR;
+			ret = -REDFISH_TEMP_ERROR;
 			goto done;
 		}
 	}
@@ -142,7 +142,7 @@ static int handle_dw_ssh_up_bin(const struct worker_msg_upload_bin *m,
 		if (ret) {
 			glitch_log("handle_dw_ssh_up_bin: error writing '%s': "
 				   "error '%d'\n", ibin_path, ret);
-			ret = -ONEFISH_TEMP_ERROR;
+			ret = -REDFISH_TEMP_ERROR;
 			goto done;
 		}
 	}
@@ -159,7 +159,7 @@ done:
 	if (ret != 0) {
 		glitch_log("handle_dw_ssh_up_bin: do_waitpid "
 			   "failed with error '%d'\n", ret);
-		return -ONEFISH_TEMP_ERROR;
+		return -REDFISH_TEMP_ERROR;
 	}
 	return 0;
 }

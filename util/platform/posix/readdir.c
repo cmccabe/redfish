@@ -1,5 +1,5 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright (C) 2011 Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
@@ -15,7 +15,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-struct onefish_dirp
+struct redfish_dirp
 {
 	DIR *dp;
 	char dirent_buf[0];
@@ -29,11 +29,11 @@ struct onefish_dirp
  * We can figure out the maximum size we'll need by checking out the maximum
  * path length possible on the filesystem where we're calling opendir(3).
  */
-int  do_opendir(const char *name, struct onefish_dirp** dp)
+int  do_opendir(const char *name, struct redfish_dirp** dp)
 {
 	long name_max;
 	size_t buf_sz;
-	struct onefish_dirp* zdp;
+	struct redfish_dirp* zdp;
 	DIR *rdp = opendir(name);
 	if (!rdp)
 		return -errno;
@@ -44,7 +44,7 @@ int  do_opendir(const char *name, struct onefish_dirp** dp)
 	buf_sz = offsetof(struct dirent, d_name) + name_max + 1;
 	if (buf_sz < sizeof(struct dirent))
 		buf_sz = sizeof(struct dirent);
-	zdp = calloc(1, sizeof(struct onefish_dirp) + buf_sz);
+	zdp = calloc(1, sizeof(struct redfish_dirp) + buf_sz);
 	if (!zdp) {
 		closedir(rdp);
 		return -ENOMEM;
@@ -54,7 +54,7 @@ int  do_opendir(const char *name, struct onefish_dirp** dp)
 	return 0;
 }
 
-struct dirent *do_readdir(struct onefish_dirp *dp)
+struct dirent *do_readdir(struct redfish_dirp *dp)
 {
 	int ret;
 	struct dirent *result;
@@ -64,7 +64,7 @@ struct dirent *do_readdir(struct onefish_dirp *dp)
 	return result;
 }
 
-void do_closedir(struct onefish_dirp *dp)
+void do_closedir(struct redfish_dirp *dp)
 {
 	closedir(dp->dp);
 	free(dp);

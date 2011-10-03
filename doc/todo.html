@@ -22,8 +22,8 @@
     <li>rsem_wait: add timeout parameter</li>
     <li>rsem_wait: handle more error cases</li>
     <li>rsem: validate that rsem_post message releases a semaphore that the remote host actually has.</li>
-    <li>allow replication to be configurable for OneFish, rather than fixed at 3</li>
-    <li>allow chunk size to be configurable for OneFish, rather than fixed at 64 MB</li>
+    <li>allow replication to be configurable for RedFish, rather than fixed at 3</li>
+    <li>allow chunk size to be configurable for RedFish, rather than fixed at 64 MB</li>
     <li>Create .rpm</li>
     <li>Create .deb</li>
     <li>The implicit build dependencies between <i>run_cmd_unit_test</i> and
@@ -36,19 +36,19 @@
     <li>Tools to migrate to or from other distributed filesystems, especially
     widely used ones.</li>
     <li>A simple web server that serves up some web pages offering a graphical
-    view of what the OneFish monitor is doing. This should not be too
+    view of what the RedFish monitor is doing. This should not be too
     difficult. All you have to do is parse the stream of JSON updates sent out
     by fishmon, and update the web page accordingly. This should probably be in
     a higher-level language rather than in C. Any Python, Ruby, Google Go, and
     many other languages could do a good job with this.</li>
-    <li>Allow the OneFish monitor to trigger SNMP traps when certain events
+    <li>Allow the RedFish monitor to trigger SNMP traps when certain events
     happen. Again, this should be too difficult-- you just monitor the JSON
     output and fire the trap when you see an event that concerns you. Figuring
     out what the traps should be is important.</li>
     <li>Internationalize fishtop</li>
-    <li>A FUSE connector that allows OneFish to be used like an in-kernel
+    <li>A FUSE connector that allows RedFish to be used like an in-kernel
     filesystem</li>
-    <li>Bash completion for onefish commands?</li>
+    <li>Bash completion for RedFish commands?</li>
     <li>Puppet integration</li>
     <li>Chef integration</li>
     <li>add 'make doxygen' and verify that the doxygen docs all build</li>

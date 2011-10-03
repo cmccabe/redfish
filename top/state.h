@@ -1,13 +1,13 @@
 /*
- * The OneFish distributed filesystem
+ * The RedFish distributed filesystem
  *
  * Copyright (C) 2011 Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
  *
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#ifndef ONEFISH_TOP_STATE_DOT_H
-#define ONEFISH_TOP_STATE_DOT_H
+#ifndef REDFISH_TOP_STATE_DOT_H
+#define REDFISH_TOP_STATE_DOT_H
 
 #define TS_CONN_STATUS_LEN 64
 
