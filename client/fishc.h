@@ -46,6 +46,20 @@ struct of_path_status
 	char *group;
 };
 
+struct of_block_host
+{
+	int port;
+	char *hostname;
+};
+
+struct of_block_loc
+{
+	int64_t start;
+	int64_t len;
+	int num_hosts;
+	struct of_block_host hosts[0];
+};
+
 /** Initialize a OneFish client instance.
  *
  * We will begin by querying the supplied list of hosts, asking each one for a
@@ -123,44 +137,33 @@ int onefish_mkdirs(struct of_client *cli, const char *path, int mode);
  *
  * Get the block locations where a given file is being stored.
  *
- * @param ofe		The onefish file to use
+ * @param cli		the OneFish client
+ * @paths path		path
  * @param start		Start location in the file
  * @param len		Length of the region of the file to examine
- * @param blc		(out-parameter) will contain an array of block
- *			location hostnames on success.
- * @return		negative number on error; number of block locations
- * 			on success.
+ * @param blc		(out-parameter) will contain a NULL-terminated array of
+ *			pointers to block locations on success.
+ * @return		negative number on error; 0 on success
  */
-int onefish_get_block_locs(struct of_file *ofe,
-	int64_t start, int64_t len, char ***blc);
+int onefish_get_block_locs(struct of_client *cli, const char *path,
+	int64_t start, int64_t len, struct of_block_loc ***blc);
 
 /** Free the array of block locations
  *
  * @param blc		The array of block locations
- * @param nblc		Length of blc
  */
-void onefish_free_block_locs(char **blc, int nblc);
+void onefish_free_block_locs(struct of_block_loc **blc);
 
-/** Given a list of paths, returns a list of file status objects corresponding
- * to those paths (excluding non-existent paths).
+/** Given a path, returns file status information
  *
  * @param cli		the OneFish client
- * @paths		NULL-terminated array of pointers to path strings
- * @param osa		(out-parameter): array of file statuses
- 			Free these with onefish_free_file_statuses.
+ * @paths path		path
+ * @param osa		(out-parameter): file status
  *
- * @return		Length of file status array returned, or negative on
- *			error.
+ * @return		0 on success; error code otherwise
  */
-int onefish_get_path_statuses(struct of_client *cli, const char **paths,
-				struct of_path_status** osa);
-
-/** Frees the status data returned by onefish_get_statuses
- *
- * @param osa		array of file statuses
- * @param nosa		Length of osa
- */
-void onefish_free_path_statuses(struct of_path_status* osa, int nosa);
+int onefish_get_path_status(struct of_client *cli, const char *path,
+				struct of_path_status* osa);
 
 /** Given a directory name, return a list of status objects corresponding
  * to the objects in that directory.
@@ -173,6 +176,13 @@ void onefish_free_path_statuses(struct of_path_status* osa, int nosa);
  */
 int onefish_list_directory(struct of_client *cli, const char *dir,
 			      struct of_path_status** osa);
+
+/** Frees the status data returned by onefish_list_directory
+ *
+ * @param osa		array of file statuses
+ * @param nosa		Length of osa
+ */
+void onefish_free_path_statuses(struct of_path_status* osa, int nosa);
 
 /** Changes the permission bits for a file or directory.
  *
@@ -225,6 +235,15 @@ void onefish_disconnect(struct of_client *cli);
  */
 int onefish_read(struct of_file *ofe, void *data, int len);
 
+/** Returns the number of bytes that can be read from the OneFish file without
+ * blocking.
+ *
+ * @param ofe		the OneFish file
+ *
+ * @return		the number of bytes available to read
+ */
+int32_t onefish_available(struct of_file *ofe);
+
 /** Reads data from a onefish file
  *
  * @param ofe		the OneFish file
@@ -255,7 +274,18 @@ int onefish_write(struct of_file *ofe, const void *data, int len);
  *
  * @return		0 on success; error code otherwise
  */
-int onefish_fseek(struct of_file *ofe, int64_t off);
+int onefish_fseek_abs(struct of_file *ofe, int64_t off);
+
+/** Set the current position in a file
+ * This works only for files opened in read-only mode.
+ *
+ * @param ofe		the OneFish file
+ * @param delta		the desired change in offset
+ * @param out		(out param) the actual change in offset that was made
+ *
+ * @return		0 on success; error code otherwise
+ */
+int onefish_fseek_rel(struct of_file *ofe, int64_t delta, int64_t *out);
 
 /** Get the current position in a file
  *
@@ -291,14 +321,23 @@ int onefish_sync(struct of_file *ofe);
  */
 void onefish_free_file(struct of_file *ofe);
 
-/** Delete a file or directory
+/** Delete a file
  *
  * @param cli		the onefish client
- * @param path		the path to delete
+ * @param path		the file to unlink
  *
  * @return		0 on success; error code otherwise
  */
-int onefish_delete(struct of_client *cli, const char *path);
+int onefish_unlink(struct of_client *cli, const char *path);
+
+/** Delete a file of directory subtree
+ *
+ * @param cli		the onefish client
+ * @param path		the file or subtree to remove
+ *
+ * @return		0 on success; error code otherwise
+ */
+int onefish_unlink_tree(struct of_client *cli, const char *path);
 
 /** Rename a file or directory
  *

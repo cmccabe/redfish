@@ -14,6 +14,7 @@
 #include "util/macro.h"
 #include "util/path.h"
 #include "util/platform/readdir.h"
+#include "util/run_cmd.h"
 #include "util/safe_io.h"
 #include "util/string.h"
 
@@ -405,23 +406,40 @@ done:
 	return ret;
 }
 
-int onefish_get_block_locs(POSSIBLY_UNUSED(struct of_file *ofe),
-		POSSIBLY_UNUSED(int64_t start), POSSIBLY_UNUSED(int64_t len),
-		char ***blc)
+int onefish_get_block_locs(POSSIBLY_UNUSED(struct of_client *cli),
+		POSSIBLY_UNUSED(const char *path), int64_t start, int64_t len,
+		struct of_block_loc ***blc)
 {
-	char **zblc = malloc(1 * sizeof(char *));
-	if (!zblc)
-		return -ENOMEM;
-	zblc[0] = "localhost";
+	int ret;
+	struct of_block_loc **zblc = NULL;
+	
+	zblc = calloc(1, 2 * sizeof(struct of_block_loc *));
+	if (!zblc) {
+		ret = -ENOMEM;
+		goto error;
+	}
+	zblc[0] = calloc(1, sizeof(struct of_block_loc) +
+			 sizeof(struct of_block_host));
+	if (!zblc[0]) {
+		ret = -ENOMEM;
+		goto error;
+	}
+	zblc[0]->start = start;
+	zblc[0]->len = len;
+	zblc[0]->num_hosts = 1;
+	zblc[0]->hosts[0].port = 0;
+	zblc[0]->hosts[0].hostname = strdup("localhost");
+	if (!zblc[0]->hosts[0].hostname) {
+		ret = -ENOMEM;
+		goto error;
+	}
 	*blc = zblc;
 	return 1;
-}
 
-void onefish_free_block_locs(char **blc, int nblc)
-{
-	if (nblc != 1)
-		abort();
-	free(blc);
+error:
+	if (zblc)
+		onefish_free_block_locs(zblc);
+	return ret;
 }
 
 static int get_path_status(const char *path, struct of_path_status *zosa)
@@ -449,54 +467,17 @@ static int get_path_status(const char *path, struct of_path_status *zosa)
 	return 0;
 }
 
-int onefish_get_path_statuses(struct of_client *cli, const char **paths,
-				struct of_path_status** osa)
+int onefish_get_path_status(struct of_client *cli, const char *path,
+				struct of_path_status* osa)
 {
-	struct of_path_status* zosa;
-	const char **p;
-	int ret, i, cur_file, num_files = 0;
+	char epath[PATH_MAX];
+	int ret;
 
-	for (p = paths; *p; ++p) {
-		num_files++;
-	}
-	zosa = calloc(num_files, sizeof(struct of_path_status));
-	if (!zosa)
-		return -ENOMEM;
 	pthread_mutex_lock(&cli->lock);
-	cur_file = 0;
-	for (i = 0; i < num_files; ++i) {
-		char tmp[PATH_MAX];
-		get_stub_path(cli, *p, tmp, PATH_MAX);
-		ret = get_path_status(tmp, &zosa[cur_file]);
-		if (ret) {
-			onefish_free_path_statuses(zosa, cur_file);
-			goto done;
-		}
-		cur_file++;
-	}
-	if (cur_file != num_files) {
-		struct of_path_status *xosa;
-		xosa = realloc(zosa, cur_file * sizeof(struct of_path_status));
-		if (xosa)
-			zosa = xosa;
-	}
-	ret = cur_file;
-done:
+	get_stub_path(cli, path, epath, PATH_MAX);
+	ret = get_path_status(epath, osa);
 	pthread_mutex_unlock(&cli->lock);
-	if (ret >= 0)
-		*osa = zosa;
 	return ret;
-}
-
-void onefish_free_path_statuses(struct of_path_status* osa, int nosa)
-{
-	int i;
-	for (i = 0; i < nosa; ++i) {
-		free(osa[i].path);
-		free(osa[i].owner);
-		free(osa[i].group);
-	}
-	free(osa);
 }
 
 int onefish_list_directory(struct of_client *cli, const char *dir,
@@ -560,6 +541,17 @@ free_zosa:
 	}
 	free(zosa);
 	return ret;
+}
+
+void onefish_free_path_statuses(struct of_path_status* osa, int nosa)
+{
+	int i;
+	for (i = 0; i < nosa; ++i) {
+		free(osa[i].path);
+		free(osa[i].owner);
+		free(osa[i].group);
+	}
+	free(osa);
 }
 
 static int onefish_openwr_internal(struct of_client *cli, const char *path)
@@ -663,6 +655,20 @@ int onefish_read(struct of_file *ofe, void *data, int len)
 	return safe_read(ofe->fd, data, len);
 }
 
+int32_t onefish_available(struct of_file *ofe)
+{
+	struct stat sbuf;
+	if (fstat(ofe->fd, &sbuf) < 0) {
+		return 0;
+	}
+	if (sbuf.st_size > 0x7fffffff) {
+		return 0x7fffffff;
+	}
+	else {
+		return (uint32_t)sbuf.st_size;
+	}
+}
+
 int onefish_pread(struct of_file *ofe, void *data, int len, int64_t off)
 {
 	if (ofe->ty != FISH_OPEN_TY_RD)
@@ -714,7 +720,7 @@ void onefish_free_file(struct of_file *ofe)
 	free(ofe);
 }
 
-int onefish_delete(struct of_client *cli, const char *path)
+int onefish_unlink(struct of_client *cli, const char *path)
 {
 	int ret;
 	char epath[PATH_MAX];
@@ -724,6 +730,21 @@ int onefish_delete(struct of_client *cli, const char *path)
 		return ret;
 	pthread_mutex_lock(&cli->lock);
 	ret = unlink(epath);
+	pthread_mutex_unlock(&cli->lock);
+	return ret;
+}
+
+int onefish_unlink_tree(struct of_client *cli, const char *path)
+{
+	int ret;
+	char epath[PATH_MAX];
+
+	ret = get_stub_path(cli, path, epath, PATH_MAX);
+	if (ret)
+		return ret;
+	pthread_mutex_lock(&cli->lock);
+	/* FIXME: replace this with something less fugly */
+	ret = run_cmd("rm", "-rf", path, (char*)NULL);
 	pthread_mutex_unlock(&cli->lock);
 	return ret;
 }

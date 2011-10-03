@@ -63,3 +63,21 @@ error:
 	free(zm);
 }
 
+void onefish_free_block_locs(struct of_block_loc **blc)
+{
+	struct of_block_loc **i;
+
+	i = blc;
+	while (1) {
+		int j;
+		struct of_block_loc *b = *i;
+		if (!b)
+			break;
+		for (j = 0; j < b->num_hosts; ++j) {
+			free(b->hosts[j].hostname);
+		}
+		free(b);
+		++i;
+	}
+	free(blc);
+}

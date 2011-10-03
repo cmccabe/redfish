@@ -165,21 +165,65 @@ int onefish_mkdirs(struct of_client *cli, int mode, const char *path)
 	return 0;
 }
 
-int onefish_get_block_locs(struct of_file *ofe,
+int onefish_get_block_locs(struct of_client *cli, const char *path,
 	int64_t start, int64_t len, char ***blc)
 {
-	char **zblc;
-	zblc = hdfsGetHosts(cli->fs, ofe->path, start, len);
+	int i, nz, na;
+	char ***s, ***str = NULL;
+	struct of_block_loc **zblc = NULL;
+
+	str = hdfsGetHosts(cli->fs, path, start, len);
+	if (!str) {
+		ret = -errno;
+		goto error;
+	}
+	nz = 0;
+	for (s = str; *s; ++s) {
+		nz++;
+	}
+	zblc = calloc(1, sizeof(struct of_block_loc*) * (nz + 1));
 	if (!zblc) {
-		return -errno;
+		ret = -ENOMEM;
+		goto error;
+	}
+	for (i = 0; i < nz; ++i) {
+		char **a;
+		int j, na;
+
+		na = 0;
+		for (a = *str; *a; ++a) {
+			na++;
+		}
+		zblc[i] = calloc(sizeof(struct of_block_loc) + 
+				(sizeof(struct(of_block_host)) * na));
+		// FIXME: the libhdfs API doesn't give us enough information to
+		// fill start and len out correctly.
+		zblc[i]->start = start;
+		zblc[i]->len = len;
+		zblc[i]->num_hosts = na;
+		for (j = 0; j < na; ++j) {
+			struct of_block_host *host = &zblc[i]->hosts[j];
+			host->hostname = strdup((*str)[j]);
+			if (!host->hostname) {
+				ret = -ENOMEM;
+				goto error;
+			}
+			// FIXME: the libhdfs API doesn't give us enough
+			// information to fill out port correctly.
+			host->port = 0;
+		}
 	}
 	*blc = zblc;
+	hdfsFreeHosts(str);
 	return 0;
-}
 
-void onefish_free_block_locs(char **blc, POSSIBLY_UNUSED(int nblc))
-{
-	hdfsFreeHosts(blc);
+error:
+	if (str)
+		hdfsFreeHosts(str);
+	if (zblc) {
+		onefish_free_block_locs(zblc);
+	}
+	return ret;
 }
 
 static int hdfs_status_to_of_status(hdfsFileInfo *hi,
@@ -196,55 +240,33 @@ static int hdfs_status_to_of_status(hdfsFileInfo *hi,
 	osa->owner = strdup(hi->mOwner);
 	osa->group = strdup(hi->mGroup);
 
-	if ((!osa->path) || (!osa->owner) || (!osa->group))
+	if ((!osa->path) || (!osa->owner) || (!osa->group)) {
+		free(osa->path);
+		osa->path = NULL;
+		free(osa->owner);
+		osa->owner = NULL;
+		free(osa->group);
+		osa->group = NULL;
 		return -ENOMEM;
+	}
 	return 0;
 }
 
-int onefish_get_file_statuses(struct of_client *cli, const char **paths,
-			      struct offile_status** osa)
+int onefish_get_path_status(struct of_client *cli, const char *path,
+			      struct offile_status* osa)
 {
-	struct offile_status *xosa, *zosa;
-	const char *p;
-	int ret, nosa = 0;
-
-	for (p = paths; *p; ++p)
-		++nosa;
-	zosa = calloc(nosa, sizeof(struct offile_status));
-	if (!zosa)
-		return -ENOMEM;
-	nosa = 0;
-	for (p = paths; *p; ++p) {
-		hdfsFileInfo *hi = hdfsGetPathInfo(cli->fs, p);
-		if (!hi) {
-			continue;
-		}
-		ret = hdfs_status_to_of_status(hi, &zosa[nosa++]);
-		if (ret) {
-			goto error;
-		}
-		hdfsFreeFileInfo(hi, 1);
+	int ret;
+	hdfsFileInfo *hi
+		
+	hi = hdfsGetPathInfo(cli->fs, path);
+	if (!hi) {
+		ret = -ENOENT;
+		goto done;
 	}
-	xosa = realloc(nosa, nosa * sizeof(struct offile_status));
-	if (xosa) {
-		zosa = xosa;
-	}
-	*osa = zosa;
-	return nosa;
-
-error:
-	onefish_free_statuses(zosa, nosa);
+	ret = hdfs_status_to_of_status(hi, osa);
+	hdfsFreeFileInfo(hi, 1);
+done:
 	return ret;
-}
-
-void onefish_free_statuses(struct of_status *osa, int nosa)
-{
-	for (i = 0; i < nosa; ++i) {
-		free(osa->path);
-		free(osa->owner);
-		free(osa->group);
-	}
-	free(osa);
 }
 
 int onefish_list_directory(struct of_client *cli, const char *dir,
@@ -281,6 +303,16 @@ error:
 	return ret;
 }
 
+void onefish_free_path_statuses(struct of_status *osa, int nosa)
+{
+	for (i = 0; i < nosa; ++i) {
+		free(osa->path);
+		free(osa->owner);
+		free(osa->group);
+	}
+	free(osa);
+}
+
 int onefish_chmod(struct of_client *cli, const char *path, int mode)
 {
 	int ret = hdfsChmod(cli->fs, path, mode);
@@ -315,16 +347,21 @@ void onefish_disconnect(struct of_client *cli)
 
 int onefish_read(struct of_file *ofe, void *data, int len)
 {
-	tSize res = hdfsRead(ofe->cli, ofe->file, data, len);
+	tSize res = hdfsRead(ofe->cli->fs, ofe->file, data, len);
 	if (res < 0) {
 		return -EIO;
 	}
 	return (int)res;
 }
 
+int32_t onefish_available(struct of_file *ofe)
+{
+	return hdfsAvailable(ofe->cli->fs, ofe->file);
+}
+
 int onefish_pread(struct of_file *ofe, void *data, int len, int64_t off)
 {
-	tSize res = hdfsRead(ofe->cli, ofe->file, off, data, len);
+	tSize res = hdfsRead(ofe->cli->fs, ofe->file, off, data, len);
 	if (res < 0) {
 		return -EIO;
 	}
@@ -333,7 +370,7 @@ int onefish_pread(struct of_file *ofe, void *data, int len, int64_t off)
 
 int onefish_write(struct of_file *ofe, const void *data, int len)
 {
-	tSize res = hdfsWrite(ofe->cli, ofe->file, data, len);
+	tSize res = hdfsWrite(ofe->cli->fs, ofe->file, data, len);
 	if (res < 0) {
 		return -EIO;
 	}
@@ -342,7 +379,7 @@ int onefish_write(struct of_file *ofe, const void *data, int len)
 
 int onefish_fseek(struct of_file *ofe, int64_t off)
 {
-	int res = hdfsSeek(ofe->cli, ofe->file, off);
+	int res = hdfsSeek(ofe->cli->fs, ofe->file, off);
 	if (res < 0) {
 		return -EIO;
 	}
@@ -351,7 +388,7 @@ int onefish_fseek(struct of_file *ofe, int64_t off)
 
 int64_t onefish_ftell(struct of_file *ofe)
 {
-	tOffset res = hdfsTell(ofe->cli, ofe->file);
+	tOffset res = hdfsTell(ofe->cli->fs, ofe->file);
 	if (res < 0) {
 		return -EIO;
 	}
@@ -360,7 +397,7 @@ int64_t onefish_ftell(struct of_file *ofe)
 
 int onefish_flush(struct of_file *ofe)
 {
-	int ret = hdfsFlush(ofe->cli, ofe->file)
+	int ret = hdfsFlush(ofe->cli->fs, ofe->file)
 	if (ret)
 		return -EIO;
 	return 0;
@@ -374,14 +411,29 @@ int onefish_sync(struct of_file *ofe)
 void onefish_free_file(struct of_file *ofe)
 {
 	if (ofe->cli)
-		hdfsCloseFile(ofe->cli, ofe->file);
+		hdfsCloseFile(ofe->cli->fs, ofe->file);
 	ofe->file = NULL;
 	free(ofe->path);
 	ofe->path = NULL;
 	free(ofe);
 }
 
-int onefish_delete(struct of_client *cli, const char *path)
+/* FIXME: libhdfs only exposes one delete method... I guess it must delete recursively,
+ * because otherwise there would be no way to delete directories. It's not
+ * documented anywhere.
+ *
+ * We probably could/should emulate non-recursive delete somehow here, although
+ * it's not going to be properly atomic :(
+ */
+int onefish_unlink(struct of_client *cli, const char *path)
+{
+	int ret = hdfs_delete(cli->fs, path);
+	if (ret)
+		return -EIO;
+	return 0;
+}
+
+int onefish_unlink_tree(struct of_client *cli, const char *path)
 {
 	int ret = hdfs_delete(cli->fs, path);
 	if (ret)
@@ -399,7 +451,7 @@ int onefish_rename(struct of_client *cli, const char *src, const char *dst)
 
 int onefish_close(struct of_file *ofe)
 {
-	int ret = hdfsCloseFile(ofe->cli, ofe->file);
+	int ret = hdfsCloseFile(ofe->cli->fs, ofe->file);
 	ofe->cli = NULL;
 	onefish_free_file(ofe);
 	return ret;
