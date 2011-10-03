@@ -703,14 +703,12 @@ int64_t redfish_ftell(struct redfish_file *ofe)
 	return res;
 }
 
-int redfish_flush(struct redfish_file *ofe)
+int redfish_hflush(POSSIBLY_UNUSED(struct redfish_file *ofe))
 {
-	int res;
-	RETRY_ON_EINTR(res, close(ofe->fd));
-	return res;
+	return 0;
 }
 
-int redfish_sync(POSSIBLY_UNUSED(struct redfish_file *ofe))
+int redfish_hsync(POSSIBLY_UNUSED(struct redfish_file *ofe))
 {
 	return 0;
 }
@@ -779,7 +777,7 @@ done:
 int redfish_close(struct redfish_file *ofe)
 {
 	int ret;
-	ret = redfish_flush(ofe);
+	RETRY_ON_EINTR(ret, close(ofe->fd));
 	redfish_free_file(ofe);
 	return ret;
 }

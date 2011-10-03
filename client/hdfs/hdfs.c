@@ -395,7 +395,7 @@ int64_t redfish_ftell(struct redfish_file *ofe)
 	return (int64_t)res;
 }
 
-int redfish_flush(struct redfish_file *ofe)
+int redfish_hflush(struct redfish_file *ofe)
 {
 	int ret = hdfsFlush(ofe->cli->fs, ofe->file)
 	if (ret)
@@ -403,7 +403,7 @@ int redfish_flush(struct redfish_file *ofe)
 	return 0;
 }
 
-int redfish_sync(struct redfish_file *ofe)
+int redfish_hsync(struct redfish_file *ofe)
 {
 	return 0;
 }

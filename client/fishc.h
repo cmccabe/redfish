@@ -295,22 +295,32 @@ int redfish_fseek_rel(struct redfish_file *ofe, int64_t delta, int64_t *out);
  */
 int64_t redfish_ftell(struct redfish_file *ofe);
 
-/** Persist block locations on the metadata servers, and send all outstanding
- * data to all datanodes in the pipeline.
+/** Make all the data in this file visible to readers who open the file after
+ * this call to hflush. Data will be visible eventually to readers who already
+ * have the file open, but do not reopen it. 
  *
- * @param ofe		The redfish file to flush
+ * This is a blocking call. It will start the hflush operation and then block
+ * until it completes. Among other things, this implies that the data is
+ * replicated on all relevant OSDs.
+ *
+ * This call can be used only on files that have been opened in append mode.
+ *
+ * @param ofe		The redfish file
  *
  * @return		0 on success; error code otherwise
  */
-int redfish_flush(struct redfish_file *ofe);
+int redfish_hflush(struct redfish_file *ofe);
 
 /** Block until the data is really written to disk on by the chunkservers.
+ *
+ * This will actually block until the data has been persisted to disk.
+ * Basically, fsync.
  *
  * @param ofe		The redfish file to sync
  *
  * @return		0 on success; error code otherwise
  */
-int redfish_sync(struct redfish_file *ofe);
+int redfish_hsync(struct redfish_file *ofe);
 
 /** Freed the memory and internal state associated with a redfish file.
  *
@@ -373,6 +383,7 @@ int redfish_close(struct redfish_file *ofe);
  * TODO: implement list_dir with filtering?
  * TODO: add block size changing functionality
 int redfish_set_replication(struct redfish_client *cli, const char *path, int repl)
+ * TODO: implement append / hflush / hsync
  */
 
 #endif
