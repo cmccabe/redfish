@@ -368,10 +368,9 @@ int redfish_close(struct redfish_file *ofe);
  * TODO: add copy_to_local_file
  * TODO: add move_to_local_file
  * TODO: implement checksumming...
- * TODO: implement hdfsAvailable equivalent...
  * TODO: implement getcwd / setcwd
  * TODO: implement get capacity / get used
- * TODO: implement list_dir with filtering
+ * TODO: implement list_dir with filtering?
  * TODO: add block size changing functionality
 int redfish_set_replication(struct redfish_client *cli, const char *path, int repl)
  */
