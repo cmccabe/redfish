@@ -39,7 +39,8 @@ struct fast_log_new_conn_entry
 BUILD_BUG_ON(sizeof(struct fast_log_new_conn_entry) >
 		sizeof(struct fast_log_entry)); 
 
-void fast_log_new_conn(uint32_t conn_ty, uint32_t fd, unsigned long s_addr)
+void fast_log_new_conn(struct fast_log_buf *fb, uint32_t conn_ty,
+			uint32_t fd, unsigned long s_addr)
 {
 	union {
 		struct fast_log_new_conn_entry f;
@@ -50,6 +51,7 @@ void fast_log_new_conn(uint32_t conn_ty, uint32_t fd, unsigned long s_addr)
 	fe.f.conn_ty = conn_ty;
 	fe.f.fd = fd;
 	fe.f.s_addr = s_addr;
+	fast_log(fb, &fe.fe);
 }
 
 static int fast_log_new_conn_dump(struct fast_log_entry *fe, int fd)
@@ -81,7 +83,8 @@ struct fast_log_close_conn_entry
 BUILD_BUG_ON(sizeof(struct fast_log_close_conn_entry) >
 		sizeof(struct fast_log_entry)); 
 
-void fast_log_close_conn(uint32_t conn_ty, uint32_t fd, unsigned long s_addr)
+void fast_log_close_conn(struct fast_log_buf *fb, uint32_t conn_ty,
+			uint32_t fd, unsigned long s_addr)
 {
 	union {
 		struct fast_log_close_conn_entry f;
@@ -92,6 +95,7 @@ void fast_log_close_conn(uint32_t conn_ty, uint32_t fd, unsigned long s_addr)
 	fe.f.conn_ty = conn_ty;
 	fe.f.fd = fd;
 	fe.f.s_addr = s_addr;
+	fast_log(fb, &fe.fe);
 }
 
 static int fast_log_close_conn_dump(struct fast_log_entry *fe, int fd)
