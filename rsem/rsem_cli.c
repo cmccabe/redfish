@@ -11,6 +11,7 @@
 #include "rsem/rsem_cli.h"
 #include "util/error.h"
 #include "util/msleep.h"
+#include "util/net.h"
 #include "util/platform/socket.h"
 #include "util/safe_io.h"
 

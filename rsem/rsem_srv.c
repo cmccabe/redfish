@@ -11,6 +11,7 @@
 #include "rsem/rsem.h"
 #include "util/macro.h"
 #include "util/error.h"
+#include "util/net.h"
 #include "util/platform/pipe2.h"
 #include "util/platform/socket.h"
 #include "util/safe_io.h"

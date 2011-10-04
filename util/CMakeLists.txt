@@ -5,6 +5,7 @@ add_library(util
     config.c
     dir.c
     msleep.c
+    net.c
     path.c
     run_cmd.c
     safe_io.c

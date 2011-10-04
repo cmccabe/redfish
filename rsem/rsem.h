@@ -9,9 +9,6 @@
 #ifndef REDFISH_RSEM_RSEM_DOT_H
 #define REDFISH_RSEM_RSEM_DOT_H
 
-#include <stdint.h> /* for uint32_t */
-#include <unistd.h> /* for size_t */
-
 #define JORM_CUR_FILE "rsem/rsem.jorm"
 #include "jorm/jorm_generate_include.h"
 #undef JORM_CUR_FILE
@@ -33,17 +30,5 @@ enum {
 	RSEM_SERVER_INTERNAL_ERROR,
 	RSEM_SERVER_NO_SUCH_SEM,
 };
-
-struct json_object;
-
-extern int blocking_read_json_req(const char *fn, int fd,
-				  struct json_object **jo);
-
-extern int blocking_write_json_req(const char *fn, int fd,
-				   struct json_object *jo);
-
-extern int do_bind_and_listen(int port, char *err, size_t err_len);
-
-extern int write_u32(const char *fn, int fd, uint32_t u);
 
 #endif
