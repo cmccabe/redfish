@@ -1,6 +1,7 @@
 add_library(core
     daemon.c
     fast_log.c
+    fast_log_types.c
     glitch_log.c
     log_config.c
     pid_file.c
