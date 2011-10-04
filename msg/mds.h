@@ -23,6 +23,8 @@ enum {
 	MMM_OPEN_RFILE_REQ,
 	/** Chunk map sent from object storage daemon */
 	MMM_CHUNK_REPORT,
+	/** OSD heartbeat message */
+	MMM_OSD_HEARTBEAT,
 	/** Lookup some chunks for an open read-only file. */
 	MMM_LOOKUP_CHUNKS_REQ,
 	/** Get a new chunk for an open write-only file */
