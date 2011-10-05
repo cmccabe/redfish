@@ -14,6 +14,10 @@
 
 #include <stdint.h>
 
+#define DEFAULT_MDS_TO_MDS_PORT 9090
+#define DEFAULT_OSD_TO_MDS_PORT 9091
+#define DEFAULT_CLIENT_TO_MDS_PORT 9092
+
 /* Network messages that can be sent to the metadata server */
 
 enum {
