@@ -9,6 +9,7 @@ add_library(util
     fast_log_types.c
     msleep.c
     net.c
+    packed.c
     path.c
     run_cmd.c
     safe_io.c
@@ -80,3 +81,7 @@ add_test(data_struct_unit ${CMAKE_CURRENT_BINARY_DIR}/data_struct_unit data_stru
 add_executable(bitfield_unit bitfield_unit.c)
 target_link_libraries(bitfield_unit util utest)
 add_test(bitfield_unit ${CMAKE_CURRENT_BINARY_DIR}/bitfield_unit bitfield_unit)
+
+add_executable(packed_unit packed_unit.c)
+target_link_libraries(packed_unit util utest)
+add_test(packed_unit ${CMAKE_CURRENT_BINARY_DIR}/packed_unit packed_unit)
