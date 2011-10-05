@@ -76,7 +76,7 @@ struct fast_log_close_conn_entry
 	/** Source address */
 	unsigned long s_addr;
 	/** Error, if any */
-	int32_t err;
+	int32_t error;
 }
 );
 
@@ -84,7 +84,7 @@ BUILD_BUG_ON(sizeof(struct fast_log_close_conn_entry) >
 		sizeof(struct fast_log_entry)); 
 
 void fast_log_close_conn(struct fast_log_buf *fb, uint32_t conn_ty,
-			uint32_t fd, unsigned long s_addr)
+			uint32_t fd, unsigned long s_addr, int32_t error)
 {
 	union {
 		struct fast_log_close_conn_entry f;
@@ -95,6 +95,7 @@ void fast_log_close_conn(struct fast_log_buf *fb, uint32_t conn_ty,
 	fe.f.conn_ty = conn_ty;
 	fe.f.fd = fd;
 	fe.f.s_addr = s_addr;
+	fe.f.error = error;
 	fast_log(fb, &fe.fe);
 }
 
@@ -105,7 +106,7 @@ static int fast_log_close_conn_dump(struct fast_log_entry *fe, int fd)
 		(struct fast_log_close_conn_entry*)fe;
 	inet_ntop(AF_INET, &f->s_addr, str, INET_ADDRSTRLEN);
 	return dprintf(fd, "closee_conn(conn_ty=%d,fd=%d,s_addr=%s,err=%d)\n",
-		f->conn_ty, f->fd, str, f->err);
+		f->conn_ty, f->fd, str, f->error);
 }
 
 const fast_log_dumper_fn_t g_fast_log_dumpers[] = {
