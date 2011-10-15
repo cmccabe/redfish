@@ -17,9 +17,9 @@
 
 enum {
 	/** MDS response to a 'create file' request */
-	MMM_CREATE_FILE_RESP = 2000,
+	MMM_CREATE_RFILE_RESP = 2000,
 	/** MDS response to an 'open file' request */
-	MMM_OPEN_FILE_RESP,
+	MMM_OPEN_RFILE_RESP,
 	/** MDS response to a 'list directory' or 'list entries' request */
 	MMM_LIST_RESP,
 	/** OSD response to a request for a chunk */
@@ -28,14 +28,14 @@ enum {
 
 /* Create file */
 PACKED_ALIGNED(8,
-struct mmm_create_file_resp {
+struct mmm_create_rfile_resp {
 	/* negative error code on error */
 	int32_t rfile;
 	uint32_t chunk_addr;
 	uint64_t chunk_id;
 });
 PACKED_ALIGNED(8,
-struct mmm_open_file_resp {
+struct mmm_open_rfile_resp {
 	/* negative error code on error */
 	int32_t rfile;
 	uint64_t chunk_id;

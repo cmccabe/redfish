@@ -49,4 +49,14 @@ void glitch_log(const char *fmt, ...) PRINTF_FORMAT(1, 2);
  */
 void close_glitch_log(void);
 
+#define GL_EXPECT_ZERO(expr) \
+	do { \
+		int __e__ = expr; \
+		if (__e__) { \
+			glitch_log(__FILE__ ": error %d on line " \
+				   TO_STR2(__LINE__) "\n", __e__); \
+			return __e__; \
+		} \
+	} while(0);
+
 #endif

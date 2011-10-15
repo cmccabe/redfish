@@ -47,6 +47,8 @@ enum {
 	MMM_UTIMES_REQ,
 	/** Client unlink file request */
 	MMM_UNLINK_REQ,
+	/** Client unlink tree request */
+	MMM_UNLINK_TREE_REQ,
 	/** Client rename request */
 	MMM_RENAME_REQ,
 	/** Client close remote file */
@@ -59,13 +61,12 @@ struct mmm_create_rfile_req {
 	uint32_t block_sz;
 	uint16_t mode;
 	uint16_t repl;
-	uint16_t path_len;
-	char path[0];
+	struct mmm_path path;
 });
 PACKED_ALIGNED(8,
 struct mmm_open_rfile_req {
 	uint16_t path_len;
-	char path[0];
+	struct mmm_path path;
 });
 PACKED_ALIGNED(8,
 struct mmm_chunk_report {
