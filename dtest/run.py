@@ -14,9 +14,8 @@ if sys.version < '2.5':
     sys.exit(1)
 
 def process_is_running(pid):
-    cmd = "ps -p %d" % pid
     try:
-        subprocess_check_output(cmd)
+        subprocess_check_output(["ps", "-p", str(pid)])
         return True
     except:
         return False
