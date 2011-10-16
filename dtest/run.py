@@ -13,6 +13,14 @@ if sys.version < '2.5':
     sys.stderr.write("You need Python 2.5 or newer.)\n")
     sys.exit(1)
 
+def process_is_running(pid):
+    cmd = "ps -p %d" % pid
+    try:
+        subprocess_check_output(cmd)
+        return True
+    except:
+        return False
+
 parser = OptionParser()
 parser.add_option("-c", "--cluster-config", dest="cluster_conf")
 (opts, args) = parser.parse_args()
@@ -30,7 +38,11 @@ for d in diter:
     print d.jo
     try:
         pid = d.run_with_output("cat " + d.get_pid_file())
-        print "error: daemon " + str(i) + " is still running as process " + pid
-        continue
+        if (process_is_running(int(pid))):
+            print "error: daemon " + str(i) + " is still running as process " + pid
+            continue
+        else:
+            os.unlink(d.get_pid_file())
     except subprocess.CalledProcessError, e:
-        d.run(d.get_binary_path() +  " -c " +  d.get_conf_file())
+        pass
+    d.run(d.get_binary_path() +  " -c " +  d.get_conf_file())
