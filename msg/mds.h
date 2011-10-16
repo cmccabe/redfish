@@ -37,8 +37,8 @@ enum {
 	MMM_MKDIRS_REQ,
 	/** List all files in a directory */
 	MMM_LIST_DIRECTORY_REQ,
-	/** Give stat information regarding a collection of paths */
-	MMM_LIST_ENTRIES_REQ,
+	/** Give stat information regarding a path */
+	MMM_STAT_REQ,
 	/** Client Change permissions request */
 	MMM_CHMOD_REQ,
 	/** Client change ownership request */
@@ -96,8 +96,8 @@ struct mmm_list_directory_req {
 	struct mmm_path path;
 });
 PACKED_ALIGNED(8,
-struct mmm_list_entries_req {
-	char packed_entries[0];
+struct mmm_stat_req {
+	struct mmm_path path;
 });
 PACKED_ALIGNED(8,
 struct mmm_chmod_req {
