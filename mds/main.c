@@ -14,6 +14,7 @@
 #include "core/pid_file.h"
 #include "core/signal.h"
 #include "jorm/json.h"
+#include "mds/net.h"
 #include "util/compiler.h"
 #include "util/string.h"
 
@@ -90,13 +91,6 @@ static struct daemon* parse_mds_config(const char *file,
 	return d;
 }
 
-static int main_loop(void)
-{
-	glitch_log("starting mds\n");
-	sleep(100);
-	return 0;
-}
-
 int main(int argc, char **argv)
 {
 	char err[512] = { 0 };
@@ -145,7 +139,7 @@ int main(int argc, char **argv)
 		ret = EXIT_FAILURE;
 		goto done_signal_shutdown;
 	}
-	ret = main_loop();
+	ret = mds_main_loop();
 
 done_signal_shutdown:
 	signal_shutdown();
