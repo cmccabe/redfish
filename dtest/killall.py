@@ -39,7 +39,9 @@ for d in diter:
         try:
             d.run_with_output("rm -f " + d.get_pid_file())
             d.run("kill -9 " + str(pid))
+            os.unlink(d.get_pid_file())
         except subprocess.CalledProcessError, e:
             pass
     else:
         d.run("kill " + str(pid))
+        os.unlink(d.get_pid_file())
