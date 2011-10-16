@@ -54,7 +54,7 @@ struct mmm_path {
 	char dir_name[0];
 });
 
-extern int safe_read_path(char *path, size_t path_max,
+extern int safe_read_path(char *path_out, size_t path_max,
 			struct mmm_path *path, int fd);
 
 extern int send_nack(int fd, int error);
