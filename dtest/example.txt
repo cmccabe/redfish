@@ -1,0 +1,3 @@
+./install.py -c ../conf/twofer.conf -b /home/cmccabe/tmp/redfish
+./run.py -c ../conf/twofer.conf 
+./killall.py -c ../conf/local.conf
