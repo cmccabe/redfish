@@ -9,6 +9,8 @@
 #ifndef REDFISH_UTIL_MACRO_H
 #define REDFISH_UTIL_MACRO_H
 
+#include <stddef.h> /* for offsetof */
+
 #define TO_STR(x) #x
 
 #define TO_STR2(x) TO_STR(x)
@@ -20,5 +22,14 @@
  */
 #define BUILD_BUG_ON(x) \
 	extern char arr__##__LINE__ [0 - (!!(x))];
+
+/** Given a pointer to a structure nested inside another structure,
+ * return a pointer to the outer structure.
+ *
+ * This is possible because the compiler knows the offset at which the inner
+ * structure is nested at.
+ */
+#define GET_OUTER(p, outer_ty, memb) \
+	((outer_ty*)(((char*)p) - offsetof(outer_ty, memb)))
 
 #endif
