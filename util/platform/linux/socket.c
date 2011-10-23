@@ -20,6 +20,9 @@ int do_socket(int domain, int type, int proto, int flags)
 {
 	int fd;
 
+	if (flags & WANT_O_NONBLOCK) {
+		type |= SOCK_NONBLOCK;
+	}
 	if (flags & WANT_O_CLOEXEC) {
 		type |= SOCK_CLOEXEC;
 	}

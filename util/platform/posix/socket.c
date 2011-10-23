@@ -16,6 +16,7 @@
 
 int do_socket(int domain, int type, int proto, int flags)
 {
+	int res, ret;
 	fd = socket(domain, type, proto);
 	if (fd < 0) {
 		return -errno;
@@ -25,6 +26,14 @@ int do_socket(int domain, int type, int proto, int flags)
 		int flags = fcntl(fd, F_GETFD);
 		flags |= FD_CLOEXEC;
 		fcntl(fd, F_SETFD, flags);
+	}
+	if (flags & WANT_O_NONBLOCK) {
+		int on = 1;
+		ret = ioctl(fd, FIONBIO, (char*)&on);
+		if (ret < 0) {
+			RETRY_ON_EINTR(res, close(fd));
+			return ret;
+		}
 	}
 #if SO_REUSEADDR_HACK
 	{
