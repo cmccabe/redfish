@@ -33,7 +33,10 @@
 #ifndef _SYS_QUEUE_H_
 #define	_SYS_QUEUE_H_
 
+#include <stddef.h>
 #include <sys/cdefs.h>
+
+#define __offsetof offsetof
 
 /*
  * This file defines four types of data structures: singly-linked lists,
