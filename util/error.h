@@ -34,6 +34,8 @@ static inline int IS_ERR(const void *ptr) {
   ret = expr; \
 } while ((ret == -1) && (errno == EINTR));
 
+#define FORCE_POSITIVE(e) ((e < 0) ? -e : e)
+
 #define FORCE_NEGATIVE(e) ((e > 0) ? -e : e)
 
 #define REDFISH_TEMP_ERROR 6000
