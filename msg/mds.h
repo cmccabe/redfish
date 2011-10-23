@@ -22,7 +22,7 @@
 
 enum {
 	/** Client request to create a new file */
-	MMM_CREATE_RFILE_REQ = 5000,
+	MMM_CREATE_RFILE_REQ = 3000,
 	/** Client request to open a new file */
 	MMM_OPEN_RFILE_REQ,
 	/** Chunk map sent from object storage daemon */

@@ -15,7 +15,7 @@
 
 enum {
 	/** Client request to fetch a chunk from the OSD */
-	MMM_FETCH_CHUNK_REQ = 3000,
+	MMM_FETCH_CHUNK_REQ = 4000,
 	/** Client request to write a chunk to the OSD */
 	MMM_PUT_CHUNK_REQ,
 };

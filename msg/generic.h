@@ -16,11 +16,18 @@
 /* Network messages that can be sent to anyone */
 
 enum {
+	/** There was a network communication problem */
+	MMM_NETFAIL = 1000,
 	/** Acknowledge request */
-	MMM_ACK = 1000,
+	MMM_ACK,
 	/** Deny request */
 	MMM_NACK,
 };
+
+PACKED_ALIGNED(8,
+struct mmm_netfail {
+	int32_t error;
+});
 
 PACKED_ALIGNED(8,
 struct mmm_nack {
@@ -50,8 +57,8 @@ struct mmm_stat {
 });
 PACKED_ALIGNED(8,
 struct mmm_path {
-	uint16_t dir_name_len;
-	char dir_name[0];
+	uint16_t len;
+	char str[0];
 });
 
 extern int safe_read_path(char *path_out, size_t path_max,

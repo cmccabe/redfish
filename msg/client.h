@@ -29,17 +29,15 @@ enum {
 /* Create file */
 PACKED_ALIGNED(8,
 struct mmm_create_rfile_resp {
-	/* negative error code on error */
 	int32_t rfile;
 	uint32_t chunk_addr;
 	uint64_t chunk_id;
 });
 PACKED_ALIGNED(8,
 struct mmm_open_rfile_resp {
-	/* negative error code on error */
 	int32_t rfile;
-	uint64_t chunk_id;
 	uint32_t chunk_addr;
+	uint64_t chunk_id;
 });
 PACKED_ALIGNED(8,
 struct mmm_list_resp {
