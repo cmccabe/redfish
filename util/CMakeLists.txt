@@ -64,3 +64,7 @@ add_test(macro_unit ${CMAKE_CURRENT_BINARY_DIR}/macro_unit macro_unit)
 add_executable(path_unit path_unit.c)
 target_link_libraries(path_unit util utest)
 add_test(path_unit ${CMAKE_CURRENT_BINARY_DIR}/path_unit path_unit)
+
+add_executable(data_struct_unit data_struct_unit.c)
+target_link_libraries(data_struct_unit util utest)
+add_test(data_struct_unit ${CMAKE_CURRENT_BINARY_DIR}/data_struct_unit data_struct_unit)
