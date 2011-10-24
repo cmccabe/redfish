@@ -40,7 +40,7 @@ int blocking_read_json_req(const char *fn, int fd, struct json_object **jo)
 	b = malloc(len + 1);
 	if (!b)
 		return -ENOMEM;
-	if (safe_read(fd, b, len) != len) {
+	if ((uint32_t)safe_read(fd, b, len) != len) {
 		glitch_log("%s: short read of msg body\n", fn);
 		free(b);
 		return -EIO;
