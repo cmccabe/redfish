@@ -386,7 +386,7 @@ struct rsem_server* start_rsem_server(struct rsem_server_conf *conf,
 	rss->sock = -1;
 	rss->event_fd[PIPE_WRITE] = -1;
 	rss->event_fd[PIPE_READ] = -1;
-	ret = do_pipe2(rss->event_fd, O_CLOEXEC);
+	ret = do_pipe2(rss->event_fd, WANT_O_CLOEXEC);
 	if (ret) {
 		snprintf(err, err_len, "failed to open pipe: error %d\n", ret);
 		goto error;

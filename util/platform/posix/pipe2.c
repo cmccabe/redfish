@@ -16,14 +16,20 @@
 /* TODO: add a mutex here ensuring that nobody calls exec in between
  * pipe(2) and fcntl(2) */
 
-int do_pipe(int pipefd[2], int flags)
+int do_pipe(int pipefd[2], enum redfish_plat_flags_t pf)
 {
-	int ret, curflags;
+	int ret, curflags, flags;
 	ret = pipe(pipefd);
 	if (ret) {
 		ret = -errno;
 		goto error;
 	}
+	if (pf & WANT_O_NONBLOCK)
+		flags |= O_NONBLOCK; 
+	if (pf & WANT_O_CLOEXEC)
+		flags |= FD_CLOEXEC; 
+	if (flags == 0)
+		return 0;
 	curflags = fcntl(pipefd[PIPE_READ], F_GETFL, 0);
 	ret = fcntl(pipefd[PIPE_READ], F_SETFL, flags | curflags);
 	if (ret) {

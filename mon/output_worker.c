@@ -244,7 +244,7 @@ void init_output_worker(const char* sock_path, char *err, size_t err_len)
 		snprintf(err, err_len, "out of memory\n");
 		goto error_free_odata;
 	}
-	ret = do_pipe2(odata->event_fd, O_CLOEXEC);
+	ret = do_pipe2(odata->event_fd, WANT_O_CLOEXEC);
 	if (ret) {
 		snprintf(err, err_len, "failed to open pipe: error %d\n", ret);
 		goto error_free_sock_path;

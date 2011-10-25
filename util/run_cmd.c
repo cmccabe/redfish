@@ -94,7 +94,7 @@ int run_cmd_get_output(char *out, int out_len, const char **cvec)
 		goto done;
 	}
 	/* Create a pipe with both ends set to nonblocking */
-	ret = do_pipe2(pipefd, O_NONBLOCK);
+	ret = do_pipe2(pipefd, WANT_O_NONBLOCK);
 	if (ret) {
 		goto done;
 	}
@@ -162,7 +162,7 @@ int start_cmd_give_input(const char **cvec, int *pid)
 	*pid = -1;
 
 	/* Create a pipe to pass in data */
-	ret = do_pipe2(pipefd, O_CLOEXEC);
+	ret = do_pipe2(pipefd, WANT_O_CLOEXEC);
 	if (ret) {
 		return FORCE_NEGATIVE(ret);
 	}
