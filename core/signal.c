@@ -29,6 +29,10 @@
 #include <ucontext.h>
 #include <unistd.h>
 
+typedef void (*sa_sigaction_t)(int, siginfo_t *, void *);
+
+sa_sigaction_t g_prev_handlers[_NSIG];
+
 static const int FATAL_SIGNALS[] = { SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT,
 	SIGTERM, SIGXCPU, SIGXFSZ, SIGSYS, SIGINT };
 static const int NUM_FATAL_SIGNALS =
@@ -49,10 +53,10 @@ static signal_cb_t g_fatal_signal_cb = NULL;
 extern void regurgitate_fd(char *line, size_t max_line, int ifd, int ofd,
 			int use_syslog);
 
+
 /** Ths signal handler for nasty, fatal signals.
  */
-static void handle_fatal_signal(int sig,
-	POSSIBLY_UNUSED(siginfo_t *siginfo), POSSIBLY_UNUSED(void *ctx))
+static void handle_fatal_signal(int sig, siginfo_t *siginfo, void *ctx)
 {
 	int i, res, bsize;
 	void *bentries[128];
@@ -63,8 +67,8 @@ static void handle_fatal_signal(int sig,
 	}
 	if (g_fatal_signal_cb)
 		g_fatal_signal_cb(sig);
-	snprintf(buf, sizeof(bentries), "HANDLE_FATAL_SIGNAL(sig=%d, name=%s)\n",
-		sig, sys_siglist[sig]);
+	snprintf(buf, sizeof(bentries), "HANDLE_FATAL_SIGNAL(sig=%d, "
+			"name=%s)\n", sig, sys_siglist[sig]);
 	res = write(g_crash_log_fd, buf, strlen(buf));
 	bsize = backtrace(bentries, sizeof(bentries)/sizeof(bentries[0]));
 	backtrace_symbols_fd(bentries, bsize, g_crash_log_fd);
@@ -95,31 +99,32 @@ static void handle_fatal_signal(int sig,
 	delete_pid_file();
 	/* If fast_log has not been initialized, this will do nothing. */
 	fast_log_dump_all(g_fast_log_scratch, g_fast_log_fd);
-	/* die */
-	raise(sig);
+	/* Call the previously install signal handler.
+	 * Probably, this will dump core. */
+	g_prev_handlers[sig](sig, siginfo, ctx);
 }
 
-static void signal_init_altstack(char *error, size_t error_len,
+static void signal_init_altstack(char *err, size_t err_len,
 				stack_t *alt_stack)
 {
 	/* Set up alternate stack */
 	alt_stack->ss_sp = calloc(1, SIGSTKSZ);
 	if (!alt_stack->ss_sp) {
-		snprintf(error, error_len, "signal_init_altstack: failed to "
+		snprintf(err, err_len, "signal_init_altstack: failed to "
 			"allocate %d bytes for alternate stack.", SIGSTKSZ);
 		return;
 	}
 	alt_stack->ss_size = SIGSTKSZ;
 	if (sigaltstack(alt_stack, NULL)) {
-		int err = errno;
-		snprintf(error, error_len, "signal_init_altstack: sigaltstack "
-			 "failed with error %d", err);
+		int ret = errno;
+		snprintf(err, err_len, "signal_init_altstack: sigaltstack "
+			 "failed with error %d", ret);
 		free(alt_stack->ss_sp);
 		return;
 	}
 }
 
-static void signal_set_dispositions(char *error, size_t error_len)
+static void signal_set_dispositions(char *err, size_t err_len)
 {
 	int ret, i;
 	struct sigaction sigact;
@@ -129,13 +134,24 @@ static void signal_set_dispositions(char *error, size_t error_len)
 	sigact.sa_flags = SA_RESETHAND | SA_ONSTACK;
 
 	for (i = 0; i < NUM_FATAL_SIGNALS; i++) {
-		ret = sigaction(FATAL_SIGNALS[i], &sigact, NULL);
+		if (FATAL_SIGNALS[i] >= _NSIG) {
+			snprintf(err, err_len, "FATAL_SIGNALS[%d] = %d, "
+				"which exceeds _NSIG=%d !\n",
+				i, FATAL_SIGNALS[i], _NSIG);
+			return;
+		}
+	}
+	for (i = 0; i < NUM_FATAL_SIGNALS; i++) {
+		struct sigaction oldact;
+		memset(&oldact, 0, sizeof(oldact));
+		ret = sigaction(FATAL_SIGNALS[i], &sigact, &oldact);
 		if (ret == -1) {
 			ret = errno;
-			snprintf(error, error_len, "signal_set_dispositions: "
+			snprintf(err, err_len, "signal_set_dispositions: "
 				"sigaction(%d) failed with error %d", i, ret);
 			return;
 		}
+		g_prev_handlers[FATAL_SIGNALS[i]] = oldact.sa_sigaction;
 	}
 
 	/* Always ignore SIGPIPE; it is annoying. */
@@ -143,7 +159,7 @@ static void signal_set_dispositions(char *error, size_t error_len)
 	ret = sigaction(SIGPIPE, &sigact, NULL);
 	if (ret == -1) {
 		ret = errno;
-		snprintf(error, error_len, "signal_set_dispositions: "
+		snprintf(err, err_len, "signal_set_dispositions: "
 			"signal(SIGPIPE) failed with error %d", ret);
 		return;
 	}

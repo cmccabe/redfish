@@ -27,12 +27,12 @@ typedef void (*signal_cb_t)(int);
  *
  * We write out an error message to error if signal_init fails.
  */
-void signal_init(const char *argv0, char *err, size_t err_len,
-		 const struct log_config *lc, signal_cb_t fatal_signal_cb);
+extern void signal_init(const char *argv0, char *err, size_t err_len,
+		const struct log_config *lc, signal_cb_t fatal_signal_cb);
 
 /** Clear all signal handlers, free the alternate signal stack, and disable the
  * crash log.
  */
-void signal_shutdown(void);
+extern void signal_shutdown(void);
 
 #endif
