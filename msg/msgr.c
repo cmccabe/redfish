@@ -12,10 +12,8 @@
 #include "msg/msgr.h"
 #include "util/error.h"
 #include "util/macro.h"
-#include "util/platform/pipe2.h"
 #include "util/platform/socket.h"
 #include "util/queue.h"
-#include "util/safe_io.h" // TODO: remove
 #include "util/tree.h"
 
 #include <arpa/inet.h>
@@ -31,8 +29,12 @@
 static int mtran_compare(struct mtran *tr_a, struct mtran *tr_b);
 static int mconn_compare(struct mconn *a, struct mconn *b);
 static void mconn_teardown(struct mconn *conn, int failcode);
-static void mconn_writable_cb(struct ev_loop *loop, struct ev_io *w, int revents);
-static void mconn_readable_cb(struct ev_loop *loop, struct ev_io *w, int revents);
+static void mconn_writable_cb(struct ev_loop *loop, struct ev_io *w,
+		int revents);
+static void mconn_readable_cb(struct ev_loop *loop, struct ev_io *w,
+		int revents);
+static void run_msgr_notify_cb(struct ev_loop *loop, struct ev_async *w,
+		int revents);
 
 /****************************** types ********************************/
 enum mconn_state_t {
@@ -73,31 +75,24 @@ struct mconn {
 	struct pending_tr pending_head;
 };
 
-PACKED_ALIGNED(8,
-struct msgr_pipe_cmd {
-	struct msg *m;
-	struct mtran *tr;
-	uint32_t ip;
-	uint16_t port;
-});
-
-enum msgr_flag_t {
-	MSGR_FLAG_THREAD_STARTED = 0x1,
+enum msgr_state_t {
+	MSGR_STATE_INIT,
+	MSGR_STATE_THREAD_STARTED,
+	MSGR_STATE_THREAD_STOPPING,
 };
 
 RB_HEAD(msgr_conn, mconn);
 RB_GENERATE(msgr_conn, mconn, entry, mconn_compare);
 
 struct msgr {
-	int flags;
+	/** lock that protects thread state and pending_head */
+	pthread_spinlock_t lock;
+	/** thread state */
+	enum msgr_state_t state;
 	/** pthread */
 	pthread_t thread;
-	/** Pipe used to communicate with the messenger thread */
-	int comm_fd[2];
 	/** Main loop */
 	struct ev_loop *loop;
-	/** libev watcher for comm_fd */
-	struct ev_io w_comm;
 	/** Socket we're listening on, or -1 if we're not listening on any
 	 * sockets */
 	int listen_fd;
@@ -119,6 +114,11 @@ struct msgr {
 	struct msgr_conn conn_head;
 	/** Watches listen_fd */
 	struct ev_io w_listen_fd;
+	/** Async watcher. Lets us know that another thread asked us to shut
+	 * down or send a message. */
+	struct ev_async w_notify;
+	/** Pending transactions not yet assigned to a connection */
+	struct pending_tr pending_head;
 };
 
 /****************************** utility ********************************/
@@ -167,16 +167,16 @@ static struct mtran *mtran_lookup_by_id(struct mconn *conn, uint32_t id)
 	return RB_FIND(active_tr, &conn->active_head, &exemplar);
 }
 
-int mtran_send(struct msgr *msgr, struct mtran *tr,
+void mtran_send(struct msgr *msgr, struct mtran *tr,
 		uint32_t ip, uint16_t port, struct msg *m)
 {
-	struct msgr_pipe_cmd cmd;
-	memset(&cmd, 0, sizeof(cmd));
-	cmd.m = m;
-	cmd.tr = tr;
-	cmd.ip = ip;
-	cmd.port = port;
-	return safe_write(msgr->comm_fd[PIPE_WRITE], &cmd, sizeof(cmd));
+	tr->ip = ip;
+	tr->port = port;
+	tr->m = m;
+	pthread_spin_lock(&msgr->lock);
+	STAILQ_INSERT_TAIL(&msgr->pending_head, tr, u.pending_entry);
+	pthread_spin_unlock(&msgr->lock);
+	ev_async_send(msgr->loop, &msgr->w_notify);
 }
 
 void mtran_send_next(struct mconn *conn, struct mtran *tr, struct msg *m)
@@ -545,7 +545,6 @@ no_such_transactor:
 struct msgr *msgr_init(char *err, size_t err_len,
 		int max_conn, int max_tran, size_t tran_sz, msgr_cb_t cb)
 {
-	int ret;
 	struct msgr *msgr;
 	
 	msgr = calloc(1, sizeof(struct msgr));
@@ -553,9 +552,13 @@ struct msgr *msgr_init(char *err, size_t err_len,
 		snprintf(err, err_len, "init_msgr: out of memory\n");
 		return NULL;
 	}
-	msgr->flags = 0;
-	msgr->comm_fd[PIPE_READ] = -1; 
-	msgr->comm_fd[PIPE_WRITE] = -1; 
+	if (pthread_spin_init(&msgr->lock, 0)) {
+		snprintf(err, err_len, "init_msgr: failed to initialize "
+			"spinlock\n");
+		free(msgr);
+		return NULL;
+	}
+	msgr->state = MSGR_STATE_INIT;
 	msgr->listen_fd = -1;
 	msgr->tran_sz = tran_sz;
 	msgr->cb = cb;
@@ -566,13 +569,8 @@ struct msgr *msgr_init(char *err, size_t err_len,
 	msgr->max_conn = max_conn;
 	RB_INIT(&msgr->conn_head);
 	ev_init(&msgr->w_listen_fd, NULL);
-	ret = do_pipe2(msgr->comm_fd, WANT_O_CLOEXEC); // WANT_O_NONBLOCK
-	if (ret < 0) {
-		snprintf(err, err_len, "init_msgr: do_pipe2 failed: "
-			"error %d\n", ret);
-		msgr_shutdown(msgr);
-		return NULL;
-	}
+	ev_async_init(&msgr->w_notify, run_msgr_notify_cb);
+	STAILQ_INIT(&msgr->pending_head);
 	msgr->loop = ev_loop_new(0);
 	if (!msgr->loop) {
 		snprintf(err, err_len, "init_msgr: ev_loop_new failed.");
@@ -584,20 +582,22 @@ struct msgr *msgr_init(char *err, size_t err_len,
 
 void msgr_shutdown(struct msgr *msgr)
 {
-	int res;
+	int res, need_join = 0;
 
-	if (msgr->loop) {
-		ev_unloop(msgr->loop, EVUNLOOP_ALL);
-		ev_io_stop(msgr->loop, &msgr->w_listen_fd);
-		ev_loop_destroy(msgr->loop);
+	pthread_spin_lock(&msgr->lock);
+	if (msgr->state == MSGR_STATE_THREAD_STARTED) {
+		msgr->state = MSGR_STATE_THREAD_STOPPING;
+		need_join = 1;
 	}
-	if (msgr->flags & MSGR_FLAG_THREAD_STARTED) {
+	pthread_spin_unlock(&msgr->lock);
+	if (need_join) {
+		ev_async_send(msgr->loop, &msgr->w_notify);
 		pthread_join(msgr->thread, NULL);
 	}
-	if (msgr->comm_fd[PIPE_WRITE] > 0)
-		RETRY_ON_EINTR(res, close(msgr->comm_fd[PIPE_WRITE]));
-	if (msgr->comm_fd[PIPE_READ] > 0)
-		RETRY_ON_EINTR(res, close(msgr->comm_fd[PIPE_READ]));
+	pthread_spin_destroy(&msgr->lock);
+	ev_io_stop(msgr->loop, &msgr->w_listen_fd);
+	ev_async_stop(msgr->loop, &msgr->w_notify);
+	ev_loop_destroy(msgr->loop);
 	if (msgr->listen_fd > 0)
 		RETRY_ON_EINTR(res, close(msgr->listen_fd));
 	free(msgr);
@@ -608,7 +608,12 @@ void msgr_listen(struct msgr *msgr, int port, char *err, size_t err_len)
 	struct sockaddr_in addr;
 	socklen_t addr_len;
 	int ret, res, fd;
-	
+
+	if (msgr->state != MSGR_STATE_INIT) {
+		snprintf(err, err_len, "msgr_listen: you must call "
+			"msgr_listen before starting the messenger thread.");
+		return;
+	}
 	if (msgr->listen_fd > 0) {
 		snprintf(err, err_len, "msgr_listen: programmer error: "
 			"current implementation can only listen on one port "
@@ -702,45 +707,51 @@ error:
 	}
 }
 
-static void run_msgr_pipe_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
-		struct ev_io *w, int revents)
+static void run_msgr_setup_pending(struct msgr *msgr, struct mtran *tr)
 {
-	int ret;
-	struct msgr_pipe_cmd cmd;
-	struct msgr *msgr;
 	struct mconn *conn;
 
-	if (!(revents & EV_READ))
-		return;
-	msgr = GET_OUTER(w, struct msgr, w_comm);
-	ret = safe_read(msgr->comm_fd[PIPE_READ], &cmd, sizeof(cmd));
-	if (ret) {
-		glitch_log("run_msgr_pipe_cb: error reading from pipe: %d\n",
-			   ret);
-		return;
-	}
-	conn = mconn_find(msgr, cmd.ip, cmd.port);
+	conn = mconn_find(msgr, tr->ip, tr->port);
 	if (!conn) {
-		conn = mconn_create(msgr, cmd.ip, cmd.port, -1);
+		conn = mconn_create(msgr, tr->ip, tr->port, -1);
 		if (IS_ERR(conn))
 			return;
 	}
-	cmd.tr->m = cmd.m;
-	STAILQ_INSERT_TAIL(&conn->pending_head, cmd.tr, u.pending_entry);
+	STAILQ_INSERT_TAIL(&conn->pending_head, tr, u.pending_entry);
 	mconn_next_state_logic(conn);
 }
 
-static void run_msgr_signal_cb(struct ev_loop *loop, struct ev_signal *w,
+static void run_msgr_notify_cb(struct ev_loop *loop, struct ev_async *w,
 					POSSIBLY_UNUSED(int revents))
 {
-	ev_signal_stop(loop, w);
-	glitch_log("gracefully shutting down on signal %d\n", w->signum);
-	ev_unloop(loop, EVUNLOOP_ALL);
+	struct msgr *msgr = GET_OUTER(w, struct msgr, w_notify);
+	struct mtran *tr;
+	enum msgr_state_t new_state;
+
+	//fprintf(stderr, "in run_msgr_notify_cb\n");
+	while (1) {
+		pthread_spin_lock(&msgr->lock);
+		tr = STAILQ_FIRST(&msgr->pending_head);
+		if (tr) {
+			STAILQ_REMOVE_HEAD(&msgr->pending_head,
+				u.pending_entry);
+		}
+		new_state = msgr->state;
+		pthread_spin_unlock(&msgr->lock);
+
+		if (new_state == MSGR_STATE_THREAD_STOPPING) {
+			ev_unloop(loop, EVUNLOOP_ALL);
+			return;
+		}
+		if (tr == NULL) {
+			return;
+		}
+		run_msgr_setup_pending(msgr, tr);
+	}
 }
 
 static void* run_msgr(void *v)
 {
-	struct ev_signal w_sigint, w_sigterm;
 	struct msgr *msgr = (struct msgr*)v;
 
 	if (msgr->listen_fd > 0) {
@@ -748,14 +759,7 @@ static void* run_msgr(void *v)
 			msgr->listen_fd, EV_READ | EV_ERROR);
 		ev_io_start(msgr->loop, &msgr->w_listen_fd);
 	}
-
-	ev_io_init(&msgr->w_comm, run_msgr_pipe_cb,
-		msgr->comm_fd[PIPE_READ], EV_READ);
-	ev_io_start(msgr->loop, &msgr->w_comm);
-	ev_signal_init(&w_sigint, run_msgr_signal_cb, SIGINT);
-	ev_signal_start(msgr->loop, &w_sigint);
-	ev_signal_init(&w_sigterm, run_msgr_signal_cb, SIGTERM);
-	ev_signal_start(msgr->loop, &w_sigterm);
+	ev_async_start(msgr->loop, &msgr->w_notify);
 
 	ev_loop(msgr->loop, 0);
 	return NULL;
@@ -765,7 +769,7 @@ void msgr_start(struct msgr *msgr, char *err, size_t err_len)
 {
 	int ret;
 
-	if (msgr->flags & MSGR_FLAG_THREAD_STARTED) {
+	if (msgr->state != MSGR_STATE_INIT) {
 		snprintf(err, err_len, "msgr_start: thread has already been "
 			 "started!");
 		return;
@@ -776,5 +780,5 @@ void msgr_start(struct msgr *msgr, char *err, size_t err_len)
 			 "with error %d", ret);
 		return;
 	}
-	msgr->flags |= MSGR_FLAG_THREAD_STARTED;
+	msgr->state = MSGR_STATE_THREAD_STARTED;
 }

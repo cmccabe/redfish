@@ -134,11 +134,8 @@ extern void mtran_free(void *tr);
  * @param m		The message to send.
  * 			This must be dynamically allocated. The messenger will
  * 			take ownership of this pointer and free it later.
- *
- * @return		error code if we could not communicate with the
- *			messenger thread; 0 otherwise
  */
-extern int mtran_send(struct msgr *msgr, struct mtran *tr,
+extern void mtran_send(struct msgr *msgr, struct mtran *tr,
 		uint32_t addr, uint16_t port, struct msg *m);
 
 /** Queue a message for sending on a currently open connection
