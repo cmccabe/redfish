@@ -682,6 +682,8 @@ static void run_msgr_listen_fd_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		glitch_log("run_msgr_listen_fd_cb: OOM allocating mtran\n");
 		goto error;
 	}
+	tr->ip = ip;
+	tr->port = port;
 	conn = mconn_find(msgr, ip, port);
 	if (conn) {
 		glitch_log("run_msgr_listen_fd_cb: we already have one "
