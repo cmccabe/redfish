@@ -191,7 +191,7 @@ void configure_glitch_log(const struct log_config *lc)
 	}
 	if (lc->glitch_log) {
 		g_glitch_log_fd = nfd;
-		snprintf(g_glitch_log_fname, PATH_MAX, lc->glitch_log);
+		snprintf(g_glitch_log_fname, PATH_MAX, "%s", lc->glitch_log);
 	}
 	else {
 		g_glitch_log_fd = -1;
