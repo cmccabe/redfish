@@ -32,7 +32,7 @@ struct worker_msg
 	/** Next message in the list */
 	struct worker_msg *next;
 	/** Type of message */
-	enum worker_msg_ty ty;
+	int ty;
 	/** Message-specific data */
 	char data[0];
 };
