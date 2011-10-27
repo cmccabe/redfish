@@ -18,7 +18,7 @@
 #include "util/safe_io.h"
 
 #include <errno.h>
-#include <libev/ev.h>
+#include <ev.h>
 #include <netinet/in.h>
 #include <pthread.h>
 #include <string.h>
