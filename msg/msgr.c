@@ -757,12 +757,6 @@ static void* run_msgr(void *v)
 {
 	struct msgr *msgr = (struct msgr*)v;
 
-	if (msgr->listen_fd > 0) {
-		ev_io_init(&msgr->w_listen_fd, run_msgr_listen_fd_cb,
-			msgr->listen_fd, EV_READ | EV_ERROR);
-		ev_io_start(msgr->loop, &msgr->w_listen_fd);
-	}
-
 	ev_loop(msgr->loop, 0);
 	return NULL;
 }
@@ -775,6 +769,11 @@ void msgr_start(struct msgr *msgr, char *err, size_t err_len)
 		snprintf(err, err_len, "msgr_start: thread has already been "
 			 "started!");
 		return;
+	}
+	if (msgr->listen_fd > 0) {
+		ev_io_init(&msgr->w_listen_fd, run_msgr_listen_fd_cb,
+			msgr->listen_fd, EV_READ | EV_ERROR);
+		ev_io_start(msgr->loop, &msgr->w_listen_fd);
 	}
 	ret = pthread_create(&msgr->thread, NULL, run_msgr, msgr);
 	if (ret) {
