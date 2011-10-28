@@ -569,14 +569,15 @@ struct msgr *msgr_init(char *err, size_t err_len,
 	msgr->max_conn = max_conn;
 	RB_INIT(&msgr->conn_head);
 	ev_init(&msgr->w_listen_fd, NULL);
-	ev_async_init(&msgr->w_notify, run_msgr_notify_cb);
 	STAILQ_INIT(&msgr->pending_head);
+	ev_async_init(&msgr->w_notify, run_msgr_notify_cb);
 	msgr->loop = ev_loop_new(0);
 	if (!msgr->loop) {
 		snprintf(err, err_len, "init_msgr: ev_loop_new failed.");
 		msgr_shutdown(msgr);
 		return NULL;
 	}
+	ev_async_start(msgr->loop, &msgr->w_notify);
 	return msgr;
 }
 
@@ -761,7 +762,6 @@ static void* run_msgr(void *v)
 			msgr->listen_fd, EV_READ | EV_ERROR);
 		ev_io_start(msgr->loop, &msgr->w_listen_fd);
 	}
-	ev_async_start(msgr->loop, &msgr->w_notify);
 
 	ev_loop(msgr->loop, 0);
 	return NULL;
