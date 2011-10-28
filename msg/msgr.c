@@ -266,9 +266,9 @@ static struct mconn *mconn_create(struct msgr *msgr,
 		/* The connect operation is in progress */
 	}
 	ev_io_init(&conn->w_write, mconn_writable_cb,
-		conn->sock, EV_WRITE | EV_ERROR);
+		conn->sock, EV_WRITE);
 	ev_io_init(&conn->w_read, mconn_readable_cb,
-		conn->sock, EV_READ | EV_ERROR);
+		conn->sock, EV_READ);
 	return conn;
 }
 
@@ -772,7 +772,7 @@ void msgr_start(struct msgr *msgr, char *err, size_t err_len)
 	}
 	if (msgr->listen_fd > 0) {
 		ev_io_init(&msgr->w_listen_fd, run_msgr_listen_fd_cb,
-			msgr->listen_fd, EV_READ | EV_ERROR);
+			msgr->listen_fd, EV_READ);
 		ev_io_start(msgr->loop, &msgr->w_listen_fd);
 	}
 	ret = pthread_create(&msgr->thread, NULL, run_msgr, msgr);
