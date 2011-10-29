@@ -193,7 +193,6 @@ static int msgr_test_simple_send(int num_sends)
 	msgr_start(bar_msgr, err, err_len);
 	if (err[0])
 		goto handle_error;
-	sleep(1);
 	for (i = 0; i < num_sends; ++i) {
 		EXPECT_ZERO(send_foo_tr(foo_msgr, i + 1));
 	}
