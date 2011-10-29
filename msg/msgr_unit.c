@@ -119,6 +119,7 @@ static int init_g_localhost(void)
 		fprintf(stderr, "failed to get IP address for localhost\n");
 		return 1;
 	}
+	g_localhost = ntohl(g_localhost);
 	return 0;
 }
 
@@ -154,11 +155,11 @@ handle_error:
 static int send_foo_tr(struct msgr* foo_msgr, int32_t i)
 {
 	struct foo_tran *tr;
-	struct mmm_test2 *mout;
+	struct mmm_test1 *mout;
 	tr = mtran_alloc(foo_msgr);
 	if (!tr)
 		return -ENOMEM;
-	mout = calloc_msg(MMM_TEST2, sizeof(struct mmm_test2));
+	mout = calloc_msg(MMM_TEST1, sizeof(struct mmm_test1));
 	if (!mout)
 		return -ENOMEM;
 	mout->i = htobe32(i);
@@ -192,6 +193,7 @@ static int msgr_test_simple_send(int num_sends)
 	msgr_start(bar_msgr, err, err_len);
 	if (err[0])
 		goto handle_error;
+	sleep(1);
 	for (i = 0; i < num_sends; ++i) {
 		EXPECT_ZERO(send_foo_tr(foo_msgr, i + 1));
 	}
@@ -212,10 +214,12 @@ handle_error:
 int main(void)
 {
 	EXPECT_ZERO(init_g_localhost());
+	if (0) {
 	EXPECT_ZERO(msgr_test_init_shutdown(0));
 	EXPECT_ZERO(msgr_test_init_shutdown(1));
-	if (0){
+	}
 	EXPECT_ZERO(msgr_test_simple_send(1));
+	if (0){
 	EXPECT_ZERO(msgr_test_simple_send(100));
 	}
 
