@@ -68,3 +68,7 @@ add_test(path_unit ${CMAKE_CURRENT_BINARY_DIR}/path_unit path_unit)
 add_executable(data_struct_unit data_struct_unit.c)
 target_link_libraries(data_struct_unit util utest)
 add_test(data_struct_unit ${CMAKE_CURRENT_BINARY_DIR}/data_struct_unit data_struct_unit)
+
+add_executable(bitfield_unit bitfield_unit.c)
+target_link_libraries(bitfield_unit util utest)
+add_test(bitfield_unit ${CMAKE_CURRENT_BINARY_DIR}/bitfield_unit bitfield_unit)
