@@ -28,21 +28,23 @@ enum {
 	MMM_TEST2,
 };
 
-PACKED_ALIGNED(8,
+PACKED_ALIGNED(4,
 struct mmm_test1 {
-	int32_t i;
+	struct msg base;
+	uint32_t i;
 });
 
-PACKED_ALIGNED(8,
+PACKED_ALIGNED(4,
 struct mmm_test2 {
-	int32_t i;
+	struct msg base;
+	uint32_t i;
 });
 
 uint32_t g_localhost = INADDR_NONE;
 
 struct foo_tran {
 	struct mtran base;
-	int32_t i;
+	uint32_t i;
 };
 
 static sem_t g_msgr_test_simple_send_sem;
@@ -52,8 +54,9 @@ void foo_cb(struct mconn *conn, struct mtran *tr, struct msg *m)
 	struct mmm_test2 *mm;
 	struct foo_tran *ft = (struct foo_tran*)tr;
 	uint16_t ty;
-	int32_t i;
+	uint32_t i;
 
+	fprintf(stderr, "invoking tr %p\n", tr);
 	if (!m) {
 		mtran_recv_next(conn, tr);
 		return;
@@ -66,11 +69,12 @@ void foo_cb(struct mconn *conn, struct mtran *tr, struct msg *m)
 	}
 	mm = (struct mmm_test2*)m;
 	i = be32toh(mm->i);
-	if (i != (2 * ft->i)) {
+	if (i != (ft->i + 1)) {
 		fprintf(stderr, "foo_cb: expected i=%d, got i=%d\n",
-			2 * ft->i, i);
+			ft->i + 1, i);
 		goto done;
 	}
+	fprintf(stderr, "freeing tr %p\n", tr);
 	sem_post(&g_msgr_test_simple_send_sem);
 	mtran_free(tr);
 done:
@@ -81,30 +85,33 @@ struct bar_tran {
 	struct mtran base;
 };
 
-void bar_cb(struct mconn *conn, struct mtran *tr, struct msg *m)
+void bar_cb(struct mconn *conn, struct mtran *tr, struct msg *msg)
 {
-	struct mmm_test1 *mm;
-	struct msg *mout;
+	struct mmm_test1 *m;
+	struct mmm_test2 *mout;
 	uint32_t i;
 	uint16_t ty;
-	if (!m) {
+	if (!msg) {
 		mtran_free(tr);
 		return;
 	}
-	ty = be16toh(m->ty);
+	m = (struct mmm_test1*)msg;
+	ty = be16toh(m->base.ty);
 	if (ty != MMM_TEST1) {
 		fprintf(stderr, "bar_cb: expected type %d, got type %d\n",
 			MMM_TEST1, ty);
 		goto done;
 	}
-	mm = (struct mmm_test1*)m;
-	i = be32toh(mm->i);
+	fprintf(stderr, "%02x %02x %02x %02x\n", m->base.data[0],
+		m->base.data[1], m->base.data[2], m->base.data[3]);
+	i = be32toh(m->i);
 	mout = calloc_msg(MMM_TEST2, sizeof(struct mmm_test2));
 	if (!mout) {
 		fprintf(stderr, "bar_cb: oom\n");
 		goto done;
 	}
-	mtran_send_next(conn, tr, mout);
+	mout->i = htobe32(i + 1);
+	mtran_send_next(conn, tr, (struct msg*)mout);
 
 done:
 	free(m);
@@ -152,7 +159,7 @@ handle_error:
 	return 1;
 }
 
-static int send_foo_tr(struct msgr* foo_msgr, int32_t i)
+static int send_foo_tr(struct msgr* foo_msgr, uint32_t i)
 {
 	struct foo_tran *tr;
 	struct mmm_test1 *mout;
@@ -165,7 +172,7 @@ static int send_foo_tr(struct msgr* foo_msgr, int32_t i)
 	mout->i = htobe32(i);
 	tr->i = i;
 	mtran_send(foo_msgr, (struct mtran*)tr, g_localhost,
-			       MSGR_UNIT_PORT, (struct msg*)mout);
+		MSGR_UNIT_PORT, (struct msg*)mout);
 	return 0;
 }
 

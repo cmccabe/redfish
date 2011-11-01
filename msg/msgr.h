@@ -149,7 +149,7 @@ extern void mtran_send(struct msgr *msgr, struct mtran *tr,
  * 			take ownership of this pointer and free it later.
  */
 extern void mtran_send_next(struct mconn *conn, struct mtran *tr,
-		struct msg *m);
+			struct msg *m);
 
 /** Register to receive a message from a currently open connection
  *
