@@ -48,7 +48,7 @@ struct mmm_stat {
 	uint32_t block_sz;
 	int64_t mtime;
 	int64_t atime;
-	int64_t lenght;
+	int64_t length;
 	uint8_t is_dir;
 	uint8_t repl;
 	uint16_t owner;
