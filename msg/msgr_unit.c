@@ -213,14 +213,10 @@ handle_error:
 int main(void)
 {
 	EXPECT_ZERO(init_g_localhost());
-	if (0) {
 	EXPECT_ZERO(msgr_test_init_shutdown(0));
 	EXPECT_ZERO(msgr_test_init_shutdown(1));
-	}
 	EXPECT_ZERO(msgr_test_simple_send(1));
-	if (0){
 	EXPECT_ZERO(msgr_test_simple_send(100));
-	}
 
 	return EXIT_SUCCESS;
 }
