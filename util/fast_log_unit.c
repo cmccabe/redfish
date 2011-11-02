@@ -6,9 +6,9 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#include "core/fast_log.h"
 #include "util/compiler.h"
 #include "util/error.h"
+#include "util/fast_log.h"
 #include "util/macro.h"
 #include "util/safe_io.h"
 #include "util/simple_io.h"

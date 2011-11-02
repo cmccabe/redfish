@@ -6,10 +6,10 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#include "core/fast_log.h"
-#include "core/fast_log_types.h"
 #include "core/glitch_log.h"
 #include "util/compiler.h"
+#include "util/fast_log.h"
+#include "util/fast_log_types.h"
 #include "util/string.h"
 
 #include <errno.h>

@@ -7,8 +7,8 @@
  */
 
 #include "util/compiler.h"
+#include "util/fast_log.h"
 #include "util/safe_io.h"
-#include "core/fast_log.h"
 
 #include <errno.h>
 #include <fcntl.h>

@@ -3,6 +3,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 
 add_library(util
     config.c
+    fast_log.c
+    fast_log_types.c
     dir.c
     msleep.c
     net.c
@@ -22,6 +24,10 @@ add_library(utest
 target_link_libraries(utest pthread)
 
 add_subdirectory(platform)
+
+add_executable(fast_log_unit fast_log_unit.c)
+target_link_libraries(fast_log_unit core utest)
+add_test(fast_log_unit ${CMAKE_CURRENT_BINARY_DIR}/fast_log_unit fast_log_unit)
 
 add_executable(tempfile_unit tempfile_unit.c)
 target_link_libraries(tempfile_unit util utest)

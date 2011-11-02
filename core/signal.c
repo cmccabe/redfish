@@ -6,11 +6,11 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#include "core/fast_log.h"
 #include "core/log_config.h"
 #include "core/pid_file.h"
 #include "core/signal.h"
 #include "util/error.h"
+#include "util/fast_log.h"
 #include "util/compiler.h"
 #include "util/safe_io.h"
 

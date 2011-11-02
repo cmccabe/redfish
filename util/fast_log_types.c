@@ -7,9 +7,9 @@
  */
 
 
-#include "core/fast_log.h"
-#include "core/fast_log_types.h"
 #include "util/compiler.h"
+#include "util/fast_log.h"
+#include "util/fast_log_types.h"
 #include "util/macro.h"
 
 #include <arpa/inet.h>

@@ -7,8 +7,6 @@
  */
 
 #include "core/daemon.h"
-#include "core/fast_log.h"
-#include "core/fast_log_types.h"
 #include "core/glitch_log.h"
 #include "core/log_config.h"
 #include "core/pid_file.h"
@@ -16,6 +14,8 @@
 #include "jorm/json.h"
 #include "mds/net.h"
 #include "util/compiler.h"
+#include "util/fast_log.h"
+#include "util/fast_log_types.h"
 #include "util/string.h"
 
 #include <errno.h>
