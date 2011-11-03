@@ -15,6 +15,9 @@ struct log_config;
 
 typedef void (*signal_cb_t)(int);
 
+/** The global fast log manager */
+extern struct fast_log_mgr *g_fast_log_mgr;
+
 /** Install the signal handlers for a RedFish daemon.
  *
  * @param err			a buffer to write any errors to

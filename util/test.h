@@ -9,6 +9,8 @@
 #ifndef REDFISH_UTIL_TEST_H
 #define REDFISH_UTIL_TEST_H
 
+#include "util/error.h" /* for IS_ERR */
+
 #include <stdio.h> /* for fprintf */
 
 /** Abort unless t is true
@@ -111,6 +113,15 @@ extern int do_touch2(const char *dir, const char *fname);
 		if (x <= y) { \
 			fprintf(stderr, "failed on line %d: %s\n",\
 				__LINE__, #x); \
+			return 1; \
+		} \
+	} while (0);
+
+#define EXPECT_NOT_ERRPTR(p) \
+	do { \
+		if (IS_ERR(p)) { \
+			fprintf(stderr, "failed on line %d: %p\n",\
+				__LINE__, #p); \
 			return 1; \
 		} \
 	} while (0);

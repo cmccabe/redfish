@@ -4,6 +4,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 add_library(util
     config.c
     fast_log.c
+    fast_log_mgr.c
     fast_log_types.c
     dir.c
     msleep.c

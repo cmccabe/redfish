@@ -9,6 +9,7 @@
 #include "util/compiler.h"
 #include "util/error.h"
 #include "util/fast_log.h"
+#include "util/fast_log_mgr.h"
 #include "util/macro.h"
 #include "util/safe_io.h"
 #include "util/simple_io.h"
@@ -76,7 +77,7 @@ static int dump_gar(struct fast_log_entry *f, int fd)
 	return safe_write(fd, "\n", 1);
 }
 
-static const fast_log_dumper_fn_t g_dumpers[] = {
+static const fast_log_dumper_fn_t g_test_dumpers[] = {
 	[FASTLOG_TYPE_FOO_BAR_BAZ] = dump_foo_bar_baz,
 	[FASTLOG_TYPE_GAR] = dump_gar,
 };
@@ -87,21 +88,18 @@ static int dump_empty_buf(const char *tdir)
 	char fname[PATH_MAX];
 	char buf[512] = { 0 };
 	const char expected[] = "*** FASTLOG empty\n";
-	struct fast_log_buf *scratch, *empty;
+	struct fast_log_buf *empty;
 	int res, fd;
 
 	EXPECT_ZERO(zsnprintf(fname, sizeof(fname), "%s/empty", tdir));
 	fd = open(fname, O_CREAT | O_TRUNC | O_RDWR, 0644);
 	EXPECT_GE(fd, 0);
-	scratch = fast_log_create("scratch");
-	EXPECT_NOT_EQUAL(scratch, NULL);
-	empty = fast_log_create("empty");
+	empty = fast_log_alloc("empty");
 	EXPECT_NOT_EQUAL(empty, NULL);
-	EXPECT_ZERO(fast_log_dump(empty, scratch, fd));
+	EXPECT_ZERO(fast_log_dump(empty, g_test_dumpers, fd));
 	RETRY_ON_EINTR(res, close(fd));
 
-	fast_log_destroy(empty);
-	fast_log_destroy(scratch);
+	fast_log_free(empty);
 	EXPECT_GT(simple_io_read_whole_file_zt(fname, buf, sizeof(buf)), 0);
 	EXPECT_ZERO(strcmp(buf, expected));
 	return 0;
@@ -140,22 +138,19 @@ static int dump_small_buf(const char *tdir)
 foo=0x1, bar=0x2, bar=0x3\n\
 foo=0x10, bar=0x20, bar=0x30\n\
 blah blah\n";
-	struct fast_log_buf *scratch, *small;
+	struct fast_log_buf *small;
 	int res, fd;
 
 	EXPECT_ZERO(zsnprintf(fname, sizeof(fname), "%s/small", tdir));
 	fd = open(fname, O_CREAT | O_TRUNC | O_RDWR, 0644);
 	EXPECT_GE(fd, 0);
-	scratch = fast_log_create("scratch");
-	EXPECT_NOT_EQUAL(scratch, NULL);
-	small = fast_log_create("small");
+	small = fast_log_alloc("small");
 	EXPECT_NOT_EQUAL(small, NULL);
 	create_some_logs(small, 1);
-	EXPECT_ZERO(fast_log_dump(small, scratch, fd));
+	EXPECT_ZERO(fast_log_dump(small, g_test_dumpers, fd));
 	RETRY_ON_EINTR(res, close(fd));
 
-	fast_log_destroy(small);
-	fast_log_destroy(scratch);
+	fast_log_free(small);
 	EXPECT_GT(simple_io_read_whole_file_zt(fname, buf, sizeof(buf)), 0);
 	EXPECT_ZERO(strcmp(buf, expected));
 	return 0;
@@ -167,7 +162,7 @@ static int fill_entire_buf(const char *tdir)
 	char buf[512] = { 0 };
 	const char expected[] = "*** FASTLOG full\n\
 foo=0x1, bar=0x2, bar=0x3\n";
-	struct fast_log_buf *scratch, *full;
+	struct fast_log_buf *full;
 	int i, res, fd;
 	struct foo_bar_baz_entry fe1 = {
 		.type = FASTLOG_TYPE_FOO_BAR_BAZ,
@@ -180,17 +175,14 @@ foo=0x1, bar=0x2, bar=0x3\n";
 	EXPECT_ZERO(zsnprintf(fname, sizeof(fname), "%s/full", tdir));
 	fd = open(fname, O_CREAT | O_TRUNC | O_RDWR, 0644);
 	EXPECT_GE(fd, 0);
-	scratch = fast_log_create("scratch");
-	EXPECT_NOT_EQUAL(scratch, NULL);
-	full = fast_log_create("full");
+	full = fast_log_alloc("full");
 	EXPECT_NOT_EQUAL(full, NULL);
 	for (i = 0; i < 200000; ++i) {
 		fast_log(full, &fe1);
 	}
-	EXPECT_ZERO(fast_log_dump(full, scratch, fd));
+	EXPECT_ZERO(fast_log_dump(full, g_test_dumpers, fd));
 	RETRY_ON_EINTR(res, close(fd));
-	fast_log_destroy(full);
-	fast_log_destroy(scratch);
+	fast_log_free(full);
 	EXPECT_GT(simple_io_read_whole_file_zt(fname, buf, sizeof(buf)), 0);
 	EXPECT_ZERO(strncmp(buf, expected, strlen(expected)));
 	return 0;
@@ -198,6 +190,7 @@ foo=0x1, bar=0x2, bar=0x3\n";
 
 static int test_dump_all(const char *tdir)
 {
+	struct fast_log_mgr *mgr;
 	char fname[PATH_MAX];
 	char *expected, buf[4096] = { 0 };
 	const char *expected_lines[] = {
@@ -215,20 +208,20 @@ static int test_dump_all(const char *tdir)
 		"blah blah",
 		NULL
 	};
-	struct fast_log_buf *scratch, *one, *two, *three;
+	struct fast_log_buf *one, *two, *three;
 	int res, fd;
 
-	scratch = fast_log_create("scratch");
-	EXPECT_NOT_EQUAL(scratch, NULL);
-	one = fast_log_create("one");
-	EXPECT_NOT_EQUAL(one, NULL);
-	EXPECT_ZERO(fast_log_register_buffer(one));
-	two = fast_log_create("two");
-	EXPECT_NOT_EQUAL(two, NULL);
-	EXPECT_ZERO(fast_log_register_buffer(two));
-	three = fast_log_create("three");
+	mgr = fast_log_mgr_init(g_test_dumpers);
+	EXPECT_NOT_ERRPTR(mgr);
+	three = fast_log_alloc("three");
 	EXPECT_NOT_EQUAL(three, NULL);
-	EXPECT_ZERO(fast_log_register_buffer(three));
+	fast_log_mgr_register_buffer(mgr, three);
+	two = fast_log_alloc("two");
+	EXPECT_NOT_EQUAL(two, NULL);
+	fast_log_mgr_register_buffer(mgr, two);
+	one = fast_log_alloc("one");
+	EXPECT_NOT_EQUAL(one, NULL);
+	fast_log_mgr_register_buffer(mgr, one);
 
 	create_some_logs(one, 1);
 	create_some_logs(two, 1);
@@ -237,17 +230,22 @@ static int test_dump_all(const char *tdir)
 	EXPECT_ZERO(zsnprintf(fname, sizeof(fname), "%s/all", tdir));
 	fd = open(fname, O_CREAT | O_TRUNC | O_RDWR, 0644);
 	EXPECT_GE(fd, 0);
-	EXPECT_ZERO(fast_log_dump_all(scratch, fd));
+	EXPECT_ZERO(fast_log_mgr_dump_all(mgr, fd));
 	RETRY_ON_EINTR(res, close(fd));
 
-	fast_log_destroy(one);
-	fast_log_destroy(two);
-	fast_log_destroy(three);
-	fast_log_destroy(scratch);
+	fast_log_mgr_unregister_buffer(mgr, one);
+	fast_log_mgr_unregister_buffer(mgr, two);
+	fast_log_mgr_unregister_buffer(mgr, three);
+	fast_log_free(one);
+	fast_log_free(two);
+	fast_log_free(three);
 	EXPECT_GT(simple_io_read_whole_file_zt(fname, buf, sizeof(buf)), 0);
 
 	expected = linearray_to_str(expected_lines);
-	EXPECT_ZERO(strcmp(buf, expected));
+	if (strcmp(buf, expected)) {
+		printf("buf = '%s', but expected = '%s'\n", buf, expected);
+		return 1;
+	}
 	free(expected);
 	return 0;
 }
@@ -258,7 +256,6 @@ int main(void)
 
 	EXPECT_ZERO(get_tempdir(tdir, sizeof(tdir), 0775));
 	EXPECT_ZERO(register_tempdir_for_cleanup(tdir));
-	EXPECT_ZERO(fast_log_init(g_dumpers));
 
 	EXPECT_ZERO(dump_empty_buf(tdir));
 	EXPECT_ZERO(dump_small_buf(tdir));

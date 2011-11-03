@@ -13,7 +13,7 @@
 
 #include <stdint.h>
 
-/** fast_log is a fast circular buffer used to log routine informational
+/* fast_log is a fast circular buffer used to log routine informational
  * messages during normal daemon operation. The intention is that each thread
  * will have its own fast_log_buf, which it can log its events to.
  *
@@ -31,6 +31,19 @@
  * dumping.
  */
 struct fast_log_buf;
+struct fast_log_entry;
+
+/** A function used to pretty-print a fast_log entry to a file descriptor.
+ *
+ * Note: this must be suitable to use in a signal handler.
+ * Use only signal-safe functions. memset and memcpy are also allowed here.
+ *
+ * @param fe		the fast_log entry
+ * @param fd		the output file descriptor
+ *
+ * Returns 0 on success; error code otherwise.
+ */
+typedef int (*fast_log_dumper_fn_t)(struct fast_log_entry *fe, int fd);
 
 /** Maximum length of a fast_log buffer name. */
 #define FAST_LOG_BUF_NAME_MAX 24
@@ -53,52 +66,20 @@ struct fast_log_entry
 }
 );
 
-/** A function used to pretty-print a fast_log entry to a file descriptor.
- *
- * Note: this must be suitable to use in a signal handler.
- * Use only signal-safe functions. memset and memcpy are also allowed here.
- *
- * @param fe		the fast_log entry
- * @param fd		the output file descriptor
- *
- * Returns 0 on success; error code otherwise.
- */
-typedef int (*fast_log_dumper_fn_t)(struct fast_log_entry *fe, int fd);
-
-/** Finish initializing the fast_log infrastructure.
- *
- * This must be called before any calls to fast_log_create or other fast_log
- * functions.
- *
- * @param dumpers	Array mapping fast_log message IDs to dumper functions.
- * 			We will keep a pointer to this parameter.
- *
- * @return		0 on success; error code otherwise.
- */
-extern int fast_log_init(const fast_log_dumper_fn_t *dumpers);
-
 /** Initializes a fast_log buffer.
  *
  * @param fbname	The name of the fast_log buffer to create. If it is
- *			longer than fast_log_BUF_NAME_MAX, it will be truncated.
+ *			longer than fast_log_BUF_NAME_MAX, it will be truncated
  *
- * @return		The fast_log on success, or NULL on failure.
+ * @return		The fast_log on success, or an error pointer on failure
  */
-extern struct fast_log_buf* fast_log_create(const char *fbname);
-
-/** Registers a fast log buffer to be dumped by fast_log_dump_all
- *
- * @param fb		The fastlog buffer to register
- *
- * @return		0 on success; error code otherwise
- */
-extern int fast_log_register_buffer(struct fast_log_buf *fb);
+extern struct fast_log_buf* fast_log_alloc(const char *fbname);
 
 /** Destroys a fast_log buffer.
  *
  * @param fb		The fast_log buffer
  */
-extern void fast_log_destroy(struct fast_log_buf* fb);
+extern void fast_log_free(struct fast_log_buf* fb);
 
 /** Output a fast_log message.
  *
@@ -108,26 +89,25 @@ extern void fast_log_destroy(struct fast_log_buf* fb);
  */
 extern void fast_log(struct fast_log_buf* fb, void *fe);
 
+/** Copy one fast log buffer to another
+ *
+ * This function is signal-safe.
+ *
+ * @param dst		destination fast log buffer
+ * @param src		source fast log buffer
+ */
+void fast_log_copy(struct fast_log_buf *dst,
+		const struct fast_log_buf *src);
+
 /** Dump the fast_log
  *
- * @param fb		the fast_log to dump
- * @param scratch	a fast_log allocated with fast_log_init. Its contents
- *			will be overwritten with the contents of fb during the
- *			dumping process.
+ * @param fb		the fast log buffer to dump
+ * @param dumpers	the dumper functions to use
+ * @param fb		file descriptor to dump to
  *
  * @return		0 on success; error code otherwise
  */
 extern int fast_log_dump(const struct fast_log_buf* fb,
-                struct fast_log_buf* scratch, int fd);
-
-/** Dump all fast_logs
- *
- * @param scratch	a fast_log allocated with fast_log_init. Its
- *			contents will be overwritten with the contents of
- *			fast_logs during the dumping process.
- *
- * @return		0 on success; error code otherwise
- */
-extern int fast_log_dump_all(struct fast_log_buf* scratch, int fd);
+		const fast_log_dumper_fn_t *dumpers, int fd);
 
 #endif

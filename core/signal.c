@@ -10,7 +10,8 @@
 #include "core/pid_file.h"
 #include "core/signal.h"
 #include "util/error.h"
-#include "util/fast_log.h"
+#include "util/fast_log_mgr.h"
+#include "util/fast_log_types.h"
 #include "util/compiler.h"
 #include "util/safe_io.h"
 
@@ -29,9 +30,11 @@
 #include <ucontext.h>
 #include <unistd.h>
 
+struct fast_log_mgr *g_fast_log_mgr;
+
 typedef void (*sa_sigaction_t)(int, siginfo_t *, void *);
 
-sa_sigaction_t g_prev_handlers[_NSIG];
+static sa_sigaction_t g_prev_handlers[_NSIG];
 
 static const int FATAL_SIGNALS[] = { SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT,
 	SIGTERM, SIGXCPU, SIGXFSZ, SIGSYS, SIGINT };
@@ -43,8 +46,6 @@ static stack_t g_alt_stack;
 static int g_crash_log_fd = -1;
 
 static int g_fast_log_fd = -1;
-
-static struct fast_log_buf *g_fast_log_scratch = NULL;
 
 static int g_use_syslog = 0;
 
@@ -97,8 +98,8 @@ static void handle_fatal_signal(int sig, siginfo_t *siginfo, void *ctx)
 	}
 	/* If the pid file has not been set up, this will do nothing. */
 	delete_pid_file();
-	/* If fast_log has not been initialized, this will do nothing. */
-	fast_log_dump_all(g_fast_log_scratch, g_fast_log_fd);
+	/* dump fast logs */
+	fast_log_mgr_dump_all(g_fast_log_mgr, g_fast_log_fd);
 	/* Call the previously install signal handler.
 	 * Probably, this will dump core. */
 	g_prev_handlers[sig](sig, siginfo, ctx);
@@ -191,9 +192,9 @@ void signal_shutdown(void)
 	if (should_close_fd(g_fast_log_fd))
 		RETRY_ON_EINTR(res, close(g_fast_log_fd));
 	g_fast_log_fd = -1;
-	if (g_fast_log_scratch) {
-		fast_log_destroy(g_fast_log_scratch);
-		g_fast_log_scratch = NULL;
+	if (g_fast_log_mgr) {
+		fast_log_mgr_free(g_fast_log_mgr);
+		g_fast_log_mgr = NULL;
 	}
 	g_use_syslog = 0;
 	g_fatal_signal_cb = NULL;
@@ -235,14 +236,14 @@ void signal_init(const char *argv0, char *err, size_t err_len,
 	else {
 		g_fast_log_fd = STDERR_FILENO;
 	}
-	g_fast_log_scratch = fast_log_create("signal_scratch");
-	if (!g_fast_log_scratch) {
-		snprintf(err, err_len, "fast_log_create ran out "
-				"of memory!\n");
+	g_fast_log_mgr = fast_log_mgr_init(g_fast_log_dumpers);
+	if (IS_ERR(g_fast_log_mgr)) {
+		snprintf(err, err_len, "fast_log_mgr_init failed with error %d",
+			PTR_ERR(g_fast_log_mgr));
+		g_fast_log_mgr = NULL;
 		signal_shutdown();
 		return;
 	}
-
 	g_fatal_signal_cb = fatal_signal_cb;
 	signal_init_altstack(err, err_len, &g_alt_stack);
 	if (err[0]) {

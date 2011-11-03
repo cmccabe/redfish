@@ -113,12 +113,6 @@ int main(int argc, char **argv)
 		goto free_daemon;
 	}
 	configure_glitch_log(d->lc);
-	ret = fast_log_init(g_fast_log_dumpers);
-	if (ret) {
-		glitch_log("fast_log_init error: %d\n", ret);
-		ret = EXIT_FAILURE;
-		goto done_close_glitchlog;
-	}
 	signal_init(argv[0], err, sizeof(err), d->lc, NULL);
 	if (err[0]) {
 		glitch_log("signal_init error: %s\n", err);
