@@ -7,6 +7,7 @@
  */
 
 #include "core/daemon.h"
+#include "core/daemon_ctx.h"
 #include "core/glitch_log.h"
 #include "core/log_config.h"
 #include "core/pid_file.h"
@@ -74,18 +75,22 @@ static void parse_argv(int argc, char **argv, int *daemonize,
 	}
 }
 
-static struct daemon* parse_osd_config(const char *file,
-					   char *err, size_t err_len)
+static struct daemon* parse_osd_config(const char *file_name)
 {
+	char err[512] = { 0 };
+	size_t err_len = sizeof(err);
 	struct daemon *d;
-	struct json_object* jo = parse_json_file(file, err, err_len);
-	if (err[0])
+	struct json_object* jo;
+	
+	jo = parse_json_file(file_name, err, err_len);
+	if (err[0]) {
+		glitch_log("error parsing json file: %s\n", err);
 		return NULL;
+	}
 	d = JORM_FROMJSON_daemon(jo);
 	json_object_put(jo);
 	if (!d) {
-		snprintf(err, err_len, "ran out of memory reading "
-			 "config file.\n");
+		glitch_log("ran out of memory reading config file.\n");
 		return NULL;
 	}
 	return d;
@@ -93,54 +98,23 @@ static struct daemon* parse_osd_config(const char *file,
 
 int main(int argc, char **argv)
 {
-	char err[512] = { 0 };
 	int ret, daemonize = 1;
 	const char *osd_config_file = NULL;
 	struct daemon *d;
 
 	parse_argv(argc, argv, &daemonize, &osd_config_file);
-	d = parse_osd_config(osd_config_file, err, sizeof(err));
-	if (err[0]) {
-		glitch_log("error parsing monitor config file '%s': %s\n",
-			osd_config_file, err);
+	d = parse_osd_config(osd_config_file);
+	if (!d) {
 		ret = EXIT_FAILURE;
 		goto done;
 	}
-	harmonize_log_config(d->lc, err, sizeof(err), 1, 1);
-	if (err[0]) {
-		glitch_log("log_config error: %s\n", err);
+	if (daemon_ctx_init(argv[0], daemonize, d->lc)) {
 		ret = EXIT_FAILURE;
-		goto free_daemon;
-	}
-	configure_glitch_log(d->lc);
-	signal_init(argv[0], err, sizeof(err), d->lc, NULL);
-	if (err[0]) {
-		glitch_log("signal_init error: %s\n", err);
-		ret = EXIT_FAILURE;
-		goto done_close_glitchlog;
-	}
-	if (daemonize) {
-		if (daemon(0, 0) < 0) {
-			ret = errno;
-			glitch_log("daemon: error: %d\n", ret);
-			ret = EXIT_FAILURE;
-			goto done_signal_shutdown;
-		}
-	}
-	create_pid_file(d->lc, err, sizeof(err));
-	if (err[0]) {
-		glitch_log("create_pid_file error: %s\n", err);
-		ret = EXIT_FAILURE;
-		goto done_signal_shutdown;
+		goto done;
 	}
 	ret = osd_main_loop(d);
-
-done_signal_shutdown:
-	signal_shutdown();
-done_close_glitchlog:
-	close_glitch_log();
-free_daemon:
-	JORM_FREE_daemon(d);
 done:
+	daemon_ctx_shutdown();
+	JORM_FREE_daemon(d);
 	return ret;
 }
