@@ -6,7 +6,7 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#include "core/daemon_ctx.h"
+#include "core/process_ctx.h"
 #include "core/log_config.h"
 #include "core/glitch_log.h"
 #include "core/pid_file.h"
@@ -26,7 +26,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-int daemon_ctx_init(char *argv0, int daemonize, struct log_config *lc)
+struct fast_log_mgr *g_fast_log_mgr;
+
+int process_ctx_init(char *argv0, int daemonize, struct log_config *lc)
 {
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
@@ -64,7 +66,7 @@ error:
 	return 1;
 }
 
-void daemon_ctx_shutdown(void)
+void process_ctx_shutdown(void)
 {
 	signal_shutdown();
 	close_glitch_log();

@@ -30,8 +30,6 @@
 #include <ucontext.h>
 #include <unistd.h>
 
-struct fast_log_mgr *g_fast_log_mgr;
-
 typedef void (*sa_sigaction_t)(int, siginfo_t *, void *);
 
 static sa_sigaction_t g_prev_handlers[_NSIG];
@@ -53,7 +51,6 @@ static signal_cb_t g_fatal_signal_cb = NULL;
 
 extern void regurgitate_fd(char *line, size_t max_line, int ifd, int ofd,
 			int use_syslog);
-
 
 /** Ths signal handler for nasty, fatal signals.
  */

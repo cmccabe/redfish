@@ -7,9 +7,9 @@
  */
 
 #include "core/daemon.h"
-#include "core/daemon_ctx.h"
 #include "core/glitch_log.h"
 #include "core/log_config.h"
+#include "core/process_ctx.h"
 #include "jorm/json.h"
 #include "mds/net.h"
 #include "util/string.h"
@@ -103,13 +103,13 @@ int main(int argc, char **argv)
 		ret = EXIT_FAILURE;
 		goto done;
 	}
-	if (daemon_ctx_init(argv[0], daemonize, d->lc)) {
+	if (process_ctx_init(argv[0], daemonize, d->lc)) {
 		ret = EXIT_FAILURE;
 		goto done;
 	}
 	ret = mds_main_loop();
 done:
-	daemon_ctx_shutdown();
+	process_ctx_shutdown();
 	JORM_FREE_daemon(d);
 	return ret;
 }
