@@ -6,8 +6,8 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#ifndef REDFISH_CORE_fast_log_H
-#define REDFISH_CORE_fast_log_H
+#ifndef REDFISH_UTIL_FAST_LOG_DOT_H
+#define REDFISH_UTIL_FAST_LOG_DOT_H
 
 #include "util/compiler.h"
 
