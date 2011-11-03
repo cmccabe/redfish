@@ -48,13 +48,13 @@ struct foo_bar_baz_entry
 BUILD_BUG_ON(sizeof(struct foo_bar_baz_entry) !=
 		sizeof(struct fast_log_entry));
 
-static int dump_foo_bar_baz(struct fast_log_entry *f, int fd)
+static void dump_foo_bar_baz(struct fast_log_entry *f, char *buf)
 {
 	int ret;
 	struct foo_bar_baz_entry *fe = (struct foo_bar_baz_entry*)f;
-	ret = dprintf(fd, "foo=0x%"PRIx64 ", bar=0x%"PRIx64
-		 ", bar=0x%" PRIx64 "\n", fe->foo, fe->bar, fe->baz);
-	return ret < 0;
+	ret = snprintf(buf, FAST_LOG_ENTRY_MAX,
+		"foo=0x%"PRIx64 ", bar=0x%"PRIx64
+		", bar=0x%" PRIx64 "\n", fe->foo, fe->bar, fe->baz);
 }
 
 /***** gar_entry *******/
@@ -67,14 +67,12 @@ struct gar_entry
 );
 BUILD_BUG_ON(sizeof(struct gar_entry) != sizeof(struct fast_log_entry));
 
-static int dump_gar(struct fast_log_entry *f, int fd)
+static void dump_gar(struct fast_log_entry *f, char *buf)
 {
 	int ret;
 	struct gar_entry *fe = (struct gar_entry*)f;
-	ret = safe_write(fd, fe->gar, strlen(fe->gar));
-	if (ret)
-		return ret;
-	return safe_write(fd, "\n", 1);
+	ret = snprintf(buf, FAST_LOG_ENTRY_MAX,
+		"%s\n", fe->gar);
 }
 
 static const fast_log_dumper_fn_t g_test_dumpers[] = {
@@ -152,7 +150,11 @@ blah blah\n";
 
 	fast_log_free(small);
 	EXPECT_GT(simple_io_read_whole_file_zt(fname, buf, sizeof(buf)), 0);
-	EXPECT_ZERO(strcmp(buf, expected));
+	if (strcmp(buf, expected)) {
+		fprintf(stderr, "got '%s', buf expected '%s'\n",
+			buf, expected);
+		return 1;
+	}
 	return 0;
 }
 

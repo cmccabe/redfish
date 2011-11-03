@@ -39,11 +39,12 @@ struct fast_log_entry;
  * Use only signal-safe functions. memset and memcpy are also allowed here.
  *
  * @param fe		the fast_log entry
- * @param fd		the output file descriptor
- *
- * Returns 0 on success; error code otherwise.
+ * @param buf		output buffer of size FAST_LOG_TYPE_MAX
  */
-typedef int (*fast_log_dumper_fn_t)(struct fast_log_entry *fe, int fd);
+typedef void (*fast_log_dumper_fn_t)(struct fast_log_entry *fe, char *buf);
+
+/** Maximum decoded size of a fast log entry */
+#define FAST_LOG_ENTRY_MAX 512
 
 /** Maximum length of a fast_log buffer name. */
 #define FAST_LOG_BUF_NAME_MAX 24

@@ -106,9 +106,12 @@ int fast_log_dump(const struct fast_log_buf* fb,
 		if (type < FAST_LOG_TYPE_MAX) {
 			fast_log_dumper_fn_t fn = dumpers[type];
 			if (fn) {
-				int ret = fn(fe, fd);
-				if (ret)
-					return ret;
+				char tmp[FAST_LOG_ENTRY_MAX] = { 0 };
+				fn(fe, tmp);
+				res = safe_write(fd, tmp,
+					signal_safe_strlen(tmp));
+				if (res)
+					return res;
 			}
 		}
 	} while (off != start_off);

@@ -54,14 +54,15 @@ void fast_log_new_conn(struct fast_log_buf *fb, uint32_t conn_ty,
 	fast_log(fb, &fe.fe);
 }
 
-static int fast_log_new_conn_dump(struct fast_log_entry *fe, int fd)
+static void fast_log_new_conn_dump(struct fast_log_entry *fe, char *buf)
 {
 	char str[INET_ADDRSTRLEN];
 	struct fast_log_new_conn_entry *f =
 		(struct fast_log_new_conn_entry*)fe;
 	inet_ntop(AF_INET, &f->s_addr, str, INET_ADDRSTRLEN);
-	return dprintf(fd, "new_conn(conn_ty=%d,fd=%d,s_addr=%s)\n",
-			f->conn_ty, f->fd, str);
+	snprintf(buf, FAST_LOG_ENTRY_MAX,
+		"new_conn(conn_ty=%d,fd=%d,s_addr=%s)\n",
+		f->conn_ty, f->fd, str);
 }
 
 PACKED_ALIGNED(8,
@@ -99,13 +100,14 @@ void fast_log_close_conn(struct fast_log_buf *fb, uint32_t conn_ty,
 	fast_log(fb, &fe.fe);
 }
 
-static int fast_log_close_conn_dump(struct fast_log_entry *fe, int fd)
+static void fast_log_close_conn_dump(struct fast_log_entry *fe, char *buf)
 {
 	char str[INET_ADDRSTRLEN];
 	struct fast_log_close_conn_entry *f =
 		(struct fast_log_close_conn_entry*)fe;
 	inet_ntop(AF_INET, &f->s_addr, str, INET_ADDRSTRLEN);
-	return dprintf(fd, "closee_conn(conn_ty=%d,fd=%d,s_addr=%s,err=%d)\n",
+	snprintf(buf, FAST_LOG_ENTRY_MAX,
+		"closee_conn(conn_ty=%d,fd=%d,s_addr=%s,err=%d)\n",
 		f->conn_ty, f->fd, str, f->error);
 }
 
