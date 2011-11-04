@@ -12,6 +12,7 @@
 #include "util/compiler.h"
 
 #include <stdint.h>
+#include <unistd.h> /* for size_t */
 
 /* Network messages that can be sent to anyone */
 
