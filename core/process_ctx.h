@@ -24,10 +24,10 @@ extern struct fast_log_mgr *g_fast_log_mgr;
  * - create pid file if requested
  * - sets up signals
  */
-int process_ctx_init(char *argv0, int daemonize, struct log_config *lc);
+extern int process_ctx_init(char *argv0, int daemonize, struct log_config *lc);
 
 /** Shut down the daemon context.
  */
-void process_ctx_shutdown(void);
+extern void process_ctx_shutdown(void);
 
 #endif
