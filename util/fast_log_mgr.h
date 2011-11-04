@@ -9,6 +9,7 @@
 #ifndef REDFISH_UTIL_FAST_LOG_MGR_H
 #define REDFISH_UTIL_FAST_LOG_MGR_H
 
+#include "util/bitfield.h"
 #include "util/compiler.h"
 #include "util/fast_log.h"
 #include "util/queue.h"
@@ -72,5 +73,25 @@ extern void fast_log_mgr_unregister_buffer(struct fast_log_mgr *mgr,
  * @return		0 on success; error code otherwise
  */
 extern int fast_log_mgr_dump_all(struct fast_log_mgr* mgr, int fd);
+
+/** Copy the manager's message storage settings 
+ *
+ * @param mgr		The fastlog buffer manager
+ * @param stored	(out-param) the stored bitfield
+ * @param store		(out-param) the store callback
+ */
+extern void fast_log_mgr_cp_storage_settings(struct fast_log_mgr *mgr,
+		BITFIELD_DECL(stored, FAST_LOG_TYPE_MAX),
+		fast_log_storage_fn_t *store);
+
+/** Set the manager's message storage settings 
+ *
+ * @param mgr		The fastlog buffer manager
+ * @param stored	the new stored bitfield
+ * @param store		the new store callback
+ */
+extern void fast_log_mgr_set_storage_settings(struct fast_log_mgr *mgr,
+		BITFIELD_DECL(stored, FAST_LOG_TYPE_MAX),
+		fast_log_storage_fn_t store);
 
 #endif

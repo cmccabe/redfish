@@ -36,15 +36,17 @@ struct fast_log_mgr* fast_log_mgr_init(const fast_log_dumper_fn_t *dumpers)
 		free(mgr);
 		return ERR_PTR(ret);
 	}
+	LIST_INIT(&mgr->buf_head);
+	LIST_INIT(&mgr->dumped_head);
+	mgr->dumpers = dumpers;
+	BITFIELD_ZERO(mgr->stored);
+	mgr->store = NULL;
 	mgr->scratch = fast_log_alloc("scratch");
 	if (IS_ERR(mgr->scratch)) {
 		free(mgr);
 		pthread_spin_destroy(&mgr->lock);
 		return (struct fast_log_mgr*)mgr->scratch;
 	}
-	LIST_INIT(&mgr->buf_head);
-	LIST_INIT(&mgr->dumped_head);
-	mgr->dumpers = dumpers;
 	return mgr;
 }
 
@@ -107,4 +109,24 @@ int fast_log_mgr_dump_all(struct fast_log_mgr *mgr, int fd)
 	LIST_SWAP(&mgr->buf_head, &mgr->dumped_head, fast_log_buf, entry);
 	pthread_spin_unlock(&mgr->lock);
 	return ret;
+}
+
+void fast_log_mgr_cp_storage_settings(struct fast_log_mgr *mgr,
+		BITFIELD_DECL(stored, FAST_LOG_TYPE_MAX),
+		fast_log_storage_fn_t *store)
+{
+	pthread_spin_lock(&mgr->lock);
+	BITFIELD_COPY(stored, mgr->stored);
+	*store = mgr->store;
+	pthread_spin_unlock(&mgr->lock);
+}
+
+void fast_log_mgr_set_storage_settings(struct fast_log_mgr *mgr,
+		BITFIELD_DECL(stored, FAST_LOG_TYPE_MAX),
+		fast_log_storage_fn_t store)
+{
+	pthread_spin_lock(&mgr->lock);
+	BITFIELD_COPY(mgr->stored, stored);
+	mgr->store = store;
+	pthread_spin_unlock(&mgr->lock);
 }

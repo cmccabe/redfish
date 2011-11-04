@@ -60,7 +60,7 @@ static void fast_log_new_conn_dump(struct fast_log_entry *fe, char *buf)
 	struct fast_log_new_conn_entry *f =
 		(struct fast_log_new_conn_entry*)fe;
 	inet_ntop(AF_INET, &f->s_addr, str, INET_ADDRSTRLEN);
-	snprintf(buf, FAST_LOG_ENTRY_MAX,
+	snprintf(buf, FAST_LOG_PRETTY_PRINTED_MAX,
 		"new_conn(conn_ty=%d,fd=%d,s_addr=%s)\n",
 		f->conn_ty, f->fd, str);
 }
@@ -106,7 +106,7 @@ static void fast_log_close_conn_dump(struct fast_log_entry *fe, char *buf)
 	struct fast_log_close_conn_entry *f =
 		(struct fast_log_close_conn_entry*)fe;
 	inet_ntop(AF_INET, &f->s_addr, str, INET_ADDRSTRLEN);
-	snprintf(buf, FAST_LOG_ENTRY_MAX,
+	snprintf(buf, FAST_LOG_PRETTY_PRINTED_MAX,
 		"closee_conn(conn_ty=%d,fd=%d,s_addr=%s,err=%d)\n",
 		f->conn_ty, f->fd, str, f->error);
 }

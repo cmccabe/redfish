@@ -9,6 +9,7 @@
 #ifndef REDFISH_UTIL_FAST_LOG_INTERNAL_DOT_H
 #define REDFISH_UTIL_FAST_LOG_INTERNAL_DOT_H
 
+#include "util/bitfield.h"
 #include "util/fast_log.h"
 #include "util/fast_log_mgr.h"
 #include "util/queue.h"
@@ -29,6 +30,10 @@ struct fast_log_buf
 	char *buf;
 	/** Current offset within the buffer */
 	uint32_t off;
+	/** Which log types are stored */
+	BITFIELD_DECL(stored, FAST_LOG_TYPE_MAX);
+	/** Storage callback */
+	fast_log_storage_fn_t store;
 };
 
 LIST_HEAD(fast_log_buf_list, fast_log_buf);
@@ -45,8 +50,22 @@ struct fast_log_mgr
 	pthread_spinlock_t lock;
 	/** A fast log buffer used as scratch during the dumping process */
 	struct fast_log_buf *scratch;
-	/** Pointer to an array of MAX_FAST_LOG_TYPES function pointers */
+	/** Pointer to an array of MAX_FAST_LOG_TYPES function pointers.
+	 * These can't change after initialization. */
 	const fast_log_dumper_fn_t *dumpers;
+	/** Which log types are stored */
+	BITFIELD_DECL(stored, FAST_LOG_TYPE_MAX);
+	/** Storage callback */
+	fast_log_storage_fn_t store;
 };
+
+/** Allocate a fast_log buffer.
+ *
+ * @param fbname	The name of the fast_log buffer to create. If it is
+ *			longer than fast_log_BUF_NAME_MAX, it will be truncated
+ *
+ * @return		The fast_log on success, or an error pointer on failure
+ */
+extern struct fast_log_buf* fast_log_alloc(const char *fbname);
 
 #endif

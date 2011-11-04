@@ -32,6 +32,7 @@
  */
 struct fast_log_buf;
 struct fast_log_entry;
+struct fast_log_mgr;
 
 /** A function used to pretty-print a fast_log entry to a file descriptor.
  *
@@ -39,12 +40,20 @@ struct fast_log_entry;
  * Use only signal-safe functions. memset and memcpy are also allowed here.
  *
  * @param fe		the fast_log entry
- * @param buf		output buffer of size FAST_LOG_TYPE_MAX
+ * @param buf		output buffer of size FAST_LOG_PRETTY_PRINTED_MAX
  */
 typedef void (*fast_log_dumper_fn_t)(struct fast_log_entry *fe, char *buf);
 
-/** Maximum decoded size of a fast log entry */
-#define FAST_LOG_ENTRY_MAX 512
+/** A function used to store a pretty-printed fast log in a more permanent
+ * fashion.
+ *
+ * @param buf		The pretty-printed fast_log entry. Will never be longer
+ *			than FAST_LOG_PRETTY_PRINTED_MAX
+ */
+typedef void (*fast_log_storage_fn_t)(char *str);
+
+/** Maximum pretty-printed size of a fast log entry */
+#define FAST_LOG_PRETTY_PRINTED_MAX 512
 
 /** Maximum length of a fast_log buffer name. */
 #define FAST_LOG_BUF_NAME_MAX 24
@@ -67,14 +76,16 @@ struct fast_log_entry
 }
 );
 
-/** Initializes a fast_log buffer.
+/** Create a fast_log buffer.
  *
+ * @param mgr		The fast log manager
  * @param fbname	The name of the fast_log buffer to create. If it is
  *			longer than fast_log_BUF_NAME_MAX, it will be truncated
  *
  * @return		The fast_log on success, or an error pointer on failure
  */
-extern struct fast_log_buf* fast_log_alloc(const char *fbname);
+extern struct fast_log_buf* fast_log_create(struct fast_log_mgr *mgr,
+					const char *fbname);
 
 /** Destroys a fast_log buffer.
  *

@@ -7,6 +7,7 @@
  */
 
 #include "util/compiler.h"
+#include "util/error.h"
 #include "util/fast_log.h"
 #include "util/fast_log_internal.h"
 #include "util/fast_log_mgr.h"
@@ -27,6 +28,13 @@
 
 #define FASTLOG_MAX_OFF (FASTLOG_BUF_SZ / sizeof(struct fast_log_entry))
 
+/** Intervals at which we check the fast log manager's message storage settings.
+ * It would be simple to check the manager's storage settings before every
+ * message, but that would eliminate most of the speed advantage of fast log.
+ * So we check every FASTLOG_MAX_OFF / 4 logs.
+ * */
+#define FASTLOG_CHECKED_OFF (FASTLOG_MAX_OFF / 4)
+
 struct fast_log_buf* fast_log_alloc(const char *name)
 {
 	struct fast_log_buf *fb;
@@ -44,17 +52,45 @@ struct fast_log_buf* fast_log_alloc(const char *name)
 	return fb;
 }
 
+struct fast_log_buf* fast_log_create(struct fast_log_mgr *mgr, const char *name)
+{
+	struct fast_log_buf *fb = fast_log_alloc(name);
+	if (IS_ERR(fb))
+		return fb;
+	fb->mgr = mgr;
+	fast_log_mgr_cp_storage_settings(mgr,
+			fb->stored, &fb->store);
+	fast_log_mgr_register_buffer(mgr, fb);
+	return fb;
+}
+
 void fast_log_free(struct fast_log_buf* fb)
 {
+	if (fb->mgr) {
+		fast_log_mgr_unregister_buffer(fb->mgr, fb);
+	}
 	munmap(fb->buf, FASTLOG_BUF_SZ);
 	free(fb);
 }
 
-void fast_log(struct fast_log_buf* fb, void *fe)
+void fast_log(struct fast_log_buf* fb, void *entry)
 {
+	struct fast_log_entry *fe = (struct fast_log_entry*)entry;
 	struct fast_log_entry *buf = (struct fast_log_entry*)fb->buf;
+
+	if (fe->type >= FAST_LOG_TYPE_MAX)
+		return;
+	if (BITFIELD_TEST(fb->stored, fe->type)) {
+		char buf[FAST_LOG_PRETTY_PRINTED_MAX] = { 0 };
+		fb->mgr->dumpers[fe->type](entry, buf);
+		fb->store(buf);
+	}
 	memcpy(buf + fb->off, fe, sizeof(struct fast_log_entry));
 	fb->off++;
+	if (fb->off % FASTLOG_CHECKED_OFF == 0) {
+		fast_log_mgr_cp_storage_settings(fb->mgr,
+				fb->stored, &fb->store);
+	}
 	if (fb->off == FASTLOG_MAX_OFF) {
 		fb->off = 0;
 	}
@@ -106,7 +142,7 @@ int fast_log_dump(const struct fast_log_buf* fb,
 		if (type < FAST_LOG_TYPE_MAX) {
 			fast_log_dumper_fn_t fn = dumpers[type];
 			if (fn) {
-				char tmp[FAST_LOG_ENTRY_MAX] = { 0 };
+				char tmp[FAST_LOG_PRETTY_PRINTED_MAX] = { 0 };
 				fn(fe, tmp);
 				res = safe_write(fd, tmp,
 					signal_safe_strlen(tmp));

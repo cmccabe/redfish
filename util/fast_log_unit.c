@@ -52,7 +52,7 @@ static void dump_foo_bar_baz(struct fast_log_entry *f, char *buf)
 {
 	int ret;
 	struct foo_bar_baz_entry *fe = (struct foo_bar_baz_entry*)f;
-	ret = snprintf(buf, FAST_LOG_ENTRY_MAX,
+	ret = snprintf(buf, FAST_LOG_PRETTY_PRINTED_MAX,
 		"foo=0x%"PRIx64 ", bar=0x%"PRIx64
 		", bar=0x%" PRIx64 "\n", fe->foo, fe->bar, fe->baz);
 }
@@ -71,7 +71,7 @@ static void dump_gar(struct fast_log_entry *f, char *buf)
 {
 	int ret;
 	struct gar_entry *fe = (struct gar_entry*)f;
-	ret = snprintf(buf, FAST_LOG_ENTRY_MAX,
+	ret = snprintf(buf, FAST_LOG_PRETTY_PRINTED_MAX,
 		"%s\n", fe->gar);
 }
 
@@ -88,11 +88,15 @@ static int dump_empty_buf(const char *tdir)
 	const char expected[] = "*** FASTLOG empty\n";
 	struct fast_log_buf *empty;
 	int res, fd;
+	struct fast_log_mgr *mgr;
+
+	mgr = fast_log_mgr_init(g_test_dumpers);
+	EXPECT_NOT_ERRPTR(mgr);
 
 	EXPECT_ZERO(zsnprintf(fname, sizeof(fname), "%s/empty", tdir));
 	fd = open(fname, O_CREAT | O_TRUNC | O_RDWR, 0644);
 	EXPECT_GE(fd, 0);
-	empty = fast_log_alloc("empty");
+	empty = fast_log_create(mgr, "empty");
 	EXPECT_NOT_EQUAL(empty, NULL);
 	EXPECT_ZERO(fast_log_dump(empty, g_test_dumpers, fd));
 	RETRY_ON_EINTR(res, close(fd));
@@ -100,6 +104,7 @@ static int dump_empty_buf(const char *tdir)
 	fast_log_free(empty);
 	EXPECT_GT(simple_io_read_whole_file_zt(fname, buf, sizeof(buf)), 0);
 	EXPECT_ZERO(strcmp(buf, expected));
+	fast_log_mgr_free(mgr);
 	return 0;
 }
 
@@ -138,11 +143,14 @@ foo=0x10, bar=0x20, bar=0x30\n\
 blah blah\n";
 	struct fast_log_buf *small;
 	int res, fd;
+	struct fast_log_mgr *mgr;
 
+	mgr = fast_log_mgr_init(g_test_dumpers);
+	EXPECT_NOT_ERRPTR(mgr);
 	EXPECT_ZERO(zsnprintf(fname, sizeof(fname), "%s/small", tdir));
 	fd = open(fname, O_CREAT | O_TRUNC | O_RDWR, 0644);
 	EXPECT_GE(fd, 0);
-	small = fast_log_alloc("small");
+	small = fast_log_create(mgr, "small");
 	EXPECT_NOT_EQUAL(small, NULL);
 	create_some_logs(small, 1);
 	EXPECT_ZERO(fast_log_dump(small, g_test_dumpers, fd));
@@ -155,6 +163,7 @@ blah blah\n";
 			buf, expected);
 		return 1;
 	}
+	fast_log_mgr_free(mgr);
 	return 0;
 }
 
@@ -173,11 +182,15 @@ foo=0x1, bar=0x2, bar=0x3\n";
 		.baz = 0x3,
 		.pad = { 0 }
 	};
+	struct fast_log_mgr *mgr;
+
+	mgr = fast_log_mgr_init(g_test_dumpers);
+	EXPECT_NOT_ERRPTR(mgr);
 
 	EXPECT_ZERO(zsnprintf(fname, sizeof(fname), "%s/full", tdir));
 	fd = open(fname, O_CREAT | O_TRUNC | O_RDWR, 0644);
 	EXPECT_GE(fd, 0);
-	full = fast_log_alloc("full");
+	full = fast_log_create(mgr, "full");
 	EXPECT_NOT_EQUAL(full, NULL);
 	for (i = 0; i < 200000; ++i) {
 		fast_log(full, &fe1);
@@ -187,6 +200,7 @@ foo=0x1, bar=0x2, bar=0x3\n";
 	fast_log_free(full);
 	EXPECT_GT(simple_io_read_whole_file_zt(fname, buf, sizeof(buf)), 0);
 	EXPECT_ZERO(strncmp(buf, expected, strlen(expected)));
+	fast_log_mgr_free(mgr);
 	return 0;
 }
 
@@ -215,15 +229,12 @@ static int test_dump_all(const char *tdir)
 
 	mgr = fast_log_mgr_init(g_test_dumpers);
 	EXPECT_NOT_ERRPTR(mgr);
-	three = fast_log_alloc("three");
+	three = fast_log_create(mgr, "three");
 	EXPECT_NOT_EQUAL(three, NULL);
-	fast_log_mgr_register_buffer(mgr, three);
-	two = fast_log_alloc("two");
+	two = fast_log_create(mgr, "two");
 	EXPECT_NOT_EQUAL(two, NULL);
-	fast_log_mgr_register_buffer(mgr, two);
-	one = fast_log_alloc("one");
+	one = fast_log_create(mgr, "one");
 	EXPECT_NOT_EQUAL(one, NULL);
-	fast_log_mgr_register_buffer(mgr, one);
 
 	create_some_logs(one, 1);
 	create_some_logs(two, 1);
@@ -235,9 +246,6 @@ static int test_dump_all(const char *tdir)
 	EXPECT_ZERO(fast_log_mgr_dump_all(mgr, fd));
 	RETRY_ON_EINTR(res, close(fd));
 
-	fast_log_mgr_unregister_buffer(mgr, one);
-	fast_log_mgr_unregister_buffer(mgr, two);
-	fast_log_mgr_unregister_buffer(mgr, three);
 	fast_log_free(one);
 	fast_log_free(two);
 	fast_log_free(three);
