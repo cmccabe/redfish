@@ -6,112 +6,79 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-
-#include "util/compiler.h"
+#include "msg/fast_log.h"
+#include "util/bitfield.h"
 #include "util/fast_log.h"
 #include "util/fast_log_types.h"
 #include "util/macro.h"
+#include "util/string.h"
 
-#include <arpa/inet.h>
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-enum {
-	FAST_LOG_TYPE_NEW_CONN = 1,
-	FAST_LOG_TYPE_CLOSE_CONN
-};
+BUILD_BUG_ON(FAST_LOG_TY_MAX > FAST_LOG_TYPE_MAX);
 
-PACKED_ALIGNED(8,
-struct fast_log_new_conn_entry
+void str_to_fast_log_bitfield(const char *str,
+		BITFIELD_DECL(bits, FAST_LOG_TYPE_MAX),
+		char *err, size_t err_len)
 {
-        /** The fast_log message type */
-	uint16_t type;
-	/** Type of new connection */
-	uint32_t conn_ty;
-	/** New file descriptor */
-	uint32_t fd;
-	/** Source address */
-	unsigned long s_addr;
-}
-);
-
-BUILD_BUG_ON(sizeof(struct fast_log_new_conn_entry) >
-		sizeof(struct fast_log_entry)); 
-
-void fast_log_new_conn(struct fast_log_buf *fb, uint32_t conn_ty,
-			uint32_t fd, unsigned long s_addr)
-{
-	union {
-		struct fast_log_new_conn_entry f;
-		struct fast_log_entry fe;
-	} fe;
-	memset(&fe.fe, 0, sizeof(fe.fe));
-	fe.f.type = FAST_LOG_TYPE_NEW_CONN;
-	fe.f.conn_ty = conn_ty;
-	fe.f.fd = fd;
-	fe.f.s_addr = s_addr;
-	fast_log(fb, &fe.fe);
+	char *buf, *tok, *state = NULL;
+	
+	buf = strdup(str);
+	if (!buf) {
+		snprintf(err, err_len, "str_to_fast_log_bitfield: OOM");
+		return;
+	}
+	for (tok = strtok_r(buf, ";", &state); tok;
+			(tok = strtok_r(NULL, ";", &state))) {
+		if (token_to_fast_log_bitfield(tok, bits)) {
+			snappend(err, err_len, "No log type corresponds "
+				"to \"%s\"\n", tok);
+		}
+	}
+	free(buf);
 }
 
-static void fast_log_new_conn_dump(struct fast_log_entry *fe, char *buf)
+int token_to_fast_log_bitfield(const char *str, BITFIELD_DECL(bits, FAST_LOG_TYPE_MAX))
 {
-	char str[INET_ADDRSTRLEN];
-	struct fast_log_new_conn_entry *f =
-		(struct fast_log_new_conn_entry*)fe;
-	inet_ntop(AF_INET, &f->s_addr, str, INET_ADDRSTRLEN);
-	snprintf(buf, FAST_LOG_PRETTY_PRINTED_MAX,
-		"new_conn(conn_ty=%d,fd=%d,s_addr=%s)\n",
-		f->conn_ty, f->fd, str);
+	if (strcmp(str, "MSGR_DEBUG") == 0) {
+		BITFIELD_SET(bits, FAST_LOG_TY_MSGR_DEBUG);
+		return 0;
+	}
+	else if (strcmp(str, "MSGR_INFO") == 0) {
+		BITFIELD_SET(bits, FAST_LOG_TY_MSGR_INFO);
+		return 0;
+	}
+	else if (strcmp(str, "MSGR_WARN") == 0) {
+		BITFIELD_SET(bits, FAST_LOG_TY_MSGR_WARN);
+		return 0;
+	}
+	/* composites */
+	else if (strcmp(str, "MSGR") == 0) {
+		BITFIELD_SET(bits, FAST_LOG_TY_MSGR_DEBUG);
+		BITFIELD_SET(bits, FAST_LOG_TY_MSGR_WARN);
+		BITFIELD_SET(bits, FAST_LOG_TY_MSGR_INFO);
+		return 0;
+	}
+	return -ENOENT;
 }
 
-PACKED_ALIGNED(8,
-struct fast_log_close_conn_entry
-{
-        /** The fast_log message type */
-	uint16_t type;
-	/** Type of new connection */
-	uint32_t conn_ty;
-	/** New file descriptor */
-	uint32_t fd;
-	/** Source address */
-	unsigned long s_addr;
-	/** Error, if any */
-	int32_t error;
-}
-);
+#define STUB_FN(x) \
+	WEAK_SYMBOL(void x(struct fast_log_entry *fe, char *buf)); \
+	void x(POSSIBLY_UNUSED(struct fast_log_entry *fe), \
+		      POSSIBLY_UNUSED(char *buf)) \
+	{ \
+	}
 
-BUILD_BUG_ON(sizeof(struct fast_log_close_conn_entry) >
-		sizeof(struct fast_log_entry)); 
-
-void fast_log_close_conn(struct fast_log_buf *fb, uint32_t conn_ty,
-			uint32_t fd, unsigned long s_addr, int32_t error)
-{
-	union {
-		struct fast_log_close_conn_entry f;
-		struct fast_log_entry fe;
-	} fe;
-	memset(&fe.fe, 0, sizeof(fe.fe));
-	fe.f.type = FAST_LOG_TYPE_CLOSE_CONN;
-	fe.f.conn_ty = conn_ty;
-	fe.f.fd = fd;
-	fe.f.s_addr = s_addr;
-	fe.f.error = error;
-	fast_log(fb, &fe.fe);
-}
-
-static void fast_log_close_conn_dump(struct fast_log_entry *fe, char *buf)
-{
-	char str[INET_ADDRSTRLEN];
-	struct fast_log_close_conn_entry *f =
-		(struct fast_log_close_conn_entry*)fe;
-	inet_ntop(AF_INET, &f->s_addr, str, INET_ADDRSTRLEN);
-	snprintf(buf, FAST_LOG_PRETTY_PRINTED_MAX,
-		"closee_conn(conn_ty=%d,fd=%d,s_addr=%s,err=%d)\n",
-		f->conn_ty, f->fd, str, f->error);
-}
+STUB_FN(fast_log_msgr_debug_dump);
+STUB_FN(fast_log_msgr_info_dump);
+STUB_FN(fast_log_msgr_warn_dump);
 
 const fast_log_dumper_fn_t g_fast_log_dumpers[] = {
-	[FAST_LOG_TYPE_NEW_CONN] = fast_log_new_conn_dump,
-	[FAST_LOG_TYPE_CLOSE_CONN] = fast_log_close_conn_dump,
+	[FAST_LOG_TY_MSGR_DEBUG] = fast_log_msgr_debug_dump,
+	[FAST_LOG_TY_MSGR_INFO] = fast_log_msgr_info_dump,
+	[FAST_LOG_TY_MSGR_WARN] = fast_log_msgr_warn_dump,
 };

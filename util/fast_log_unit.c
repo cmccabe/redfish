@@ -10,6 +10,7 @@
 #include "util/error.h"
 #include "util/fast_log.h"
 #include "util/fast_log_mgr.h"
+#include "util/fast_log_types.h"
 #include "util/macro.h"
 #include "util/safe_io.h"
 #include "util/simple_io.h"
@@ -260,6 +261,40 @@ static int test_dump_all(const char *tdir)
 	return 0;
 }
 
+static int test_tokenizer(void)
+{
+	char err[512] = { 0 };
+	size_t err_len = sizeof(err);
+	BITFIELD_DECL(bits, FAST_LOG_TYPE_MAX);
+
+	memset(err, 0, err_len);
+	str_to_fast_log_bitfield("MSGR_DEBUG;MSGR_DEBUG;MSGR_DEBUG", bits,
+				 err, sizeof(err));
+	EXPECT_ZERO(err[0]);
+
+	memset(err, 0, err_len);
+	str_to_fast_log_bitfield("MSGR_DEBUG;BOGUS;MSGR_DEBUG", bits,
+				 err, sizeof(err));
+	EXPECT_NONZERO(err[0]);
+
+	memset(err, 0, err_len);
+	str_to_fast_log_bitfield("MSGR_DEBUG;MSGR_DEBUG;MSGR_DEBUG;", bits,
+				 err, sizeof(err));
+	EXPECT_ZERO(err[0]);
+
+	memset(err, 0, err_len);
+	str_to_fast_log_bitfield(";", bits,
+				 err, sizeof(err));
+	EXPECT_ZERO(err[0]);
+
+	memset(err, 0, err_len);
+	str_to_fast_log_bitfield("", bits,
+				 err, sizeof(err));
+	EXPECT_ZERO(err[0]);
+
+	return 0;
+}
+
 int main(void)
 {
 	char tdir[PATH_MAX];
@@ -271,6 +306,7 @@ int main(void)
 	EXPECT_ZERO(dump_small_buf(tdir));
 	EXPECT_ZERO(fill_entire_buf(tdir));
 	EXPECT_ZERO(test_dump_all(tdir));
+	EXPECT_ZERO(test_tokenizer());
 
 	return EXIT_SUCCESS;
 }
