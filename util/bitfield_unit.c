@@ -22,6 +22,7 @@ static int bitfield_test1(void)
 	int i;
 
 	BITFIELD_DECL(foo, BF_SIZE);
+	BITFIELD_DECL(bar, BF_SIZE);
 	EXPECT_NONZERO(sizeof(foo) == 8);
 	BITFIELD_ZERO(foo);
 	for (i = 0; i < BF_SIZE; ++i) {
@@ -34,6 +35,10 @@ static int bitfield_test1(void)
 	BITFIELD_SET(foo, 1);
 	EXPECT_NONZERO(BITFIELD_TEST(foo, 1));
 	BITFIELD_FILL(foo);
+	for (i = 0; i < BF_SIZE; ++i) {
+		EXPECT_NONZERO(BITFIELD_TEST(foo, i));
+	}
+	BITFIELD_COPY(bar, foo);
 	for (i = 0; i < BF_SIZE; ++i) {
 		EXPECT_NONZERO(BITFIELD_TEST(foo, i));
 	}

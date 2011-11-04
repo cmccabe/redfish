@@ -12,7 +12,7 @@
 #include <stdint.h> /* for uint8_t, etc. */
 #include <string.h> /* for memset, etc. */
 
-#define BITFIELD_DECL(name, size) uint8_t name[(size + 7)/ 8];
+#define BITFIELD_DECL(name, size) uint8_t name[(size + 7)/ 8]
 
 #define BITFIELD_ZERO(name) do { \
 	uint8_t *name8 = name; \
@@ -29,6 +29,11 @@
 	int floor = idx / 8; \
 	int rem = idx - (floor * 8); \
 	name8[floor] |= (1 << rem); \
+} while(0);
+
+#define BITFIELD_COPY(dst, src) do { \
+	uint8_t *src8 = src; \
+	memcpy(dst, src8, sizeof(src)); \
 } while(0);
 
 #define BITFIELD_CLEAR(name, idx) do { \
