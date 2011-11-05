@@ -122,7 +122,7 @@ const char *fishtool_write_usage[] = {
 	"options:",
 	"-i             local file to upload",
 	"               If no local file is given, stdin will be used.",
-	"-p             permissions (mode bits) to use",
+	"-p <octal-num> permissions bits to use",
 	NULL,
 };
 

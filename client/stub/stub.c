@@ -351,7 +351,7 @@ error:
 	return ret;
 }
 
-int redfish_mkdirs(struct redfish_client *cli, const char *path, int mode)
+int redfish_mkdirs(struct redfish_client *cli, int mode, const char *path)
 {
 	int fd, ret;
 	char epath[PATH_MAX];

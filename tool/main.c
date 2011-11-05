@@ -24,12 +24,13 @@
 struct fishtool_act g_fishtool_ping;
 struct fishtool_act g_fishtool_write;
 struct fishtool_act g_fishtool_read;
+struct fishtool_act g_fishtool_mkdirs;
 
 const struct fishtool_act *g_fishtool_acts[] = {
 	&g_fishtool_ping,
 	&g_fishtool_write,
 	&g_fishtool_read,
-//	&g_fishtool_mkdirs,
+	&g_fishtool_mkdirs,
 	NULL,
 };
 
@@ -181,7 +182,7 @@ static struct fishtool_params* fishtool_parse_argv(int argc, char **argv)
 			"environment variable.\n");
 		exit(EXIT_FAILURE);
 	}
-	for (i = 0, a = argv + optind;
+	for (i = 0, a = argv + optind + 1;
 			(i < MAX_NON_OPTION_ARGS - 1) && (*a);
 			++a, ++i)
 	{

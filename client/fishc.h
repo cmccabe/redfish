@@ -150,7 +150,7 @@ int redfish_open(struct redfish_client *cli, const char *path,
  * Returns: 0 on success; error code otherwise
  * On success, *cli will contain a valid redfish file.
  */
-int redfish_mkdirs(struct redfish_client *cli, const char *path, int mode);
+int redfish_mkdirs(struct redfish_client *cli, int mode, const char *path);
 
 /** Get the block locations
  *
