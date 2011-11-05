@@ -41,7 +41,7 @@ int fishtool_chown(struct fishtool_params *params)
 	path = params->non_option_args[0];
 	if (!path) {
 		fprintf(stderr, "fishtool_chown: you must give a path name "
-			"to create. -h for help.\n");
+			"to chown. -h for help.\n");
 		ret = -EINVAL;
 		goto done;
 	}
