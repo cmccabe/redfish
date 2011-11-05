@@ -66,11 +66,12 @@ int fishtool_write(struct fishtool_params *params)
 		if (fd < 0) {
 			ret = -errno;
 			fprintf(stderr, "fishtool_write: error opening "
-				"%s: %d\n", local, ret);
+				"'%s' for read: %d\n", local, ret);
 			goto done;
 		}
 	}
 	else {
+		local = "stdin";
 		fd = STDIN_FILENO;
 	}
 	while (1) {

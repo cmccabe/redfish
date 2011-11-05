@@ -23,11 +23,12 @@
 
 struct fishtool_act g_fishtool_ping;
 struct fishtool_act g_fishtool_write;
+struct fishtool_act g_fishtool_read;
 
 const struct fishtool_act *g_fishtool_acts[] = {
 	&g_fishtool_ping,
 	&g_fishtool_write,
-//	&g_fishtool_read_file,
+	&g_fishtool_read,
 //	&g_fishtool_mkdirs,
 	NULL,
 };
