@@ -250,7 +250,7 @@ void redfish_disconnect(struct redfish_client *cli);
  * @param len		the maximum length of the data to read
  *
  * @return		the number of bytes read on success; a negative error
- *			code on failure.
+ *			code on failure.  0 indicates EOF.
  */
 int redfish_read(struct redfish_file *ofe, void *data, int len);
 
