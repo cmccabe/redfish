@@ -24,27 +24,23 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-int fishtool_mkdirs(struct fishtool_params *params)
+int fishtool_chown(struct fishtool_params *params)
 {
-	char err[512] = { 0 };
-	size_t err_len = sizeof(err);
-	const char *path, *mode_str;
-	int ret, mode = 0644;
+	const char *path, *user, *group;
+	int ret;
 	struct redfish_client *cli = NULL;
 
-	mode_str = params->lowercase_args[ALPHA_IDX('p')];
-	if (mode_str) {
-		str_to_int(mode_str, 8, &mode, err, err_len);
-		if (err[0]) {
-			fprintf(stderr, "fishtool_write: error parsing -p: "
-				"%s\n", err);
-			ret = -EINVAL;
-			goto done;
-		}
+	user = params->uppercase_args[ALPHA_IDX('U')];
+	group = params->lowercase_args[ALPHA_IDX('g')];
+	if ((user == NULL) && (group == NULL)) {
+		fprintf(stderr, "fishtool_chown: you should specify a new "
+			"user or new group, or both, to set.\n");
+		ret = -EINVAL;
+		goto done;
 	}
 	path = params->non_option_args[0];
 	if (!path) {
-		fprintf(stderr, "fishtool_mkdirs: you must give a path name "
+		fprintf(stderr, "fishtool_chown: you must give a path name "
 			"to create. -h for help.\n");
 		ret = -EINVAL;
 		goto done;
@@ -54,9 +50,9 @@ int fishtool_mkdirs(struct fishtool_params *params)
 		fprintf(stderr, "redfish_connect failed with error %d\n", ret);
 		goto done;
 	}
-	ret = redfish_mkdirs(cli, mode, path);
+	ret = redfish_chown(cli, path, user, group);
 	if (ret) {
-		fprintf(stderr, "redfish_mkdirs failed with error %d\n", ret);
+		fprintf(stderr, "redfish_chown failed with error %d\n", ret);
 		goto done;
 	}
 	ret = 0;
@@ -66,20 +62,21 @@ done:
 	return ret;
 }
 
-const char *fishtool_mkdirs_usage[] = {
-	"mkdirs: create zero or more directories.",
+const char *fishtool_chown_usage[] = {
+	"chown: change the ownership of a file or directory.",
 	"",
 	"usage:",
-	"mkdirs [options] <path-name>",
+	"chown [options] <path-name>",
 	"",
 	"options:",
-	"-p <octal-num> permissions bits to use",
+	"-g <group-name>        New group to set",
+	"-U <user-name>         New owner to set",
 	NULL,
 };
 
-struct fishtool_act g_fishtool_mkdirs = {
-	.name = "mkdirs",
-	.fn = fishtool_mkdirs,
-	.getopt_str = "p:",
-	.usage = fishtool_mkdirs_usage,
+struct fishtool_act g_fishtool_chown = {
+	.name = "chown",
+	.fn = fishtool_chown,
+	.getopt_str = "g:U:",
+	.usage = fishtool_chown_usage,
 };

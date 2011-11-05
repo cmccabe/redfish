@@ -40,8 +40,8 @@ int fishtool_write(struct fishtool_params *params)
 		ret = -EINVAL;
 		goto done;
 	}
-	local = params->lowercase_args[LALPHA_IDX('i')];
-	mode_str = params->lowercase_args[LALPHA_IDX('p')];
+	local = params->lowercase_args[ALPHA_IDX('i')];
+	mode_str = params->lowercase_args[ALPHA_IDX('p')];
 	if (mode_str) {
 		str_to_int(mode_str, 8, &mode, err, err_len);
 		if (err[0]) {

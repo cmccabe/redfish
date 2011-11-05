@@ -38,7 +38,7 @@ int fishtool_read(struct fishtool_params *params)
 		ret = -EINVAL;
 		goto done;
 	}
-	local = params->lowercase_args[LALPHA_IDX('o')];
+	local = params->lowercase_args[ALPHA_IDX('o')];
 	ret = redfish_connect(params->mlocs, params->user_name, &cli);
 	if (ret) {
 		fprintf(stderr, "redfish_connect failed with error %d\n", ret);

@@ -1,4 +1,5 @@
 add_executable(fishtool
+    chown.c
     main.c
     mkdirs.c
     ping.c
