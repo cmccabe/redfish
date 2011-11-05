@@ -43,7 +43,7 @@ static void configure_fast_log(void)
 	BITFIELD_DECL(bits, FAST_LOG_TYPE_MAX);
 
 	BITFIELD_ZERO(bits);
-	f = getenv("FAST_LOG");
+	f = getenv("REDFISH_LOG");
 	if (f) {
 		str_to_fast_log_bitfield(f, bits, err, err_len);
 		if (err[0]) {
@@ -54,16 +54,12 @@ static void configure_fast_log(void)
 					  fast_log_to_core_log);
 }
 
-int process_ctx_init(char *argv0, int daemonize, struct log_config *lc)
+static int process_ctx_init_impl(const char *argv0, int daemonize,
+				struct log_config *lc)
 {
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 
-	harmonize_log_config(lc, err, err_len, 1, 1);
-	if (err[0]) {
-		glitch_log("log config error: %s\n", err);
-		goto error;
-	}
 	configure_glitch_log(lc);
 	g_fast_log_mgr = fast_log_mgr_init(g_fast_log_dumpers);
 	if (IS_ERR(g_fast_log_mgr)) {
@@ -99,8 +95,27 @@ error_free_fast_log_mgr:
 	g_fast_log_mgr = NULL;
 error_close_glitchlog:
 	close_glitch_log();
-error:
 	return 1;
+}
+
+int process_ctx_init(const char *argv0, int daemonize, struct log_config *lc)
+{
+	char err[512] = { 0 };
+	size_t err_len = sizeof(err);
+
+	harmonize_log_config(lc, err, err_len, 1, 1);
+	if (err[0]) {
+		glitch_log("log config error: %s\n", err);
+		return 1;
+	}
+	return process_ctx_init_impl(argv0, daemonize, lc);
+}
+
+int utility_ctx_init(const char *argv0)
+{
+	struct log_config lc;
+	memset(&lc, 0, sizeof(lc));
+	return process_ctx_init_impl(argv0, 0, &lc);
 }
 
 void process_ctx_shutdown(void)

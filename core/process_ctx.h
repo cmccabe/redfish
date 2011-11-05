@@ -23,8 +23,25 @@ extern struct fast_log_mgr *g_fast_log_mgr;
  * - daemonizes if requested
  * - create pid file if requested
  * - sets up signals
+ *
+ * @param argv0			program name
+ * @param daemonize		nonzero to daemonize
+ * @param lc			the logging configuration
+ *
+ * @return			0 on success; error code otherwise
  */
-extern int process_ctx_init(char *argv0, int daemonize, struct log_config *lc);
+extern int process_ctx_init(const char *argv0, int daemonize,
+			struct log_config *lc);
+
+/** Initialize the process context for a utility program
+ *
+ * Just a thin wrapper around process_ctx_init.
+ *
+ * @param argv0			program name
+ *
+ * @return			0 on success; error code otherwise
+ */
+extern int utility_ctx_init(const char *argv0);
 
 /** Shut down the daemon context.
  */
