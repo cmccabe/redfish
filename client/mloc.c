@@ -14,6 +14,37 @@
 #include <string.h>
 #include <strings.h>
 
+struct redfish_mds_locator **redfish_mlocs_from_str(const char *str,
+		char *err, size_t err_len)
+{
+	struct redfish_mds_locator **mlocs = NULL;
+	char *buf = NULL, *state = NULL, *tok;
+
+	mlocs = calloc(1, sizeof(struct redfish_mds_locator*));;
+	if (!mlocs) {
+		snprintf(err, err_len, "redfish_mlocs_from_str: OOM");
+		goto error;
+	}
+	buf = strdup((str == NULL) ? "" : str);
+	if (!buf) {
+		snprintf(err, err_len, "redfish_mlocs_from_str: OOM");
+		goto error;
+	}
+	for (tok = strtok_r(buf, ",", &state); tok;
+		     (tok = strtok_r(NULL, ",", &state))) {
+		redfish_mlocs_append(&mlocs, tok, err, err_len);
+		if (err[0])
+			goto error;
+	}
+	free(buf);
+	return mlocs;
+
+error:
+	free(mlocs);
+	free(buf);
+	return NULL;
+}
+
 void redfish_mlocs_append(struct redfish_mds_locator ***mlocs, const char *s,
 			 char *err, size_t err_len)
 {
@@ -61,6 +92,22 @@ oom:
 error:
 	free(zm->host);
 	free(zm);
+}
+
+static void redfish_mloc_free(struct redfish_mds_locator *mloc)
+{
+	free(mloc->host);
+	free(mloc);
+}
+
+void redfish_mlocs_free(struct redfish_mds_locator **mlocs)
+{
+	struct redfish_mds_locator **m;
+
+	for (m = mlocs; *m; ++m) {
+		redfish_mloc_free(*m);
+	}
+	free(mlocs);
 }
 
 void redfish_free_block_locs(struct redfish_block_loc **blc)

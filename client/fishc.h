@@ -76,6 +76,19 @@ struct redfish_block_loc
 int redfish_connect(struct redfish_mds_locator **mlocs, const char *user,
 			struct redfish_client **cli);
 
+/** Parse a string of the form host1:port1,host2:port2,..,hostN,portN
+ * into a list of mlocs
+ *
+ * @param str		The string
+ * @param err		(out param) error buffer
+ * @param err_len	length of err buffer
+ *
+ * @return		A list of mlocs, or NULL on error.
+ *			The list must be freed with redfish_mlocs_free.
+ */
+struct redfish_mds_locator **redfish_mlocs_from_str(const char *str,
+		char *err, size_t err_len);
+
 /** Apend an entry to a dynamically allocated list of mlocs
  *
  * @param mlocs		The list of mlocs
@@ -85,6 +98,12 @@ int redfish_connect(struct redfish_mds_locator **mlocs, const char *user,
  */
 extern void redfish_mlocs_append(struct redfish_mds_locator ***mlocs, const char *s,
 				char *err, size_t err_len);
+
+/** Free a dynamically allocated list of mlocs
+ *
+ * @param mlocs		The list of mlocs
+ */
+void redfish_mlocs_free(struct redfish_mds_locator **mlocs);
 
 /** Create a file in RedFish
  *
