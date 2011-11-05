@@ -21,6 +21,7 @@
 
 #define FISHTOOL_DEFAULT_USER "super"
 
+struct fishtool_act g_fishtool_chmod;
 struct fishtool_act g_fishtool_chown;
 struct fishtool_act g_fishtool_mkdirs;
 struct fishtool_act g_fishtool_ping;
@@ -28,6 +29,7 @@ struct fishtool_act g_fishtool_read;
 struct fishtool_act g_fishtool_write;
 
 const struct fishtool_act *g_fishtool_acts[] = {
+	&g_fishtool_chmod,
 	&g_fishtool_chown,
 	&g_fishtool_mkdirs,
 	&g_fishtool_ping,
