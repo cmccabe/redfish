@@ -95,22 +95,16 @@ NULL
 	exit(EXIT_SUCCESS);
 }
 
-const struct fishtool_act *get_fishtool_act(char **argv)
+const struct fishtool_act *get_fishtool_act(char *argv)
 {
 	const struct fishtool_act **act;
-	char **a;
 
-	for (a = argv; *a; ++a) {
-		if (a[0][0] == '\0')
-			continue;
-		if (a[0][0] == '-')
-			continue;
-		for (act = g_fishtool_acts; *act; ++act) {
-			if (strcmp((*act)->name, *a) == 0) {
-				return *act;
-			}
-		}
+	if (argv == NULL)
 		return NULL;
+	for (act = g_fishtool_acts; *act; ++act) {
+		if (strcmp((*act)->name, argv) == 0) {
+			return *act;
+		}
 	}
 	return NULL;
 }
@@ -132,7 +126,7 @@ static struct fishtool_params* fishtool_parse_argv(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 	mloc_str = getenv("REDFISH_META");
-	params->act = get_fishtool_act(argv + 1);
+	params->act = get_fishtool_act(argv[1]);
 	if (params->act) {
 		snappend(getopt_str, sizeof(getopt_str), "%s",
 			params->act->getopt_str);
