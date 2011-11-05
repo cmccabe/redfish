@@ -26,6 +26,7 @@ struct fishtool_act g_fishtool_chown;
 struct fishtool_act g_fishtool_mkdirs;
 struct fishtool_act g_fishtool_ping;
 struct fishtool_act g_fishtool_read;
+struct fishtool_act g_fishtool_unlink;
 struct fishtool_act g_fishtool_write;
 
 const struct fishtool_act *g_fishtool_acts[] = {
@@ -34,6 +35,7 @@ const struct fishtool_act *g_fishtool_acts[] = {
 	&g_fishtool_mkdirs,
 	&g_fishtool_ping,
 	&g_fishtool_read,
+	&g_fishtool_unlink,
 	&g_fishtool_write,
 	NULL,
 };
