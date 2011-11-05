@@ -23,9 +23,16 @@
 
 int fishtool_ping(struct fishtool_params *params)
 {
-	if (params->mlocs) {
-		printf("hio\n");
+	int ret;
+	struct redfish_client *cli;
+
+	ret = redfish_connect(params->mlocs, params->user_name, &cli);
+	if (ret) {
+		fprintf(stderr, "redfish_connect failed with error %d\n", ret);
+		return ret;
 	}
+	redfish_disconnect(cli);
+
 	return 0;
 }
 

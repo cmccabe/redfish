@@ -22,10 +22,11 @@
 #define FISHTOOL_DEFAULT_USER "super"
 
 struct fishtool_act g_fishtool_ping;
+struct fishtool_act g_fishtool_write;
 
 const struct fishtool_act *g_fishtool_acts[] = {
 	&g_fishtool_ping,
-//	&g_fishtool_write_file,
+	&g_fishtool_write,
 //	&g_fishtool_read_file,
 //	&g_fishtool_mkdirs,
 	NULL,
@@ -100,8 +101,8 @@ const struct fishtool_act *get_fishtool_act(char **argv)
 			if (strcmp((*act)->name, *a) == 0) {
 				return *act;
 			}
-			return NULL;
 		}
+		return NULL;
 	}
 	return NULL;
 }

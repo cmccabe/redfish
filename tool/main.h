@@ -15,6 +15,9 @@ struct fishtool_act;
 #define NUM_LETTERS 26
 #define MAX_NON_OPTION_ARGS 10
 
+#define LALPHA_IDX(c) ((int)(c - 'a'))
+#define UALPHA_IDX(c) ((int)(c - 'A'))
+
 struct fishtool_params
 {
 	const struct fishtool_act *act;
