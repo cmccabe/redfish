@@ -6,14 +6,18 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#include "core/glitch_log.h"
+#include "msg/fast_log.h"
 #include "msg/generic.h"
 #include "msg/msg.h"
 #include "msg/msgr.h"
 #include "util/error.h"
+#include "util/fast_log.h"
+#include "util/fast_log_types.h"
 #include "util/macro.h"
+#include "util/net.h"
 #include "util/platform/socket.h"
 #include "util/queue.h"
+#include "util/thread.h"
 #include "util/tree.h"
 
 #include <arpa/inet.h>
@@ -44,7 +48,10 @@ enum mconn_state_t {
 	MCONN_WRITING,
 	MCONN_READING_HDR,
 	MCONN_READING,
+	MCONN_NUM_STATES,
 };
+
+BUILD_BUG_ON(MCONN_NUM_STATES > 16);
 
 STAILQ_HEAD(pending_tr, mtran);
 RB_HEAD(active_tr, mtran);
@@ -55,9 +62,9 @@ struct mconn {
 	/** The messenger this connection is associated with */
 	struct msgr *msgr;
 	/** remote IP address */
-	uint32_t rem_ip;
+	uint32_t ip;
 	/** remote port */
-	uint16_t rem_port;
+	uint16_t port;
 	/** state of this connection */
 	uint16_t state;
 	/** the socket, if connected. -1 if not */
@@ -92,8 +99,8 @@ struct msgr {
 	pthread_spinlock_t lock;
 	/** thread state */
 	enum msgr_state_t state;
-	/** pthread */
-	pthread_t thread;
+	/** thread */
+	struct redfish_thread rt;
 	/** Main loop */
 	struct ev_loop *loop;
 	/** Socket we're listening on, or -1 if we're not listening on any
@@ -122,6 +129,8 @@ struct msgr {
 	struct ev_async w_notify;
 	/** Pending transactions not yet assigned to a connection */
 	struct pending_tr pending_tr_head;
+	/** Fast log buffer manager */
+	struct fast_log_mgr *fb_mgr;
 };
 
 /****************************** utility ********************************/
@@ -130,10 +139,13 @@ static int is_temporary_socket_error(int err)
 	return ((err == EAGAIN) || (err == EWOULDBLOCK) || (err == EINTR));
 }
 
-static void ipv4_to_str(uint32_t addr, char *out, size_t out_len)
+void fast_log_msgr(struct msgr *msgr, uint32_t ty,
+		uint16_t port, uint32_t ip,
+		uint32_t trid, uint32_t rem_trid, uint16_t event,
+		uint16_t event_data)
 {
-	addr = htonl(addr);
-	inet_ntop(AF_INET, &addr, out, out_len);
+	fast_log_msgr_impl(msgr->rt.fb, ty,
+		port, ip, trid, rem_trid, event, event_data);
 }
 
 /****************************** mtran ********************************/
@@ -180,8 +192,6 @@ void mtran_send(struct msgr *msgr, struct mtran *tr,
 	tr->m = m;
 	m->rem_trid = htobe32(tr->trid);
 	m->trid = htobe32(tr->rem_trid);
-	glitch_log("mtran_send: sending m->ty = %d\n",
-		   be16toh(m->ty));
 	pthread_spin_lock(&msgr->lock);
 	STAILQ_INSERT_TAIL(&msgr->pending_tr_head, tr, u.pending_entry);
 	pthread_spin_unlock(&msgr->lock);
@@ -194,6 +204,9 @@ void mtran_send_next(struct mconn *conn, struct mtran *tr, struct msg *m)
 	m->rem_trid = htobe32(tr->trid);
 	m->trid = htobe32(tr->rem_trid);
 	STAILQ_INSERT_TAIL(&conn->pending_head, tr, u.pending_entry);
+	fast_log_msgr(conn->msgr, FAST_LOG_MSGR_DEBUG,
+		tr->port, tr->ip, tr->trid,
+		tr->rem_trid, FLME_MTRAN_SEND_NEXT, be16toh(m->ty));
 }
 
 void mtran_recv_next(struct mconn *conn, struct mtran *tr)
@@ -208,8 +221,9 @@ static void mtran_deliver_netfail(struct mconn *conn,
 
 	m = calloc_msg(MMM_NETFAIL, sizeof(struct mmm_netfail));
 	if (!m) {
-		glitch_log("mtran_deliver_netfail: OOM while "
-			   "reporting network error\n");
+		fast_log_msgr(conn->msgr, FAST_LOG_MSGR_ERROR,
+			tr->port, tr->ip, tr->trid,
+			tr->rem_trid, FLME_OOM, 1);
 		return;
 	}
 	m->error = htobe32(err);
@@ -227,9 +241,10 @@ static struct mconn *mconn_create(struct msgr *msgr,
 
 	ipv4_to_str(ip, addr_str, sizeof(addr_str));
 	if (msgr->cur_conn + 1 > msgr->max_conn) {
-		glitch_log("%p: mconn_create: already at max_conn "
-			"(%d); can't add another connection\n",
-			msgr, msgr->max_conn);
+		uint16_t max_conn_16 = (msgr->max_conn > 0xffff) ?
+			0 : msgr->max_conn;
+		fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, port, ip, 0,
+			0, FLME_MAX_CONN_REACHED, max_conn_16);
 		return ERR_PTR(ENOSPC);
 	}
 	conn = calloc(1, sizeof(struct mconn));
@@ -238,8 +253,8 @@ static struct mconn *mconn_create(struct msgr *msgr,
 	ev_init(&conn->w_write, NULL);
 	ev_init(&conn->w_read, NULL);
 	conn->msgr = msgr;
-	conn->rem_ip = ip;
-	conn->rem_port = port;
+	conn->ip = ip;
+	conn->port = port;
 	conn->state = MCONN_CONNECTING;
 	conn->cnt = -1;
 	conn->inbound_tr = NULL;
@@ -251,8 +266,9 @@ static struct mconn *mconn_create(struct msgr *msgr,
 		conn->sock = do_socket(AF_INET, SOCK_STREAM, 0,
 				WANT_O_CLOEXEC | WANT_O_NONBLOCK);
 		if (conn->sock < 0) {
-			glitch_log("%p: do_socket failed with "
-				"error %d\n", msgr, conn->sock);
+			fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, port, ip, 0,
+				0, FLME_DO_SOCKET_FAILED,
+				(uint16_t)-conn->sock);
 			mconn_teardown(conn, -conn->sock);
 			return ERR_PTR(FORCE_POSITIVE(conn->sock));
 		}
@@ -260,31 +276,24 @@ static struct mconn *mconn_create(struct msgr *msgr,
 		addr.sin_family = AF_INET;
 		addr.sin_addr.s_addr = htonl(ip);
 		addr.sin_port = htons(port);
-		ret = connect(conn->sock, &addr, sizeof(addr));
+		RETRY_ON_EINTR(ret, connect(conn->sock, &addr, sizeof(addr)));
 		if (ret == 0) {
 			/* The connect operation succeeded immediately */
 			conn->state = MCONN_QUIESCENT;
-			glitch_log("%p: mconn_create: immediately connected "
-				   "to (%s:%d)\n", msgr, addr_str, port);
+			fast_log_msgr(msgr, FAST_LOG_MSGR_DEBUG, port, ip,
+				      0, 0, FLME_CONN_ESTABLISHED, 1);
 		}
 		else {
 			ret = errno;
 			if (ret != EINPROGRESS) {
-				glitch_log("%p: mconn_create: error connecting "
-					   "to (%s:%d): error %d\n",
-					   msgr, addr_str, port, ret);
+				fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR,
+					port, ip, 0, 0,
+					FLME_OUTGOING_CONN_FAILED, ret);
 				mconn_teardown(conn, ret);
 				return ERR_PTR(FORCE_POSITIVE(ret));
 			}
-			glitch_log("%p: mconn_create: connecting "
-				   "to (%s:%d)\n", msgr, addr_str, port);
 			/* The connect operation is in progress */
 		}
-	}
-	else {
-		glitch_log("%p: mconn_create: accepted connection from "
-			   "(%s:%d)\n", msgr, addr_str, port);
-		conn->sock = sock;
 	}
 	ev_io_init(&conn->w_write, mconn_writable_cb,
 		conn->sock, EV_WRITE);
@@ -297,8 +306,8 @@ static struct mconn* mconn_find(struct msgr* msgr, uint32_t ip, uint16_t port)
 {
 	struct mconn exemplar;
 	memset(&exemplar, 0, sizeof(exemplar));
-	exemplar.rem_ip = ip;
-	exemplar.rem_port = port;
+	exemplar.ip = ip;
+	exemplar.port = port;
 	return RB_FIND(msgr_conn, &msgr->conn_head, &exemplar);
 }
 
@@ -364,13 +373,13 @@ static void mconn_inbound_abort(struct mconn *conn)
 
 static int mconn_compare(struct mconn *a, struct mconn *b)
 {
-	if (a->rem_ip < b->rem_ip)
+	if (a->ip < b->ip)
 		return -1;
-	else if (a->rem_ip > b->rem_ip)
+	else if (a->ip > b->ip)
 		return 1;
-	if (a->rem_port < b->rem_port)
+	if (a->port < b->port)
 		return -1;
-	else if (a->rem_port > b->rem_port)
+	else if (a->port > b->port)
 		return 1;
 	return 0;
 }
@@ -378,6 +387,7 @@ static int mconn_compare(struct mconn *a, struct mconn *b)
 static void mconn_next_state_logic(struct mconn *conn)
 {
 	enum mconn_state_t old_state = conn->state;
+	struct msgr *msgr = conn->msgr;
 
 	/* choose next state */
 	switch (conn->state) {
@@ -399,21 +409,22 @@ static void mconn_next_state_logic(struct mconn *conn)
 		/* do nothing */
 		break;
 	}
-	glitch_log("%p: old_state=%d, new_state=%d\n",
-		   conn->msgr, old_state, conn->state);
+	fast_log_msgr(msgr, FAST_LOG_MSGR_DEBUG, conn->port, conn->ip,
+		0, 0, FLME_MTRAN_NEW_STATE,
+		(old_state << 4) | (conn->state));
 
 	/* activate/deactivate io callback based on state */
 	switch (conn->state) {
 	case MCONN_CONNECTING:
 	case MCONN_WRITING:
-		ev_io_start(conn->msgr->loop, &conn->w_write);
-		ev_io_stop(conn->msgr->loop, &conn->w_read);
+		ev_io_start(msgr->loop, &conn->w_write);
+		ev_io_stop(msgr->loop, &conn->w_read);
 		break;
 	case MCONN_READING_HDR:
 	case MCONN_READING:
 	case MCONN_QUIESCENT:
-		ev_io_stop(conn->msgr->loop, &conn->w_write);
-		ev_io_start(conn->msgr->loop, &conn->w_read);
+		ev_io_stop(msgr->loop, &conn->w_write);
+		ev_io_start(msgr->loop, &conn->w_read);
 		break;
 	}
 }
@@ -440,9 +451,15 @@ static void mconn_writable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			ret = val;
 		}
 		if (ret) {
+			fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR,
+				conn->port, conn->ip, 0, 0,
+				FLME_OUTGOING_CONN_FAILED,
+				(uint16_t)ret);
 			mconn_teardown(conn, ret);
 			return;
 		}
+		fast_log_msgr(msgr, FAST_LOG_MSGR_DEBUG, conn->port, conn->ip,
+			      0, 0, FLME_CONN_ESTABLISHED, 0);
 		conn->state = MCONN_QUIESCENT;
 		mconn_next_state_logic(conn);
 		return;
@@ -455,9 +472,9 @@ static void mconn_writable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		struct mtran *tr =
 			STAILQ_FIRST(&conn->pending_head);
 		if (tr == NULL) {
-			glitch_log("mconn_writable_cb: internal error: in "
-				"state MCONN_WRITING, but there is no "
-				"transactor pending?\n");
+			fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR,
+				conn->port, conn->ip, 0, 0,
+				FLME_EXPECTED_PENDING_TRANSACTOR, 0);
 			conn->state = MCONN_QUIESCENT;
 			mconn_next_state_logic(conn);
 			return;
@@ -467,7 +484,6 @@ static void mconn_writable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		{
 			char buf[128];
 			dump_msg_hdr(tr->m, buf, sizeof(buf));
-			glitch_log("writing message hdr: %s\n", buf);
 		}
 		res = write(conn->sock, tr->m, amt);
 		if (res < 0) {
@@ -519,7 +535,8 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		conn->state = MCONN_READING_HDR;
 		conn->inbound_msg = calloc(1, sizeof(struct msg));
 		if (!conn->inbound_msg) {
-			glitch_log("%p: read_cb: OOM\n", msgr);
+			fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, conn->port,
+				conn->ip, 0, 0, FLME_OOM, 2);
 			mconn_inbound_abort(conn);
 			return;
 		}
@@ -532,6 +549,8 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			int ret = errno;
 			if (is_temporary_socket_error(ret))
 				return;
+			fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, conn->port,
+				conn->ip, 0, 0, FLME_HDR_READ_ERROR, ret);
 			mconn_teardown(conn, ret);
 			return;
 		}
@@ -541,8 +560,8 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		m_len = be32toh(conn->inbound_msg->len);
 		m = realloc(conn->inbound_msg, sizeof(struct msg) + m_len);
 		if (!m) {
-			glitch_log("%p: read_cb: OOM on msg alloc (len=%d)\n",
-				msgr, m_len);
+			fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, conn->port,
+				conn->ip, 0, 0, FLME_OOM, 3);
 			mconn_inbound_abort(conn);
 			return;
 		}
@@ -554,12 +573,14 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			 * yet on this side of the connection. */
 			tr = mtran_alloc(msgr);
 			if (!tr) {
-				glitch_log("%p: read_cb: OOM\n", msgr);
+				fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR,
+					conn->port, conn->ip, 0, 0,
+					FLME_OOM, 4);
 				mconn_inbound_abort(conn);
 				return;
 			}
-			tr->ip = conn->rem_ip;
-			tr->port = conn->rem_port;
+			tr->ip = conn->ip;
+			tr->port = conn->port;
 			conn->inbound_msg->trid = htobe32(tr->trid);
 			tr->rem_trid = be32toh(conn->inbound_msg->rem_trid);
 			RB_INSERT(active_tr, &conn->active_head, tr);
@@ -567,18 +588,17 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		else {
 			uint32_t rem_trid;
 			tr = mtran_lookup_by_id(conn, trid);
+			rem_trid = be32toh(conn->inbound_msg->rem_trid);
 			if (!tr) {
-				glitch_log("%p: read_cb: no such transactor as "
-					   "0x%08x\n", msgr, trid);
+				fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR,
+					conn->port, conn->ip, trid, rem_trid,
+					FLME_MTRAN_NONESUCH, 0);
 				mconn_inbound_abort(conn);
 				return;
 			}
-			rem_trid = be32toh(conn->inbound_msg->rem_trid);
 			if ((tr->rem_trid != 0) && (tr->rem_trid != rem_trid)) {
-				glitch_log("%p: read_cb: mismatched remote "
-					"transactor id. Should be 0x%08x; "
-					"was 0x%08x\n",
-					msgr, tr->rem_trid, rem_trid);
+				fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, tr->port, tr->ip, tr->trid,
+					tr->rem_trid, FLME_MTRAN_WRONG_REM_TRID, 0);
 				mconn_inbound_abort(conn);
 				return;
 			}
@@ -590,7 +610,6 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		{
 			char buf[128];
 			dump_msg_hdr(conn->inbound_msg, buf, sizeof(buf));
-			glitch_log("reading message with hdr: %s\n", buf);
 		}
 		m_len = be32toh(conn->inbound_msg->len);
 		amt = m_len - conn->cnt;
@@ -599,6 +618,8 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			int ret = errno;
 			if (is_temporary_socket_error(ret))
 				return;
+			fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, conn->port,
+				conn->ip, 0, 0, FLME_READ_ERROR, ret);
 			mconn_teardown(conn, ret);
 			return;
 		}
@@ -616,7 +637,6 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		{
 			char buf[128];
 			dump_msg_hdr(m, buf, sizeof(buf));
-			glitch_log("POINT2 reading message with hdr: %s\n", buf);
 		}
 		msgr->cb(conn, tr, m);
 		mconn_next_state_logic(conn);
@@ -630,7 +650,8 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 
 /****************************** mtran ********************************/
 struct msgr *msgr_init(char *err, size_t err_len,
-		int max_conn, int max_tran, size_t tran_sz, msgr_cb_t cb)
+		int max_conn, int max_tran, size_t tran_sz, msgr_cb_t cb,
+		struct fast_log_mgr *fb_mgr)
 {
 	struct msgr *msgr;
 	
@@ -667,6 +688,7 @@ struct msgr *msgr_init(char *err, size_t err_len,
 		return NULL;
 	}
 	ev_async_start(msgr->loop, &msgr->w_notify);
+	msgr->fb_mgr = fb_mgr;
 	return msgr;
 }
 
@@ -683,7 +705,7 @@ void msgr_shutdown(struct msgr *msgr)
 	pthread_spin_unlock(&msgr->lock);
 	if (need_join) {
 		ev_async_send(msgr->loop, &msgr->w_notify);
-		pthread_join(msgr->thread, NULL);
+		redfish_thread_join(&msgr->rt);
 	}
 	RB_FOREACH_SAFE(conn, msgr_conn, &msgr->conn_head, conn_tmp) {
 		RB_REMOVE(msgr_conn, &msgr->conn_head, conn);
@@ -742,6 +764,8 @@ void msgr_listen(struct msgr *msgr, int port, char *err, size_t err_len)
 		return;
 	}
 	msgr->listen_fd = fd;
+	fast_log_msgr(msgr, FAST_LOG_MSGR_INFO, 0,
+		0, 0, 0, FLME_LISTENING, port);
 }
 
 static void run_msgr_listen_fd_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
@@ -755,15 +779,15 @@ static void run_msgr_listen_fd_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 	uint16_t port;
 	char addr_str[INET_ADDRSTRLEN];
 
-	glitch_log("run_msgr_listen_fd_cb\n");
-
 	msgr = GET_OUTER(w, struct msgr, w_listen_fd);
 	if (revents & EV_ERROR) {
-		glitch_log("%p: listen_cb: EV_ERROR\n", msgr);
+		fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, 0, 0, 0,
+			0, FLME_EV_ERROR, 0);
 		return;
 	}
 	if (!(revents & EV_READ)) {
-		glitch_log("%p: listen_cb: no EV_READ\n", msgr);
+		fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, 0, 0, 0,
+			0, FLME_NO_EV_READ, 0);
 		return;
 	}
 	fd = do_accept(msgr->listen_fd, (struct sockaddr*)&remote,
@@ -771,7 +795,8 @@ static void run_msgr_listen_fd_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 	if (fd < 0) {
 		if (is_temporary_socket_error(-fd))
 			return;
-		glitch_log("%p: listen_cb: accept error %d\n", msgr, -fd);
+		fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, 0, 0, 0,
+			0, FLME_ACCEPT_FAILED, (uint16_t)-fd);
 		goto error;
 	}
 	ip = ntohl(remote.sin_addr.s_addr);
@@ -779,19 +804,16 @@ static void run_msgr_listen_fd_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 	ipv4_to_str(ip, addr_str, sizeof(addr_str));
 	conn = mconn_find(msgr, ip, port);
 	if (conn) {
-		glitch_log("%p: listen_cb: we already have connection %p "
-			"from %s:%d\n", msgr, conn, addr_str, port);
+		fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, conn->port,
+			      conn->ip, 0, 0, FLME_MTRAN_MULTI_CONN, 0);
 		goto error;
 	}
 	conn = mconn_create(msgr, ip, port, fd);
 	if (IS_ERR(conn)) {
-		glitch_log("%p: listen_cb: error creating connection for "
-			"(%s:%d): error %d\n", msgr, addr_str, port,
-			PTR_ERR(conn));
 		goto error;
 	}
-	glitch_log("%p: listen_cb: created conn %p for incoming "
-		   "(%s:%d)\n", msgr, conn, addr_str, port);
+	fast_log_msgr(msgr, FAST_LOG_MSGR_DEBUG, conn->port,
+		      conn->ip, 0, 0, FLME_INBOUND_CONN_CREATED, 0);
 	mconn_next_state_logic(conn);
 	return;
 
@@ -803,21 +825,21 @@ error:
 
 static void run_msgr_setup_pending(struct msgr *msgr, struct mtran *tr)
 {
-	char addr_str[INET_ADDRSTRLEN];
 	struct mconn *conn;
 
-	ipv4_to_str(tr->ip, addr_str, sizeof(addr_str));
 	conn = mconn_find(msgr, tr->ip, tr->port);
 	if (!conn) {
 		conn = mconn_create(msgr, tr->ip, tr->port, -1);
 		if (IS_ERR(conn))
 			return;
-		glitch_log("%p: created conn %p for pending "
-			   "(%s:%d)\n", msgr, conn, addr_str, tr->port);
+		fast_log_msgr(msgr, FAST_LOG_MSGR_DEBUG,
+			tr->port, tr->ip, tr->trid, tr->rem_trid,
+			FLME_OUTBOUND_CONN_CREATED, be16toh(tr->m->ty));
 	}
 	else {
-		glitch_log("%p: using conn %p for "
-			   "(%s:%d)\n", msgr, conn, addr_str, tr->port);
+		fast_log_msgr(msgr, FAST_LOG_MSGR_DEBUG,
+			tr->port, tr->ip, tr->trid,
+			tr->rem_trid, FLME_CONN_REUSED, be16toh(tr->m->ty));
 	}
 	STAILQ_INSERT_TAIL(&conn->pending_head, tr, u.pending_entry);
 	mconn_next_state_logic(conn);
@@ -852,12 +874,12 @@ static void run_msgr_notify_cb(struct ev_loop *loop, struct ev_async *w,
 	}
 }
 
-static void* run_msgr(void *v)
+static int run_msgr(struct redfish_thread *rt)
 {
-	struct msgr *msgr = (struct msgr*)v;
+	struct msgr *msgr = (struct msgr*)rt->init_data;
 
 	ev_loop(msgr->loop, 0);
-	return NULL;
+	return 0;
 }
 
 void msgr_start(struct msgr *msgr, char *err, size_t err_len)
@@ -870,12 +892,11 @@ void msgr_start(struct msgr *msgr, char *err, size_t err_len)
 		return;
 	}
 	if (msgr->listen_fd > 0) {
-		glitch_log("listening on fd %d\n", msgr->listen_fd);
 		ev_io_init(&msgr->w_listen_fd, run_msgr_listen_fd_cb,
 			msgr->listen_fd, EV_WRITE | EV_READ);
 		ev_io_start(msgr->loop, &msgr->w_listen_fd);
 	}
-	ret = pthread_create(&msgr->thread, NULL, run_msgr, msgr);
+	ret = redfish_thread_create(msgr->fb_mgr, &msgr->rt, run_msgr, msgr);
 	if (ret) {
 		snprintf(err, err_len, "msgr_start: pthread_create failed "
 			 "with error %d", ret);

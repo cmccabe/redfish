@@ -72,11 +72,13 @@ typedef void (*msgr_cb_t)(struct mconn *conn, struct mtran *tr,
  *			 transactor structure.
  * @param cb		Callback to invoke when a complete message is sent or
  *			 received.
+ * @param mgr		Fast log manager to use for fast logs
  *
  * @return		the messenger on success; NULL otherwise
  */
 extern struct msgr *msgr_init(char *err, size_t err_len,
-		int max_conn, int max_tran, size_t tran_sz, msgr_cb_t cb);
+		int max_conn, int max_tran, size_t tran_sz,
+		msgr_cb_t cb, struct fast_log_mgr *mgr);
 
 /** Configure the messenger to listen on a given TCP port.
  *

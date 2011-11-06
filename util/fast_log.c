@@ -65,6 +65,11 @@ struct fast_log_buf* fast_log_create(struct fast_log_mgr *mgr, const char *name)
 	return fb;
 }
 
+void fast_log_set_name(struct fast_log_buf *fb, const char *name)
+{
+	snprintf(fb->name, FAST_LOG_BUF_NAME_MAX, "%s", name);
+}
+
 void fast_log_free(struct fast_log_buf* fb)
 {
 	if (fb->mgr) {

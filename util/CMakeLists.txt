@@ -3,19 +3,20 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 
 add_library(util
     config.c
+    dir.c
     fast_log.c
     fast_log_mgr.c
     fast_log_types.c
-    dir.c
     msleep.c
     net.c
     path.c
     run_cmd.c
     safe_io.c
     simple_io.c
-    string.c
     str_to_int.c
+    string.c
     tempfile.c
+    thread.c
 )
 target_link_libraries(util ${JSON_C_LIBRARY} platform pthread)
 

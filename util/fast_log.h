@@ -87,6 +87,13 @@ struct fast_log_entry
 extern struct fast_log_buf* fast_log_create(struct fast_log_mgr *mgr,
 					const char *fbname);
 
+/** Set the name of the fast log buffer
+ *
+ * @param fb		The fast log buffer
+ * @param name		The new name
+ */
+extern void fast_log_set_name(struct fast_log_buf *fb, const char *name);
+
 /** Destroys a fast_log buffer.
  *
  * @param fb		The fast_log buffer

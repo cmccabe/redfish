@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-BUILD_BUG_ON(FAST_LOG_TY_MAX > FAST_LOG_TYPE_MAX);
+BUILD_BUG_ON(FAST_LOG_NUM_TYPES > FAST_LOG_TYPE_MAX);
 
 void str_to_fast_log_bitfield(const char *str,
 		BITFIELD_DECL(bits, FAST_LOG_TYPE_MAX),
@@ -45,22 +45,22 @@ void str_to_fast_log_bitfield(const char *str,
 int token_to_fast_log_bitfield(const char *str, BITFIELD_DECL(bits, FAST_LOG_TYPE_MAX))
 {
 	if (strcmp(str, "MSGR_DEBUG") == 0) {
-		BITFIELD_SET(bits, FAST_LOG_TY_MSGR_DEBUG);
+		BITFIELD_SET(bits, FAST_LOG_MSGR_DEBUG);
 		return 0;
 	}
 	else if (strcmp(str, "MSGR_INFO") == 0) {
-		BITFIELD_SET(bits, FAST_LOG_TY_MSGR_INFO);
+		BITFIELD_SET(bits, FAST_LOG_MSGR_INFO);
 		return 0;
 	}
-	else if (strcmp(str, "MSGR_WARN") == 0) {
-		BITFIELD_SET(bits, FAST_LOG_TY_MSGR_WARN);
+	else if (strcmp(str, "MSGR_ERROR") == 0) {
+		BITFIELD_SET(bits, FAST_LOG_MSGR_ERROR);
 		return 0;
 	}
 	/* composites */
 	else if (strcmp(str, "MSGR") == 0) {
-		BITFIELD_SET(bits, FAST_LOG_TY_MSGR_DEBUG);
-		BITFIELD_SET(bits, FAST_LOG_TY_MSGR_WARN);
-		BITFIELD_SET(bits, FAST_LOG_TY_MSGR_INFO);
+		BITFIELD_SET(bits, FAST_LOG_MSGR_DEBUG);
+		BITFIELD_SET(bits, FAST_LOG_MSGR_INFO);
+		BITFIELD_SET(bits, FAST_LOG_MSGR_ERROR);
 		return 0;
 	}
 	return -ENOENT;
@@ -75,10 +75,10 @@ int token_to_fast_log_bitfield(const char *str, BITFIELD_DECL(bits, FAST_LOG_TYP
 
 STUB_FN(fast_log_msgr_debug_dump);
 STUB_FN(fast_log_msgr_info_dump);
-STUB_FN(fast_log_msgr_warn_dump);
+STUB_FN(fast_log_msgr_error_dump);
 
 const fast_log_dumper_fn_t g_fast_log_dumpers[] = {
-	[FAST_LOG_TY_MSGR_DEBUG] = fast_log_msgr_debug_dump,
-	[FAST_LOG_TY_MSGR_INFO] = fast_log_msgr_info_dump,
-	[FAST_LOG_TY_MSGR_WARN] = fast_log_msgr_warn_dump,
+	[FAST_LOG_MSGR_DEBUG] = fast_log_msgr_debug_dump,
+	[FAST_LOG_MSGR_INFO] = fast_log_msgr_info_dump,
+	[FAST_LOG_MSGR_ERROR] = fast_log_msgr_error_dump,
 };

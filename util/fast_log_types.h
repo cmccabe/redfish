@@ -15,10 +15,10 @@
 #include <stdint.h>
 
 enum fast_log_ty {
-	FAST_LOG_TY_MSGR_DEBUG = 0,
-	FAST_LOG_TY_MSGR_INFO,
-	FAST_LOG_TY_MSGR_WARN,
-	FAST_LOG_TY_MAX,
+	FAST_LOG_MSGR_DEBUG = 1,
+	FAST_LOG_MSGR_INFO,
+	FAST_LOG_MSGR_ERROR,
+	FAST_LOG_NUM_TYPES,
 };
 
 /** Convert a semi-colon delimited list of tokens to a bitfield representing

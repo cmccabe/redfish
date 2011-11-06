@@ -6,6 +6,7 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
+#include "core/process_ctx.h"
 #include "msg/msg.h"
 #include "msg/msgr.h"
 #include "util/compiler.h"
@@ -136,10 +137,12 @@ static int msgr_test_init_shutdown(int start)
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 
-	foo_msgr = msgr_init(err, err_len, 10, 10, sizeof(struct foo_tran), foo_cb);
+	foo_msgr = msgr_init(err, err_len, 10, 10, sizeof(struct foo_tran),
+			foo_cb, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
-	bar_msgr = msgr_init(err, err_len, 10, 10, sizeof(struct bar_tran), bar_cb);
+	bar_msgr = msgr_init(err, err_len, 10, 10, sizeof(struct bar_tran),
+			bar_cb, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
 	if (start) {
@@ -185,10 +188,12 @@ static int msgr_test_simple_send(int num_sends)
 
 	EXPECT_ZERO(sem_init(&g_msgr_test_simple_send_sem, 0, 0));
 
-	foo_msgr = msgr_init(err, err_len, 10, 10, sizeof(struct foo_tran), foo_cb);
+	foo_msgr = msgr_init(err, err_len, 10, 10, sizeof(struct foo_tran),
+				foo_cb, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
-	bar_msgr = msgr_init(err, err_len, 10, 10, sizeof(struct bar_tran), bar_cb);
+	bar_msgr = msgr_init(err, err_len, 10, 10, sizeof(struct bar_tran),
+				bar_cb, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
 	msgr_listen(bar_msgr, MSGR_UNIT_PORT, err, err_len);
@@ -217,13 +222,15 @@ handle_error:
 	return 1;
 }
 
-int main(void)
+int main(POSSIBLY_UNUSED(int argc), char **argv)
 {
+	EXPECT_ZERO(utility_ctx_init(argv[0]));
 	EXPECT_ZERO(init_g_localhost());
 	EXPECT_ZERO(msgr_test_init_shutdown(0));
 	EXPECT_ZERO(msgr_test_init_shutdown(1));
 	EXPECT_ZERO(msgr_test_simple_send(1));
 	EXPECT_ZERO(msgr_test_simple_send(100));
+	process_ctx_shutdown();
 
 	return EXIT_SUCCESS;
 }
