@@ -123,3 +123,9 @@ int write_u32(const char *fn, int fd, uint32_t u)
 	}
 	return 0;
 }
+
+void ipv4_to_str(uint32_t addr, char *out, size_t out_len)
+{
+	addr = htonl(addr);
+	inet_ntop(AF_INET, &addr, out, out_len);
+}

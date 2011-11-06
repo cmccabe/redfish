@@ -24,4 +24,6 @@ extern int do_bind_and_listen(int port, char *err, size_t err_len);
 
 extern int write_u32(const char *fn, int fd, uint32_t u);
 
+extern void ipv4_to_str(uint32_t addr, char *out, size_t out_len);
+
 #endif
