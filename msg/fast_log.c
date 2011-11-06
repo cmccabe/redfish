@@ -66,7 +66,7 @@ void fast_log_msgr_dump(struct fast_log_msgr_entry *fe, char *buf)
 
 	ipv4_to_str(fe->ip, addr_str, sizeof(addr_str));
 	snprintf(buf, FAST_LOG_PRETTY_PRINTED_MAX,
-		"[%s:%d] (%d:%d) ", addr_str, fe->port,
+		"[%s:%d] (%08x:%08x) ", addr_str, fe->port,
 		fe->trid, fe->rem_trid);
 	switch (fe->event) {
 	case FLME_MTRAN_SEND_NEXT:

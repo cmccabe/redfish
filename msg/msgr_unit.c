@@ -57,7 +57,7 @@ void foo_cb(struct mconn *conn, struct mtran *tr, struct msg *m)
 	uint16_t ty;
 	uint32_t i;
 
-	fprintf(stderr, "invoking tr %p\n", tr);
+	//fprintf(stderr, "invoking tr %p\n", tr);
 	if (!m) {
 		mtran_recv_next(conn, tr);
 		return;
@@ -75,7 +75,7 @@ void foo_cb(struct mconn *conn, struct mtran *tr, struct msg *m)
 			ft->i + 1, i);
 		goto done;
 	}
-	fprintf(stderr, "freeing tr %p\n", tr);
+	//fprintf(stderr, "freeing tr %p\n", tr);
 	sem_post(&g_msgr_test_simple_send_sem);
 	mtran_free(tr);
 done:
@@ -103,8 +103,8 @@ void bar_cb(struct mconn *conn, struct mtran *tr, struct msg *msg)
 			MMM_TEST1, ty);
 		goto done;
 	}
-	fprintf(stderr, "%02x %02x %02x %02x\n", m->base.data[0],
-		m->base.data[1], m->base.data[2], m->base.data[3]);
+//	fprintf(stderr, "%02x %02x %02x %02x\n", m->base.data[0],
+//		m->base.data[1], m->base.data[2], m->base.data[3]);
 	i = be32toh(m->i);
 	mout = calloc_msg(MMM_TEST2, sizeof(struct mmm_test2));
 	if (!mout) {

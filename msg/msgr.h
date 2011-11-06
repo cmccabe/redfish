@@ -89,7 +89,7 @@ extern struct msgr *msgr_init(char *err, size_t err_len,
  *
  * @return		the messenger on success; NULL otherwise
  */
-extern void msgr_listen(struct msgr *msgr, int port,
+extern void msgr_listen(struct msgr *msgr, uint16_t port,
 		char *err, size_t err_len);
 
 /** Start the messenger.

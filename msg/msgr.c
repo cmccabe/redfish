@@ -46,6 +46,7 @@ enum mconn_state_t {
 	MCONN_CONNECTING = 0,
 	MCONN_QUIESCENT,
 	MCONN_WRITING,
+	MCONN_AWAITING_HDR,
 	MCONN_READING_HDR,
 	MCONN_READING,
 	MCONN_NUM_STATES,
@@ -106,6 +107,8 @@ struct msgr {
 	/** Socket we're listening on, or -1 if we're not listening on any
 	 * sockets */
 	int listen_fd;
+	/** Port we're listening on, if any */
+	uint16_t listen_port;
 	/** Size to use when allocating mtran objects on the heap */ 
 	size_t tran_sz;
 	/** Callback to invoke when transactions receive messages */
@@ -281,7 +284,7 @@ static struct mconn *mconn_create(struct msgr *msgr,
 			/* The connect operation succeeded immediately */
 			conn->state = MCONN_QUIESCENT;
 			fast_log_msgr(msgr, FAST_LOG_MSGR_DEBUG, port, ip,
-				      0, 0, FLME_CONN_ESTABLISHED, 1);
+					0, 0, FLME_CONN_ESTABLISHED, 1);
 		}
 		else {
 			ret = errno;
@@ -294,6 +297,9 @@ static struct mconn *mconn_create(struct msgr *msgr,
 			}
 			/* The connect operation is in progress */
 		}
+	}
+	else {
+		conn->sock = sock;
 	}
 	ev_io_init(&conn->w_write, mconn_writable_cb,
 		conn->sock, EV_WRITE);
@@ -351,6 +357,17 @@ static void mconn_teardown(struct mconn *conn, int failcode)
 	free(conn);
 }
 
+static void mconn_state_transition(struct mconn *conn,
+				   enum mconn_state_t new_state)
+{
+	if (conn->state == new_state)
+		return;
+	fast_log_msgr(conn->msgr, FAST_LOG_MSGR_DEBUG, conn->port, conn->ip,
+		0, 0, FLME_MTRAN_NEW_STATE,
+		(conn->state << 4) | (new_state));
+	conn->state = new_state;
+}
+
 /** Abort an incoming message
  *
  * Can be called from MCONN_QUIESCENT, MCONN_READING_HDR
@@ -367,7 +384,7 @@ static void mconn_inbound_abort(struct mconn *conn)
 	if (conn->inbound_tr != NULL)
 		abort();
 	conn->cnt = 0;
-	conn->state = MCONN_QUIESCENT;
+	mconn_state_transition(conn, MCONN_QUIESCENT);
 	mconn_next_state_logic(conn);
 }
 
@@ -386,32 +403,31 @@ static int mconn_compare(struct mconn *a, struct mconn *b)
 
 static void mconn_next_state_logic(struct mconn *conn)
 {
-	enum mconn_state_t old_state = conn->state;
+	enum mconn_state_t new_state = conn->state;
 	struct msgr *msgr = conn->msgr;
 
 	/* choose next state */
 	switch (conn->state) {
 	case MCONN_CONNECTING:
+	case MCONN_AWAITING_HDR:
 		break;
 	case MCONN_QUIESCENT:
 	case MCONN_WRITING:
 		if (STAILQ_EMPTY(&conn->pending_head)) {
-			conn->state = MCONN_QUIESCENT;
+			new_state = MCONN_QUIESCENT;
 		}
 		else {
 			conn->cnt = 0;
 			conn->inbound_msg = NULL;
 			conn->inbound_tr = NULL;
-			conn->state = MCONN_WRITING;
+			new_state = MCONN_WRITING;
 		}
 		break;
 	default:
 		/* do nothing */
 		break;
 	}
-	fast_log_msgr(msgr, FAST_LOG_MSGR_DEBUG, conn->port, conn->ip,
-		0, 0, FLME_MTRAN_NEW_STATE,
-		(old_state << 4) | (conn->state));
+	mconn_state_transition(conn, new_state);
 
 	/* activate/deactivate io callback based on state */
 	switch (conn->state) {
@@ -420,6 +436,7 @@ static void mconn_next_state_logic(struct mconn *conn)
 		ev_io_start(msgr->loop, &conn->w_write);
 		ev_io_stop(msgr->loop, &conn->w_read);
 		break;
+	case MCONN_AWAITING_HDR:
 	case MCONN_READING_HDR:
 	case MCONN_READING:
 	case MCONN_QUIESCENT:
@@ -447,7 +464,10 @@ static void mconn_writable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		socklen_t val_len = sizeof(val);
 		ret = getsockopt(conn->sock, SOL_SOCKET, SO_ERROR,
 				&val, &val_len);
-		if ((ret == 0) && (val != 0)) {
+		if (ret) {
+			ret = errno;
+		}
+		else if (val != 0) {
 			ret = val;
 		}
 		if (ret) {
@@ -460,7 +480,7 @@ static void mconn_writable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		}
 		fast_log_msgr(msgr, FAST_LOG_MSGR_DEBUG, conn->port, conn->ip,
 			      0, 0, FLME_CONN_ESTABLISHED, 0);
-		conn->state = MCONN_QUIESCENT;
+		mconn_state_transition(conn, MCONN_QUIESCENT);
 		mconn_next_state_logic(conn);
 		return;
 	}
@@ -475,7 +495,7 @@ static void mconn_writable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR,
 				conn->port, conn->ip, 0, 0,
 				FLME_EXPECTED_PENDING_TRANSACTOR, 0);
-			conn->state = MCONN_QUIESCENT;
+			mconn_state_transition(conn, MCONN_QUIESCENT);
 			mconn_next_state_logic(conn);
 			return;
 		}
@@ -497,7 +517,7 @@ static void mconn_writable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		if (conn->cnt == full) {
 			conn->cnt = -1;
 			STAILQ_REMOVE_HEAD(&conn->pending_head, u.pending_entry);
-			conn->state = MCONN_QUIESCENT;
+			mconn_state_transition(conn, MCONN_QUIESCENT);
 			free(tr->m);
 			tr->m = NULL;
 			msgr->cb(conn, tr, NULL);
@@ -532,7 +552,8 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		return;
 	switch (conn->state) {
 	case MCONN_QUIESCENT:
-		conn->state = MCONN_READING_HDR;
+	case MCONN_AWAITING_HDR:
+		mconn_state_transition(conn, MCONN_READING_HDR);
 		conn->inbound_msg = calloc(1, sizeof(struct msg));
 		if (!conn->inbound_msg) {
 			fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, conn->port,
@@ -541,6 +562,7 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			return;
 		}
 		conn->cnt = 0;
+		mconn_state_transition(conn, MCONN_READING_HDR);
 		/* fall through */
 	case MCONN_READING_HDR: {
 		amt = sizeof(struct msg) - conn->cnt;
@@ -555,8 +577,9 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			return;
 		}
 		conn->cnt += res;
-		if (conn->cnt != sizeof(struct msg))
+		if (conn->cnt != sizeof(struct msg)) {
 			return;
+		}
 		m_len = be32toh(conn->inbound_msg->len);
 		m = realloc(conn->inbound_msg, sizeof(struct msg) + m_len);
 		if (!m) {
@@ -604,6 +627,7 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			}
 		}
 		conn->inbound_tr = tr;
+		mconn_state_transition(conn, MCONN_READING);
 		/* fall through */
 	}
 	case MCONN_READING:
@@ -628,7 +652,7 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			return;
 		}
 		RB_REMOVE(active_tr, &conn->active_head, conn->inbound_tr);
-		conn->state = MCONN_QUIESCENT;
+		mconn_state_transition(conn, MCONN_QUIESCENT);
 		m = conn->inbound_msg;
 		conn->inbound_msg = NULL;
 		conn->cnt = -1;
@@ -720,7 +744,7 @@ void msgr_shutdown(struct msgr *msgr)
 	free(msgr);
 }
 
-void msgr_listen(struct msgr *msgr, int port, char *err, size_t err_len)
+void msgr_listen(struct msgr *msgr, uint16_t port, char *err, size_t err_len)
 {
 	struct sockaddr_in addr;
 	socklen_t addr_len;
@@ -764,8 +788,7 @@ void msgr_listen(struct msgr *msgr, int port, char *err, size_t err_len)
 		return;
 	}
 	msgr->listen_fd = fd;
-	fast_log_msgr(msgr, FAST_LOG_MSGR_INFO, 0,
-		0, 0, 0, FLME_LISTENING, port);
+	msgr->listen_port = port;
 }
 
 static void run_msgr_listen_fd_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
@@ -814,6 +837,7 @@ static void run_msgr_listen_fd_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 	}
 	fast_log_msgr(msgr, FAST_LOG_MSGR_DEBUG, conn->port,
 		      conn->ip, 0, 0, FLME_INBOUND_CONN_CREATED, 0);
+	mconn_state_transition(conn, MCONN_AWAITING_HDR);
 	mconn_next_state_logic(conn);
 	return;
 
@@ -878,6 +902,10 @@ static int run_msgr(struct redfish_thread *rt)
 {
 	struct msgr *msgr = (struct msgr*)rt->init_data;
 
+	if (msgr->listen_fd > 0) {
+		fast_log_msgr(msgr, FAST_LOG_MSGR_INFO, 0,
+			0, 0, 0, FLME_LISTENING, msgr->listen_port);
+	}
 	ev_loop(msgr->loop, 0);
 	return 0;
 }
