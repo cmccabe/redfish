@@ -5,4 +5,5 @@ add_library(platform
     pipe2.c
     readdir.c
     socket.c
+    thread_id.c
 )
