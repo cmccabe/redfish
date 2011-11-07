@@ -53,6 +53,14 @@ ELSE(LIBEV_INCLUDE_DIR AND LIBEV_LIBRARIES)
     MESSAGE(FATAL_ERROR "Failed to find libev. Try installing libev with apt-get or yum, or install it manually from http://software.schmorp.de/pkg/libev.html")
 ENDIF(LIBEV_INCLUDE_DIR AND LIBEV_LIBRARIES)
 
+# Find leveldb
+find_path(LEVELDB_INCLUDE_DIR leveldb/c.h HINTS "/usr/include")
+find_library(LEVELDB_LIBRARIES NAMES leveldb)
+IF(LEVELDB_INCLUDE_DIR AND LEVELDB_LIBRARIES)
+ELSE(LEVELDB_INCLUDE_DIR AND LEVELDB_LIBRARIES)
+    MESSAGE(FATAL_ERROR "Failed to find levelDB. Try reading INSTALL.txt, or install leveldb manually from http://code.google.com/p/leveldb/")
+ENDIF(LEVELDB_INCLUDE_DIR AND LEVELDB_LIBRARIES)
+
 # Find curses
 find_package(Curses REQUIRED)
 
@@ -62,6 +70,7 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${JSON_C_INCLUDE_DIR}
     ${LIBEV_INCLUDE_DIR}
+    ${LEVELDB_INCLUDE_DIR}
 )
 
 add_subdirectory(client)
