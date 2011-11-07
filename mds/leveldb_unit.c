@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 //PACKED(
 //struct foo {
@@ -24,9 +25,11 @@
 //}
 //);
 
-static int test1(const char *tdir)
+typedef int (*leveldb_test_fn_t)(leveldb_t *ldb);
+
+static int run_leveldb_test(const char *tdir, leveldb_test_fn_t fn)
 {
-	char *err;
+	char *err = NULL;
 	char lname[PATH_MAX];
 	leveldb_t *ldb;
 	leveldb_options_t *lopt = NULL;
@@ -39,6 +42,9 @@ static int test1(const char *tdir)
 	ldb = leveldb_open(lopt, lname, &err);
 	if (err)
 		goto ldb_error;
+	if (fn) {
+		EXPECT_ZERO(fn(ldb));
+	}
 	leveldb_close(ldb);
 	leveldb_destroy_db(lopt, lname, &err);
 	if (err)
@@ -53,12 +59,48 @@ ldb_error:
 	return 1;
 }
 
+static int reads_and_writes1(leveldb_t *ldb)
+{
+	char *val;
+	size_t val_len;
+	char *err = NULL;
+	leveldb_writeoptions_t *lwopt;
+	leveldb_readoptions_t *lropt;
+
+	lwopt = leveldb_writeoptions_create();
+	EXPECT_NOT_EQUAL(lwopt, NULL);
+	leveldb_writeoptions_set_sync(lwopt, 1);
+	leveldb_put(ldb, lwopt, "foo", strlen("foo"), "bar",
+		strlen("bar"), &err);
+	if (err)
+		goto ldb_error;
+	lropt = leveldb_readoptions_create();
+	EXPECT_NOT_EQUAL(lropt, NULL);
+	val = leveldb_get(ldb, lropt, "foo", strlen("foo"), &val_len, &err);
+	if (err)
+		goto ldb_error;
+	EXPECT_EQUAL(val_len, strlen("bar"));
+	EXPECT_ZERO(strncmp(val, "bar", strlen("bar")));
+	free(val);
+
+	leveldb_readoptions_destroy(lropt);
+	leveldb_writeoptions_destroy(lwopt);
+	return 0;
+
+ldb_error:
+	leveldb_writeoptions_destroy(lwopt);
+	fprintf(stderr, "got ldb error: %s\n", err);
+	free(err);
+	return 1;
+}
+
 int main(void)
 {
 	char tdir[PATH_MAX];
 	EXPECT_ZERO(get_tempdir(tdir, sizeof(tdir), 0755));
 	EXPECT_ZERO(register_tempdir_for_cleanup(tdir));
-	EXPECT_ZERO(test1(tdir));
+	EXPECT_ZERO(run_leveldb_test(tdir, NULL));
+	EXPECT_ZERO(run_leveldb_test(tdir, reads_and_writes1));
 
 	return EXIT_SUCCESS;
 }
