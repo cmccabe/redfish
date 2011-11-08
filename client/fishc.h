@@ -164,7 +164,7 @@ int redfish_mkdirs(struct redfish_client *cli, int mode, const char *path);
  *			pointers to block locations on success.
  * @return		negative number on error; 0 on success
  */
-int redfish_get_block_locs(struct redfish_client *cli, const char *path,
+int redfish_locate(struct redfish_client *cli, const char *path,
 	int64_t start, int64_t len, struct redfish_block_loc ***blc);
 
 /** Free the array of block locations

@@ -406,7 +406,7 @@ done:
 	return ret;
 }
 
-int redfish_get_block_locs(POSSIBLY_UNUSED(struct redfish_client *cli),
+int redfish_locate(POSSIBLY_UNUSED(struct redfish_client *cli),
 		POSSIBLY_UNUSED(const char *path), int64_t start, int64_t len,
 		struct redfish_block_loc ***blc)
 {

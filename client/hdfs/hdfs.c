@@ -165,7 +165,7 @@ int redfish_mkdirs(struct redfish_client *cli, int mode, const char *path)
 	return 0;
 }
 
-int redfish_get_block_locs(struct redfish_client *cli, const char *path,
+int redfish_locate(struct redfish_client *cli, const char *path,
 	int64_t start, int64_t len, char ***blc)
 {
 	int i, nz, na;
