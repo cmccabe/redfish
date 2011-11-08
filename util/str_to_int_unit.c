@@ -18,6 +18,7 @@
 
 int test_str_to_int(void)
 {
+	long long ll;
 	int i;
 	char err[512] = { 0 };
 
@@ -56,6 +57,21 @@ int test_str_to_int(void)
 	err[0] = '\0';
 	str_to_int("blah", 10, &i, err, sizeof(err));
 	EXPECT_NONZERO(err[0]);
+
+	err[0] = '\0';
+	str_to_long_long("281474976710656", 10, &ll, err, sizeof(err));
+	EXPECT_ZERO(err[0]);
+	EXPECT_EQUAL(ll, 281474976710656LL);
+
+	err[0] = '\0';
+	str_to_long_long("0x1000000000000", 16, &ll, err, sizeof(err));
+	EXPECT_ZERO(err[0]);
+	EXPECT_EQUAL(ll, 281474976710656LL);
+
+	err[0] = '\0';
+	str_to_int("0755", 8, &i, err, sizeof(err));
+	EXPECT_ZERO(err[0]);
+	EXPECT_EQUAL(i, 493);
 
 	return 0;
 }
