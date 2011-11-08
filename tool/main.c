@@ -28,6 +28,7 @@ struct fishtool_act g_fishtool_ping;
 struct fishtool_act g_fishtool_read;
 struct fishtool_act g_fishtool_unlink;
 struct fishtool_act g_fishtool_write;
+struct fishtool_act g_fishtool_locate;
 
 const struct fishtool_act *g_fishtool_acts[] = {
 	&g_fishtool_chmod,
@@ -37,6 +38,7 @@ const struct fishtool_act *g_fishtool_acts[] = {
 	&g_fishtool_read,
 	&g_fishtool_unlink,
 	&g_fishtool_write,
+	&g_fishtool_locate,
 	NULL,
 };
 
