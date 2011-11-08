@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-void str_to_ll(const char *str, int base, long long *ll,
+void str_to_long_long(const char *str, int base, long long *ll,
 	       char *err, size_t err_len)
 {
 	long long zll;
@@ -50,7 +50,7 @@ void str_to_int(const char *str, int base, int *i,
 	 * doesn't help either, since sizeof(long int) == sizeof(long long) on
 	 * 64-bit systems. So just use strtoll and check the range.
 	 */
-	str_to_ll(str, base, &ll, err, err_len);
+	str_to_long_long(str, base, &ll, err, err_len);
 	if (err[0])
 		return;
 	if (ll > INT_MAX) {
