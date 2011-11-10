@@ -9,8 +9,10 @@
 #include "util/packed.h"
 
 #include <endian.h>
+#include <errno.h>
 #include <inttypes.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 uint8_t pbe8_to_h(void *v)
@@ -64,3 +66,39 @@ void ph_to_be64(void *v, uint64_t u)
 	memcpy(v, &u, sizeof(uint64_t));
 }
 
+int pget_str(void *v, uint32_t *off, uint32_t len,
+			char *out, size_t out_len)
+{
+	size_t o, rem;
+	char *buf = (char*)v;
+	int res;
+
+	o = *off;
+	if (o > len)
+		return -EINVAL;
+	rem = len - o;
+	if (!memchr(buf + o, '\0', rem))
+		return -EINVAL;
+	res = snprintf(out, out_len, "%s", buf + o);
+	if ((unsigned int)res > out_len)
+		return -ENAMETOOLONG;
+	*off = o + res + 1;
+	return 0;
+}
+
+int pput_str(void *v, uint32_t *off, uint32_t len, char *str)
+{
+	size_t o, rem;
+	int res;
+	char *buf = (char*)v;
+
+	o = *off;
+	if (o > len)
+		return -ENAMETOOLONG;
+	rem = len - o;
+	res = snprintf(buf + o, rem, "%s", str);
+	if (((unsigned int)res) > rem)
+		return -ENAMETOOLONG;
+	*off = o + res + 1;
+	return 0;
+}

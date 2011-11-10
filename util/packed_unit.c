@@ -10,6 +10,7 @@
 #include "util/packed.h"
 #include "util/test.h"
 
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,7 +25,7 @@ struct pack_fun {
 }
 );
 
-int main(void)
+static int test_fixed_field_functions(void)
 {
 	struct pack_fun s;
 	memset(&s, 0, sizeof(s));
@@ -41,6 +42,49 @@ int main(void)
 	EXPECT_EQUAL(pbe32_to_h(&s.c), 0xdeadbeef);
 	ph_to_be64(&s.d, 0xdeadbeefbaddcafell);
 	EXPECT_EQUAL(pbe64_to_h(&s.d), 0xdeadbeefbaddcafell);
+
+	return 0;
+}
+
+static int test_packed_string_functions(void)
+{
+	char buf[128] = { 0 };
+	char buf2[128] = { 0 };
+	uint32_t off, off2;
+
+	off = 0;
+	EXPECT_ZERO(pput_str(buf, &off, sizeof(buf), "swubu"));
+
+	off2 = 0;
+	EXPECT_ZERO(pget_str(buf, &off2, sizeof(buf), buf2, sizeof(buf2)));
+	EXPECT_ZERO(strcmp("swubu", buf2));
+
+	EXPECT_ZERO(pput_str(buf, &off, sizeof(buf), "zub-zub"));
+	EXPECT_ZERO(pput_str(buf, &off, sizeof(buf), "glor-duk"));
+	EXPECT_ZERO(pput_str(buf, &off, sizeof(buf), "loktar"));
+
+	off2 = 0;
+	pget_str(buf, &off2, off, buf2, sizeof(buf2));
+	EXPECT_ZERO(strcmp("swubu", buf2));
+	EXPECT_ZERO(pget_str(buf, &off2, off, buf2, sizeof(buf2)));
+	EXPECT_ZERO(strcmp("zub-zub", buf2));
+	EXPECT_ZERO(pget_str(buf, &off2, off, buf2, sizeof(buf2)));
+	EXPECT_ZERO(strcmp("glor-duk", buf2));
+	EXPECT_ZERO(pget_str(buf, &off2, off, buf2, sizeof(buf2)));
+	EXPECT_ZERO(strcmp("loktar", buf2));
+	EXPECT_EQUAL(-EINVAL, pget_str(buf, &off2, off, buf2, sizeof(buf2)));
+
+	off = 0;
+	memset(buf, 0, sizeof(buf));
+	EXPECT_EQUAL(-ENAMETOOLONG, pput_str(buf, &off, 4, "toolongstring"));
+
+	return 0;
+}
+
+int main(void)
+{
+	EXPECT_ZERO(test_fixed_field_functions());
+	EXPECT_ZERO(test_packed_string_functions());
 
 	return EXIT_SUCCESS;
 }
