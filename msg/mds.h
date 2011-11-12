@@ -56,79 +56,94 @@ enum {
 };
 
 /* Create file */
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_create_rfile_req {
+	struct msg base;
 	uint32_t block_sz;
 	uint16_t mode;
 	uint16_t repl;
-	struct mmm_path path;
+	uint64_t mtime;
+	char data[0];
 });
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_open_rfile_req {
+	struct msg base;
 	uint16_t path_len;
 	struct mmm_path path;
 });
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_chunk_report {
+	struct msg base;
 	/** Number of chunks, or a negative error value */
 	int32_t num_chunks;
 	uint64_t chunk_id[0];
 });
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_lookup_chunks_req {
+	struct msg base;
 	int64_t start;
 	int64_t len;
 	int32_t rfile;
 });
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_alloc_chunk_req {
+	struct msg base;
 	int32_t rfile;
 	int32_t len;
 	int64_t start;
 });
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_mkdirs_req {
+	struct msg base;
 	uint16_t mode;
 	struct mmm_path path;
 });
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_list_directory_req {
+	struct msg base;
 	struct mmm_path path;
 });
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_stat_req {
+	struct msg base;
 	struct mmm_path path;
 });
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_chmod_req {
+	struct msg base;
 	uint16_t mode;
 	struct mmm_path path;
 });
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_chown_req {
+	struct msg base;
 	uint16_t user;
 	uint16_t group;
 	struct mmm_path path;
 });
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_utimes_req {
+	struct msg base;
 	int64_t atime;
 	int64_t mtime;
 	struct mmm_path path;
 });
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_unlink_req {
+	struct msg base;
 	struct mmm_path path;
 });
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_rename_req {
+	struct msg base;
 	uint16_t msg_len;
 	/* NULL-terminated source path, followed by NULL-terminated dest
 	 * path */
 	char data[0];
 });
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_close_rfile_req {
+	struct msg base;
 	int32_t rfile;
 });
 
