@@ -6,13 +6,13 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#include "core/daemon.h"
 #include "core/glitch_log.h"
 #include "msg/client.h"
 #include "msg/generic.h"
 #include "msg/osd.h"
 #include "osd/io.h"
 #include "osd/net.h"
+#include "osd/osd_config.h"
 #include "util/error.h"
 #include "util/platform/socket.h"
 #include "util/safe_io.h"
@@ -306,7 +306,7 @@ static int init_osd_net_queue(void)
 	return 0;
 }
 
-int osd_main_loop(struct daemon *d)
+int osd_main_loop(struct osd_config *conf)
 {
 	struct ev_loop *loop = ev_default_loop(0);
 	int res, ret, sock = -1;
@@ -333,7 +333,7 @@ int osd_main_loop(struct daemon *d)
 	}
 	bzero(&addr, sizeof(addr));
 	addr.sin_family = AF_INET;
-	addr.sin_port = htons(d->port);
+	addr.sin_port = htons(conf->port);
 	addr.sin_addr.s_addr = INADDR_ANY;
 	if (bind(sock, (struct sockaddr*)&addr, sizeof(addr)) != 0) {
 		ret = -errno;

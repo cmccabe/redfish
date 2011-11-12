@@ -6,7 +6,6 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#include "core/daemon.h"
 #include "core/glitch_log.h"
 #include "core/log_config.h"
 #include "core/pid_file.h"

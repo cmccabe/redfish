@@ -1,5 +1,7 @@
 add_executable(fishmds
     main.c
+    mds_config.c
+    mstor_config.c
     net.c
 )
 target_link_libraries(fishmds

@@ -1,0 +1,14 @@
+/*
+ * The RedFish distributed filesystem
+ *
+ * Copyright (C) 2011 Colin Patrick McCabe <cmccabe@alumni.cmu.edu>
+ *
+ * This is licensed under the Apache License, Version 2.0.  See file COPYING.
+ */
+
+JORM_CONTAINER_BEGIN(mds_config)
+	JORM_EMBEDDED(lc, log_config)
+	JORM_EMBEDDED(mc, mstor_config)
+	JORM_INT(cli_port)
+	JORM_INT(mds_port)
+JORM_CONTAINER_END

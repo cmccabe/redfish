@@ -6,6 +6,7 @@ target_link_libraries(io util)
 add_executable(fishosd
     main.c
     net.c
+    osd_config.c
 )
 target_link_libraries(fishosd
     ${LIBEV_LIBRARIES}

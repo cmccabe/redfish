@@ -6,11 +6,11 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#include "core/daemon.h"
 #include "core/glitch_log.h"
 #include "core/log_config.h"
 #include "core/process_ctx.h"
 #include "jorm/json.h"
+#include "mds/mds_config.h"
 #include "mds/net.h"
 #include "util/string.h"
 
@@ -70,11 +70,11 @@ static void parse_argv(int argc, char **argv, int *daemonize,
 	}
 }
 
-static struct daemon* parse_mds_config(const char *file_name)
+static struct mds_config* parse_mds_config(const char *file_name)
 {
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
-	struct daemon *d;
+	struct mds_config *conf;
 	struct json_object* jo;
 	
 	jo = parse_json_file(file_name, err, err_len);
@@ -82,34 +82,34 @@ static struct daemon* parse_mds_config(const char *file_name)
 		glitch_log("error parsing json file: %s\n", err);
 		return NULL;
 	}
-	d = JORM_FROMJSON_daemon(jo);
+	conf = JORM_FROMJSON_mds_config(jo);
 	json_object_put(jo);
-	if (!d) {
+	if (!conf) {
 		glitch_log("ran out of memory reading config file.\n");
 		return NULL;
 	}
-	return d;
+	return conf;
 }
 
 int main(int argc, char **argv)
 {
 	int ret, daemonize = 1;
 	const char *config_file = NULL;
-	struct daemon *d;
+	struct mds_config *conf;
 
 	parse_argv(argc, argv, &daemonize, &config_file);
-	d = parse_mds_config(config_file);
-	if (!d) {
+	conf = parse_mds_config(config_file);
+	if (!conf) {
 		ret = EXIT_FAILURE;
 		goto done;
 	}
-	if (process_ctx_init(argv[0], daemonize, d->lc)) {
+	if (process_ctx_init(argv[0], daemonize, conf->lc)) {
 		ret = EXIT_FAILURE;
 		goto done;
 	}
 	ret = mds_main_loop();
 done:
 	process_ctx_shutdown();
-	JORM_FREE_daemon(d);
+	JORM_FREE_mds_config(conf);
 	return ret;
 }

@@ -1,5 +1,4 @@
 add_library(core
-    daemon.c
     process_ctx.c
     glitch_log.c
     log_config.c

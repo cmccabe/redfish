@@ -9,14 +9,14 @@
 #ifndef REDFISH_OSD_NET_DOT_H
 #define REDFISH_OSD_NET_DOT_H
 
-struct daemon;
+struct osd_config;
 
 /** Start the object storage daemon main loop
  *
- * @param d		The daemon configuration
+ * @param conf		The daemon configuration
  *
  * @return		The return value of the program
  */
-extern int osd_main_loop(struct daemon *d);
+extern int osd_main_loop(struct osd_config *conf);
 
 #endif

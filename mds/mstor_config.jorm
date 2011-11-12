@@ -6,8 +6,8 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-JORM_CONTAINER_BEGIN(daemon)
-	JORM_EMBEDDED(lc, log_config)
-	JORM_INT(port)
-	JORM_INT(rack)
+JORM_CONTAINER_BEGIN(mstor_config)
+	JORM_STR(mstor_path)
+	JORM_DOUBLE(mstor_cache_size)
+	JORM_INT(mstor_io_threads)
 JORM_CONTAINER_END
