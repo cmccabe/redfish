@@ -9,6 +9,7 @@
 #ifndef REDFISH_MSG_CLIENT_DOT_H
 #define REDFISH_MSG_CLIENT_DOT_H
 
+#include "msg/msg.h"
 #include "util/compiler.h"
 
 #include <stdint.h>
@@ -16,8 +17,10 @@
 /* Network messages that can be sent to the client */
 
 enum {
-	/** MDS response to a 'create file' request */
-	MMM_CREATE_RFILE_RESP = 2000,
+	/** A new partition ID for the client.  The MDS will send this in
+	 * response to a 'create file' request, and also if the client requests
+	 * a new partition ID for a file. */
+	MMM_NEW_PARTITION = 2000,
 	/** MDS response to an 'open file' request */
 	MMM_OPEN_RFILE_RESP,
 	/** MDS response to a 'list directory' or 'list entries' request */
@@ -27,25 +30,29 @@ enum {
 };
 
 /* Create file */
-PACKED_ALIGNED(8,
-struct mmm_create_rfile_resp {
-	int32_t rfile;
-	uint32_t chunk_addr;
-	uint64_t chunk_id;
+PACKED(
+struct mmm_new_partition{
+	struct msg base;
+	uint64_t prid;
+	uint32_t part_ip;
+	uint16_t part_port;
 });
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_open_rfile_resp {
+	struct msg base;
 	int32_t rfile;
 	uint32_t chunk_addr;
 	uint64_t chunk_id;
 });
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_list_resp {
+	struct msg base;
 	/* see net/generic for a description of this format */
 	char packed_stat[0];
 });
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_fetch_chunk_resp {
+	struct msg base;
 	uint64_t chunk_id;
 	uint32_t len;
 	char data[0];
