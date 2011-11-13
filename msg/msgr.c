@@ -672,7 +672,7 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 	}
 }
 
-/****************************** mtran ********************************/
+/****************************** msgr ********************************/
 struct msgr *msgr_init(char *err, size_t err_len,
 		int max_conn, int max_tran, size_t tran_sz, msgr_cb_t cb,
 		struct fast_log_mgr *fb_mgr)
