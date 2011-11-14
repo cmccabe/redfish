@@ -13,21 +13,31 @@
 
 #include <unistd.h> /* for size_t */
 
-extern uint8_t pbe8_to_h(void *v);
+extern uint8_t unpack_from_8(void *v);
+extern void pack_to_8(void *v, uint8_t u);
 
-extern void ph_to_be8(void *v, uint8_t u);
+/**************** pack to big-endian byte order ********************/
+extern uint16_t unpack_from_be16(void *v);
+extern void pack_to_be16(void *v, uint16_t u);
 
-extern uint16_t pbe16_to_h(void *v);
+extern uint32_t unpack_from_be32(void *v);
+extern void pack_to_be32(void *v, uint32_t u);
 
-extern void ph_to_be16(void *v, uint16_t u);
+extern uint64_t unpack_from_be64(void *v);
+extern void pack_to_be64(void *v, uint64_t u);
 
-extern uint32_t pbe32_to_h(void *v);
+/**************** pack to host byte order ********************/
+extern uint16_t unpack_from_h16(void *v);
+extern void pack_to_h16(void *v, uint16_t u);
 
-extern void ph_to_be32(void *v, uint32_t u);
+extern uint32_t unpack_from_h32(void *v);
+extern void pack_to_h32(void *v, uint32_t u);
 
-extern uint64_t pbe64_to_h(void *v);
+extern uint64_t unpack_from_h64(void *v);
+extern void pack_to_h64(void *v, uint64_t u);
 
-extern void ph_to_be64(void *v, uint64_t u);
+extern void* unpack_from_hptr(void *v);
+extern void pack_to_hptr(void *v, void *ptr);
 
 /** Retrieve a packed NULL-terminated string
  *
@@ -43,7 +53,7 @@ extern void ph_to_be64(void *v, uint64_t u);
  * 			-EINVAL if we couldn't find a NULL before reaching the
  * 			end of the buffer.
  */
-extern int pget_str(void *v, uint32_t *off, uint32_t len,
+extern int unpack_str(void *v, uint32_t *off, uint32_t len,
 			char *out, size_t out_len);
 
 /** Create a packed NULL-terminated string
@@ -58,6 +68,6 @@ extern int pget_str(void *v, uint32_t *off, uint32_t len,
  * 			-ENAMETOOLONG if there wasn't enough memory to add
  * 			the string to the supplied buffer.
  */
-extern int pput_str(void *v, uint32_t *off, uint32_t len, char *str);
+extern int pack_str(void *v, uint32_t *off, uint32_t len, char *str);
 
 #endif

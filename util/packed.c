@@ -15,58 +15,109 @@
 #include <stdio.h>
 #include <string.h>
 
-uint8_t pbe8_to_h(void *v)
+uint8_t unpack_from_8(void *v)
 {
 	uint8_t u;
 	memcpy(&u, v, sizeof(uint8_t));
 	return u;
 }
 
-void ph_to_be8(void *v, uint8_t u)
+void pack_to_8(void *v, uint8_t u)
 {
 	memcpy(v, &u, sizeof(uint8_t));
 }
 
-uint16_t pbe16_to_h(void *v)
+/**************** pack to big-endian byte order ********************/
+uint16_t unpack_from_be16(void *v)
 {
 	uint16_t u;
 	memcpy(&u, v, sizeof(uint16_t));
 	return be16toh(u);
 }
 
-void ph_to_be16(void *v, uint16_t u)
+void pack_to_be16(void *v, uint16_t u)
 {
 	u = htobe16(u);
 	memcpy(v, &u, sizeof(uint16_t));
 }
 
-uint32_t pbe32_to_h(void *v)
+uint32_t unpack_from_be32(void *v)
 {
 	uint32_t u;
 	memcpy(&u, v, sizeof(uint32_t));
 	return be32toh(u);
 }
 
-void ph_to_be32(void *v, uint32_t u)
+void pack_to_be32(void *v, uint32_t u)
 {
 	u = htobe32(u);
 	memcpy(v, &u, sizeof(uint32_t));
 }
 
-uint64_t pbe64_to_h(void *v)
+uint64_t unpack_from_be64(void *v)
 {
 	uint64_t u;
 	memcpy(&u, v, sizeof(uint64_t));
 	return be64toh(u);
 }
 
-void ph_to_be64(void *v, uint64_t u)
+void pack_to_be64(void *v, uint64_t u)
 {
 	u = htobe64(u);
 	memcpy(v, &u, sizeof(uint64_t));
 }
 
-int pget_str(void *v, uint32_t *off, uint32_t len,
+/**************** pack to host byte order ********************/
+uint16_t unpack_from_h16(void *v)
+{
+	uint16_t u;
+	memcpy(&u, v, sizeof(uint16_t));
+	return u;
+}
+
+void pack_to_h16(void *v, uint16_t u)
+{
+	memcpy(v, &u, sizeof(uint16_t));
+}
+
+uint32_t unpack_from_h32(void *v)
+{
+	uint32_t u;
+	memcpy(&u, v, sizeof(uint32_t));
+	return u;
+}
+
+void pack_to_h32(void *v, uint32_t u)
+{
+	memcpy(v, &u, sizeof(uint32_t));
+}
+
+uint64_t unpack_from_h64(void *v)
+{
+	uint64_t u;
+	memcpy(&u, v, sizeof(uint64_t));
+	return u;
+}
+
+void pack_to_h64(void *v, uint64_t u)
+{
+	memcpy(v, &u, sizeof(uint64_t));
+}
+
+void* unpack_from_hptr(void *v)
+{
+	void *ptr;
+	memcpy(&ptr, v, sizeof(void*));
+	return ptr;
+}
+
+void pack_to_hptr(void *v, void *ptr)
+{
+	memcpy(v, ptr, sizeof(void*));
+}
+
+/**************** pack to variable-sized data ********************/
+int unpack_str(void *v, uint32_t *off, uint32_t len,
 			char *out, size_t out_len)
 {
 	size_t o, rem;
@@ -86,7 +137,7 @@ int pget_str(void *v, uint32_t *off, uint32_t len,
 	return 0;
 }
 
-int pput_str(void *v, uint32_t *off, uint32_t len, char *str)
+int pack_str(void *v, uint32_t *off, uint32_t len, char *str)
 {
 	size_t o, rem;
 	int res;
