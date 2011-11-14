@@ -22,11 +22,15 @@ struct pack_fun {
 	uint16_t b;
 	uint32_t c;
 	uint64_t d;
-}
-);
+	void *e;
+});
 
 static int test_fixed_field_functions(void)
 {
+	union {
+		uint64_t u64;
+		void *ptr;
+	} u;
 	struct pack_fun s;
 	memset(&s, 0, sizeof(s));
 	EXPECT_EQUAL(unpack_from_8(&s.a), 0);
@@ -36,12 +40,26 @@ static int test_fixed_field_functions(void)
 
 	pack_to_8(&s.a, 123);
 	EXPECT_EQUAL(unpack_from_8(&s.a), 123);
+
+	/* test big-endian packing functions */
 	pack_to_be16(&s.b, 456);
 	EXPECT_EQUAL(unpack_from_be16(&s.b), 456);
 	pack_to_be32(&s.c, 0xdeadbeef);
 	EXPECT_EQUAL(unpack_from_be32(&s.c), 0xdeadbeef);
 	pack_to_be64(&s.d, 0xdeadbeefbaddcafell);
 	EXPECT_EQUAL(unpack_from_be64(&s.d), 0xdeadbeefbaddcafell);
+
+	/* test host packing functions */
+	pack_to_h16(&s.b, 456);
+	EXPECT_EQUAL(unpack_from_h16(&s.b), 456);
+	pack_to_h32(&s.c, 0xdeadbeef);
+	EXPECT_EQUAL(unpack_from_h32(&s.c), 0xdeadbeef);
+	pack_to_h64(&s.d, 0xdeadbeefbaddcafell);
+	EXPECT_EQUAL(unpack_from_h64(&s.d), 0xdeadbeefbaddcafell);
+	u.ptr = 0;
+	u.u64 = 0x123456789abcd123llu;
+	pack_to_hptr(&s.e, u.ptr);
+	EXPECT_EQUAL(unpack_from_hptr(&s.e), u.ptr);
 
 	return 0;
 }

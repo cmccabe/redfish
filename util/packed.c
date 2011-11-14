@@ -113,7 +113,7 @@ void* unpack_from_hptr(void *v)
 
 void pack_to_hptr(void *v, void *ptr)
 {
-	memcpy(v, ptr, sizeof(void*));
+	memcpy(v, &ptr, sizeof(void*));
 }
 
 /**************** pack to variable-sized data ********************/
