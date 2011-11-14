@@ -24,17 +24,21 @@ struct redfish_thread
 	uint32_t thread_id;
 	redfish_thread_fn_t fn;
 	void *init_data;
+	void *init_data2;
 };
 
 /** Create a redfish thread
  *
  * @param rt		(out param) thread structure to be initialized
  * @param fn		function to run
+ * @param data		some data to pass to the new thread
+ * @param data2		some more data to pass to the new thread
  *
  * @return		0 on success; error code otherwise 
  */
 extern int redfish_thread_create(struct fast_log_mgr *mgr,
-		struct redfish_thread* rt, redfish_thread_fn_t fn, void *data);
+		struct redfish_thread* rt, redfish_thread_fn_t fn,
+		void *data, void *data2);
 
 /** Join a Redfish thread
  *

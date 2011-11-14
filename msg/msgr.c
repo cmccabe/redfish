@@ -924,7 +924,8 @@ void msgr_start(struct msgr *msgr, char *err, size_t err_len)
 			msgr->listen_fd, EV_WRITE | EV_READ);
 		ev_io_start(msgr->loop, &msgr->w_listen_fd);
 	}
-	ret = redfish_thread_create(msgr->fb_mgr, &msgr->rt, run_msgr, msgr);
+	ret = redfish_thread_create(msgr->fb_mgr, &msgr->rt,
+				run_msgr, msgr, NULL);
 	if (ret) {
 		snprintf(err, err_len, "msgr_start: pthread_create failed "
 			 "with error %d", ret);

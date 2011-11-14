@@ -41,7 +41,7 @@ void* redfish_thread_trampoline(void *v)
 }
 
 int redfish_thread_create(struct fast_log_mgr *mgr, struct redfish_thread* rt,
-		redfish_thread_fn_t fn, void *data)
+		redfish_thread_fn_t fn, void *data, void *data2)
 {
 	int ret;
 
@@ -51,6 +51,7 @@ int redfish_thread_create(struct fast_log_mgr *mgr, struct redfish_thread* rt,
 		return PTR_ERR(rt->fb);
 	rt->fn = fn;
 	rt->init_data = data;
+	rt->init_data2 = data2;
 	ret = pthread_create(&rt->pthread, NULL,
 			redfish_thread_trampoline, rt);
 	if (ret)
@@ -63,6 +64,10 @@ int redfish_thread_join(struct redfish_thread *rt)
 	int ret;
 	void *rval = NULL;
 
+	if (!rt->fn) {
+		/* thread was never started */
+		return 0;
+	}
 	ret = pthread_join(rt->pthread, &rval);
 	if (ret)
 		return -ret;
