@@ -6,14 +6,16 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#include "util/compiler.h"
-#include "util/test.h"
 #include "mds/str_range_lock.h"
+#include "util/compiler.h"
+#include "util/error.h"
+#include "util/test.h"
 
+#include <errno.h>
 #include <pthread.h>
-#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 static int simple_test(void)
 {
@@ -65,7 +67,7 @@ static int test2(void)
 {
 	pthread_t thread;
 	void *rv;
-	int ret, rval;
+	int ret, rval, res;
 	sem_t sem;
 	struct str_range_lock me;
 	me.start = "/foo/";
@@ -79,14 +81,14 @@ static int test2(void)
 		goto done;
 	test2_thread_got_range = 0;
 	pthread_create(&thread, NULL, test2_thread, &sem);
-	sem_wait(&sem);
+	RETRY_ON_EINTR(res, sem_wait(&sem));
 	if (test2_thread_got_range) {
 		fprintf(stderr, "error: child thread did not wait for lock!\n");
 		unlock_range(&me);
 		goto done;
 	}
 	unlock_range(&me);
-	sem_wait(&sem);
+	RETRY_ON_EINTR(res, sem_wait(&sem));
 	if (!test2_thread_got_range) {
 		fprintf(stderr, "error: child thread failed to get lock!\n");
 		goto done;

@@ -181,7 +181,7 @@ static int send_foo_tr(struct msgr* foo_msgr, uint32_t i)
 
 static int msgr_test_simple_send(int num_sends)
 {
-	int i;
+	int i, res;
 	struct msgr *foo_msgr, *bar_msgr;
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
@@ -209,7 +209,7 @@ static int msgr_test_simple_send(int num_sends)
 		EXPECT_ZERO(send_foo_tr(foo_msgr, i + 1));
 	}
 	for (i = 0; i < num_sends; ++i) {
-		sem_wait(&g_msgr_test_simple_send_sem);
+		RETRY_ON_EINTR(res, sem_wait(&g_msgr_test_simple_send_sem));
 	}
 	EXPECT_ZERO(sem_destroy(&g_msgr_test_simple_send_sem));
 

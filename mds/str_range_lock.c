@@ -7,6 +7,7 @@
  */
 
 #include "mds/str_range_lock.h"
+#include "util/error.h"
 
 #include <errno.h>
 #include <pthread.h>
@@ -36,7 +37,7 @@ int init_lock_range_subsystem(void)
 
 int lock_range(struct str_range_lock *me)
 {
-	int i, ret = 0;
+	int i, res, ret = 0;
 	pthread_spin_lock(&g_spinlock);
 	if (g_num_locks == STR_RANGE_LOCK_MAX_LOCKS) {
 		ret = -ENOLCK;
@@ -58,7 +59,7 @@ int lock_range(struct str_range_lock *me)
 		}
 		g_waiters[g_num_waiters++] = me;
 		pthread_spin_unlock(&g_spinlock);
-		sem_wait(me->sem);
+		RETRY_ON_EINTR(res, sem_wait(me->sem));
 		return 0;
 	}
 	else {

@@ -14,6 +14,7 @@
 #include "util/msleep.h"
 #include "util/test.h"
 
+#include <errno.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <signal.h>
@@ -57,8 +58,10 @@ static sem_t g_test3a_local_sem;
 
 static void* test3a(void *v)
 {
+	int res;
 	struct rsem_client *rcli = (struct rsem_client*)v;
-	sem_wait(&g_test3a_local_sem);
+
+	RETRY_ON_EINTR(res, sem_wait(&g_test3a_local_sem));
 	g_test3a_mcguffin = 1;
 	do_msleep(10);
 	rsem_post(rcli, "baz");
