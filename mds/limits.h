@@ -12,6 +12,9 @@
 /** maximum length of a path name in RedFish */
 #define RF_PATH_MAX 4096
 
+/** maximum length of a path component in RedFish */
+#define RF_PATH_COMPONENT_MAX 256
+
 /** maximum number of MDSes in a cluster */
 #define MAX_MDS 64
 
