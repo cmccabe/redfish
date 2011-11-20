@@ -9,6 +9,7 @@
 #ifndef REDFISH_MSG_GENERIC_DOT_H
 #define REDFISH_MSG_GENERIC_DOT_H
 
+#include "msg/msg.h"
 #include "util/compiler.h"
 
 #include <stdint.h>
@@ -25,14 +26,16 @@ enum {
 	MMM_NACK,
 };
 
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_netfail {
-	int32_t error;
+	struct msg base;
+	uint32_t error;
 });
 
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_nack {
-	int32_t error;
+	struct msg base;
+	uint32_t error;
 });
 
 /* stat information for a file or directory
@@ -42,8 +45,9 @@ struct mmm_nack {
  * (This exploits the fact that path_len cannot be 0 for a valid mmm_stat
  * entry.)
  */
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_stat {
+	struct msg base;
 	uint16_t path_len;
 	uint16_t mode;
 	uint32_t block_sz;
@@ -56,8 +60,9 @@ struct mmm_stat {
 	uint16_t group;
 	char path[0];
 });
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_path {
+	struct msg base;
 	uint16_t len;
 	char str[0];
 });

@@ -25,8 +25,8 @@ enum {
 	MMM_CREATE_RFILE_REQ = 3000,
 	/** Client request to open a new file */
 	MMM_OPEN_RFILE_REQ,
-	/** Chunk map sent from object storage daemon */
-	MMM_CHUNK_REPORT,
+	/** Response to a chunk examination message */
+	MMM_CHUNK_EXAM_RESP,
 	/** OSD heartbeat message */
 	MMM_OSD_HEARTBEAT,
 	/** Lookup some chunks for an open read-only file. */
@@ -36,7 +36,7 @@ enum {
 	/** Make a directory and all ancestors */
 	MMM_MKDIRS_REQ,
 	/** List all files in a directory */
-	MMM_LIST_DIRECTORY_REQ,
+	MMM_LIST_DIR_REQ,
 	/** Give stat information regarding a path */
 	MMM_STAT_REQ,
 	/** Client Change permissions request */
