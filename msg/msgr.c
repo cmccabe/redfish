@@ -137,6 +137,15 @@ struct msgr {
 };
 
 /****************************** utility ********************************/
+static uint16_t cram_into_u16(int val)
+{
+	if (val > 0xfffe)
+		return 0xfffe;
+	if (val < 0)
+		return 0xffff;
+	return val;
+}
+
 static int is_temporary_socket_error(int err)
 {
 	return ((err == EAGAIN) || (err == EWOULDBLOCK) || (err == EINTR));
@@ -235,10 +244,8 @@ static struct mconn *mconn_create(struct msgr *msgr,
 	struct sockaddr_in addr;
 
 	if (msgr->cur_conn + 1 > msgr->max_conn) {
-		uint16_t max_conn_16 = (msgr->max_conn > 0xffff) ?
-			0 : msgr->max_conn;
 		fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, port, ip, 0,
-			0, FLME_MAX_CONN_REACHED, max_conn_16);
+			0, FLME_MAX_CONN_REACHED, cram_into_u16(msgr->max_conn));
 		return ERR_PTR(ENOSPC);
 	}
 	conn = calloc(1, sizeof(struct mconn));
@@ -262,7 +269,7 @@ static struct mconn *mconn_create(struct msgr *msgr,
 		if (conn->sock < 0) {
 			fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, port, ip, 0,
 				0, FLME_DO_SOCKET_FAILED,
-				(uint16_t)-conn->sock);
+				cram_into_u16(FORCE_POSITIVE(conn->sock)));
 			mconn_teardown(conn, -conn->sock);
 			return ERR_PTR(FORCE_POSITIVE(conn->sock));
 		}
@@ -282,7 +289,8 @@ static struct mconn *mconn_create(struct msgr *msgr,
 			if (ret != EINPROGRESS) {
 				fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR,
 					port, ip, 0, 0,
-					FLME_OUTGOING_CONN_FAILED, ret);
+					FLME_OUTGOING_CONN_FAILED,
+					cram_into_u16(FORCE_POSITIVE(ret)));
 				mconn_teardown(conn, ret);
 				return ERR_PTR(FORCE_POSITIVE(ret));
 			}
@@ -798,7 +806,8 @@ static void run_msgr_listen_fd_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		if (is_temporary_socket_error(-fd))
 			return;
 		fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, 0, 0, 0,
-			0, FLME_ACCEPT_FAILED, (uint16_t)-fd);
+			0, FLME_ACCEPT_FAILED,
+			cram_into_u16(FORCE_POSITIVE(fd)));
 		goto error;
 	}
 	ip = ntohl(remote.sin_addr.s_addr);
