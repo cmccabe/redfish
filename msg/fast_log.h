@@ -14,7 +14,9 @@
 #include <stdint.h> /* for uint32_t, etc. */
 
 enum fast_log_msgr_event {
-	FLME_MTRAN_SEND_NEXT = 1,
+	FLME_MSGR_INIT = 1,
+	FLME_MSGR_SHUTDOWN,
+	FLME_MTRAN_SEND_NEXT,
 	FLME_OOM,
 	FLME_LISTENING,
 	FLME_MAX_CONN_REACHED,
@@ -23,6 +25,7 @@ enum fast_log_msgr_event {
 	FLME_OUTBOUND_CONN_CREATED,
 	FLME_CONN_ESTABLISHED,
 	FLME_OUTGOING_CONN_FAILED,
+	FLME_CONN_TIMED_OUT,
 	FLME_CONN_REUSED,
 	FLME_ACCEPT_FAILED,
 	FLME_EV_ERROR,
@@ -34,6 +37,8 @@ enum fast_log_msgr_event {
 	FLME_EXPECTED_PENDING_TRANSACTOR,
 	FLME_HDR_READ_ERROR,
 	FLME_READ_ERROR,
+	FLME_WRITE_ERROR,
+	FLME_UNEXPECTED_ERROR,
 };
 
 extern void fast_log_msgr_impl(struct fast_log_buf *fb, uint16_t ty,

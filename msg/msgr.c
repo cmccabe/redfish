@@ -452,6 +452,8 @@ static void mconn_writable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 	struct msgr *msgr = conn->msgr;
 
 	if (revents & EV_ERROR) {
+		fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, conn->port,
+			conn->ip, 0, 0, FLME_UNEXPECTED_ERROR, 1);
 		mconn_teardown(conn, ENOMEDIUM);
 		return;
 	}
@@ -505,6 +507,10 @@ static void mconn_writable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			int ret = errno;
 			if (is_temporary_socket_error(ret))
 				return;
+			fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR,
+				conn->port, conn->ip, tr->trid, tr->rem_trid,
+				FLME_WRITE_ERROR,
+				cram_into_u16(FORCE_POSITIVE(ret)));
 			mconn_teardown(conn, ret);
 			return;
 		}
@@ -540,6 +546,8 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 	uint32_t trid;
 
 	if (revents & EV_ERROR) {
+		fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, conn->port,
+			conn->ip, 0, 0, FLME_UNEXPECTED_ERROR, 2);
 		mconn_teardown(conn, ENOMEDIUM);
 		return;
 	}
@@ -889,11 +897,15 @@ static int run_msgr(struct redfish_thread *rt)
 {
 	struct msgr *msgr = (struct msgr*)rt->init_data;
 
+	fast_log_msgr(msgr, FAST_LOG_MSGR_INFO, 0,
+		0, 0, 0, FLME_MSGR_INIT, cram_into_u16(rt->thread_id));
 	if (msgr->listen_fd > 0) {
 		fast_log_msgr(msgr, FAST_LOG_MSGR_INFO, 0,
 			0, 0, 0, FLME_LISTENING, msgr->listen_port);
 	}
 	ev_loop(msgr->loop, 0);
+	fast_log_msgr(msgr, FAST_LOG_MSGR_INFO, 0,
+		0, 0, 0, FLME_MSGR_SHUTDOWN, cram_into_u16(rt->thread_id));
 	return 0;
 }
 

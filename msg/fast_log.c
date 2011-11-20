@@ -69,6 +69,14 @@ void fast_log_msgr_dump(struct fast_log_msgr_entry *fe, char *buf)
 		"[%s:%d] (%08x:%08x) ", addr_str, fe->port,
 		fe->trid, fe->rem_trid);
 	switch (fe->event) {
+	case FLME_MSGR_INIT:
+		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,
+			 "Created new messenger thread %d.\n", fe->event_data);
+		break;
+	case FLME_MSGR_SHUTDOWN:
+		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,
+			 "Shutting down messenger thread %d.\n", fe->event_data);
+		break;
 	case FLME_MTRAN_SEND_NEXT:
 		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,
 			 "mtran_send of message type %d\n", fe->event_data);
@@ -109,6 +117,17 @@ void fast_log_msgr_dump(struct fast_log_msgr_entry *fe, char *buf)
 		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,
 			"outgoing connect(2) failed: error %d\n",
 			fe->event_data);
+		break;
+	case FLME_CONN_TIMED_OUT:
+		if (fe->event_data == 0) {
+			snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,
+				"TCP connection closed after timeout.\n");
+		}
+		else {
+			snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,
+				"TCP connection timeout delievered to %d "
+				"transactors\n", fe->event_data);
+		}
 		break;
 	case FLME_CONN_REUSED:
 		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,
@@ -159,6 +178,16 @@ void fast_log_msgr_dump(struct fast_log_msgr_entry *fe, char *buf)
 	case FLME_READ_ERROR:
 		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,
 			"error reading message body: error %d\n",
+			fe->event_data);
+		break;
+	case FLME_WRITE_ERROR:
+		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,
+			"error writing message body: error %d\n",
+			fe->event_data);
+		break;
+	case FLME_UNEXPECTED_ERROR:
+		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,
+			"unexpected error at point %d\n",
 			fe->event_data);
 		break;
 	default:
