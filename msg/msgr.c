@@ -240,9 +240,7 @@ static struct mconn *mconn_create(struct msgr *msgr,
 	int ret;
 	struct mconn *conn;
 	struct sockaddr_in addr;
-	char addr_str[INET_ADDRSTRLEN];
 
-	ipv4_to_str(ip, addr_str, sizeof(addr_str));
 	if (msgr->cur_conn + 1 > msgr->max_conn) {
 		uint16_t max_conn_16 = (msgr->max_conn > 0xffff) ?
 			0 : msgr->max_conn;
@@ -501,10 +499,6 @@ static void mconn_writable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		}
 		full = sizeof(struct msg) + be32toh(tr->m->len);
 		amt = full - conn->cnt;
-		{
-			char buf[128];
-			dump_msg_hdr(tr->m, buf, sizeof(buf));
-		}
 		res = write(conn->sock, tr->m, amt);
 		if (res < 0) {
 			int ret = errno;
@@ -631,10 +625,6 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		/* fall through */
 	}
 	case MCONN_READING:
-		{
-			char buf[128];
-			dump_msg_hdr(conn->inbound_msg, buf, sizeof(buf));
-		}
 		m_len = be32toh(conn->inbound_msg->len);
 		amt = m_len - conn->cnt;
 		res = read(conn->sock, conn->inbound_msg->data, amt);
@@ -658,10 +648,6 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		conn->cnt = -1;
 		tr = conn->inbound_tr;
 		conn->inbound_tr = NULL;
-		{
-			char buf[128];
-			dump_msg_hdr(m, buf, sizeof(buf));
-		}
 		msgr->cb(conn, tr, m);
 		mconn_next_state_logic(conn);
 		return;
@@ -800,7 +786,6 @@ static void run_msgr_listen_fd_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 	struct sockaddr_in remote;
 	uint32_t ip;
 	uint16_t port;
-	char addr_str[INET_ADDRSTRLEN];
 
 	msgr = GET_OUTER(w, struct msgr, w_listen_fd);
 	if (revents & EV_ERROR) {
@@ -824,7 +809,6 @@ static void run_msgr_listen_fd_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 	}
 	ip = ntohl(remote.sin_addr.s_addr);
 	port = ntohs(remote.sin_port);
-	ipv4_to_str(ip, addr_str, sizeof(addr_str));
 	conn = mconn_find(msgr, ip, port);
 	if (conn) {
 		fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, conn->port,
