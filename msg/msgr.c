@@ -164,8 +164,10 @@ void *mtran_alloc(struct msgr *msgr)
 	return tr;
 }
 
-void mtran_free(void *tr)
+void mtran_free(struct mtran *tr)
 {
+	if (!IS_ERR(tr->m))
+		free(tr->m);
 	free(tr);
 }
 
@@ -218,19 +220,10 @@ void mtran_recv_next(struct mconn *conn, struct mtran *tr)
 }
 
 static void mtran_deliver_netfail(struct mconn *conn,
-		struct mtran *tr, int32_t err)
+		struct mtran *tr, int err)
 {
-	struct mmm_netfail *m;
-
-	m = calloc_msg(MMM_NETFAIL, sizeof(struct mmm_netfail));
-	if (!m) {
-		fast_log_msgr(conn->msgr, FAST_LOG_MSGR_ERROR,
-			tr->port, tr->ip, tr->trid,
-			tr->rem_trid, FLME_OOM, 1);
-		return;
-	}
-	m->error = htobe32(err);
-	conn->msgr->cb(conn, tr, (struct msg*)m);
+	tr->m = ERR_PTR(FORCE_POSITIVE(err));
+	conn->msgr->cb(conn, tr);
 }
 
 /****************************** mconn ********************************/
@@ -514,7 +507,7 @@ static void mconn_writable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			mconn_state_transition(conn, MCONN_QUIESCENT);
 			free(tr->m);
 			tr->m = NULL;
-			msgr->cb(conn, tr, NULL);
+			msgr->cb(conn, tr);
 			mconn_next_state_logic(conn);
 		}
 		return;
@@ -648,7 +641,8 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		conn->cnt = -1;
 		tr = conn->inbound_tr;
 		conn->inbound_tr = NULL;
-		msgr->cb(conn, tr, m);
+		tr->m = m;
+		msgr->cb(conn, tr);
 		mconn_next_state_logic(conn);
 		return;
 	default:

@@ -50,7 +50,7 @@ struct foo_tran {
 
 static sem_t g_msgr_test_simple_send_sem;
 
-void foo_cb(struct mconn *conn, struct mtran *tr, struct msg *m)
+void foo_cb(struct mconn *conn, struct mtran *tr)
 {
 	struct mmm_test2 *mm;
 	struct foo_tran *ft = (struct foo_tran*)tr;
@@ -58,45 +58,52 @@ void foo_cb(struct mconn *conn, struct mtran *tr, struct msg *m)
 	uint32_t i;
 
 	//fprintf(stderr, "invoking tr %p\n", tr);
-	if (!m) {
+	if (tr->m == NULL) {
 		mtran_recv_next(conn, tr);
 		return;
 	}
-	ty = be16toh(m->ty);
+	else if (IS_ERR(tr->m)) {
+		fprintf(stderr, "foo_cb: send error %d\n", PTR_ERR(tr->m));
+		goto done;
+	}
+	ty = be16toh(tr->m->ty);
 	if (ty != MMM_TEST2) {
 		fprintf(stderr, "foo_cb: expected type %d, got type %d\n",
 			MMM_TEST2, ty);
 		goto done;
 	}
-	mm = (struct mmm_test2*)m;
+	mm = (struct mmm_test2*)tr->m;
 	i = be32toh(mm->i);
 	if (i != (ft->i + 1)) {
 		fprintf(stderr, "foo_cb: expected i=%d, got i=%d\n",
 			ft->i + 1, i);
 		goto done;
 	}
-	//fprintf(stderr, "freeing tr %p\n", tr);
+done:
 	sem_post(&g_msgr_test_simple_send_sem);
 	mtran_free(tr);
-done:
-	free(m);
 }
 
 struct bar_tran {
 	struct mtran base;
 };
 
-void bar_cb(struct mconn *conn, struct mtran *tr, struct msg *msg)
+void bar_cb(struct mconn *conn, struct mtran *tr)
 {
 	struct mmm_test1 *m;
 	struct mmm_test2 *mout;
 	uint32_t i;
 	uint16_t ty;
-	if (!msg) {
+	if (tr->m == NULL) {
 		mtran_free(tr);
 		return;
 	}
-	m = (struct mmm_test1*)msg;
+	else if (IS_ERR(tr->m)) {
+		fprintf(stderr, "bar_cb: send error %d\n", PTR_ERR(tr->m));
+		mtran_free(tr);
+		return;
+	}
+	m = (struct mmm_test1*)tr->m;
 	ty = be16toh(m->base.ty);
 	if (ty != MMM_TEST1) {
 		fprintf(stderr, "bar_cb: expected type %d, got type %d\n",

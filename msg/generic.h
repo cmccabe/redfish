@@ -18,19 +18,11 @@
 /* Network messages that can be sent to anyone */
 
 enum {
-	/** There was a network communication problem */
-	MMM_NETFAIL = 1000,
 	/** Acknowledge request */
-	MMM_ACK,
+	MMM_ACK = 1000,
 	/** Deny request */
 	MMM_NACK,
 };
-
-PACKED(
-struct mmm_netfail {
-	struct msg base;
-	uint32_t error;
-});
 
 PACKED(
 struct mmm_nack {

@@ -38,27 +38,29 @@ struct mtran;
  * overhead of the 3-way handshake and other things. So we open a connection
  * (mconn) to service one transactor, we will keep it open and potentially use
  * it for other transactors. The messenger handles all these details behind the
- * scenes. If there is a network problem, the messenger will send your
- * transactor a message of type MMM_NETFAIL with an error code.
+ * scenes. If there is a network problem, the messenger will invoke the callback
+ * with an error pointer set to the errno code.
  */
 
 
 /** Transactor callback. This is called whenever a message is sent or received
  * by the messenger.
  *
- * Receive event: 'm' will be the message that was just received. The message
+ * Receive event: 'tr->m' will be the message that was just received. The message
  * was allocated with malloc and you are responsible for freeing it.
  * Call mtran_send_next if you want to send a reply to what you heard.
  *
- * Send event: 'm' will be NULL.
+ * Send success event: 'tr->m' will be NULL.
  * Call mtran_recv_next if you want to listen for a reply to what you sent.
+ *
+ * Send failure event: 'tr->m' will be an error ptr containing the errno failure
+ * code.  See util/error.h for details about error pointers.
  *
  * If you don't call mtran_*_next, the messenger doesn't have anything more to
  * do with your tranactor. You should probably either free it with mtran_free,
  * or pass it to some other subsystem that cares about it.
  */
-typedef void (*msgr_cb_t)(struct mconn *conn, struct mtran *tr,
-			struct msg *m);
+typedef void (*msgr_cb_t)(struct mconn *conn, struct mtran *tr);
 
 /** Initialize the messenger.
  *
@@ -120,7 +122,7 @@ extern void *mtran_alloc(struct msgr* msgr);
  *
  * @param tr		The messenger transactor to free
  */
-extern void mtran_free(void *tr);
+extern void mtran_free(struct mtran *tr);
 
 /** Queue a message for sending
  *
