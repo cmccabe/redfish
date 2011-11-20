@@ -20,13 +20,13 @@ enum {
 	MMM_PUT_CHUNK_REQ,
 };
 
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_fetch_chunk_req {
 	uint64_t chunk_id;
 	uint32_t start;
 	uint32_t len;
 });
-PACKED_ALIGNED(8,
+PACKED(
 struct mmm_put_chunk_req {
 	uint64_t chunk_id;
 	uint32_t len;

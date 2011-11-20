@@ -17,7 +17,7 @@
 #include <unistd.h> /* for size_t */
 
 /** Represents a message sent or received over the network */
-PACKED_ALIGNED(8,
+PACKED(
 struct msg {
 	uint32_t trid;
 	uint32_t rem_trid;

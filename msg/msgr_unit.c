@@ -11,6 +11,7 @@
 #include "msg/msgr.h"
 #include "util/compiler.h"
 #include "util/macro.h"
+#include "util/packed.h"
 #include "util/test.h"
 
 #include <arpa/inet.h>
@@ -29,13 +30,13 @@ enum {
 	MMM_TEST2,
 };
 
-PACKED_ALIGNED(4,
+PACKED(
 struct mmm_test1 {
 	struct msg base;
 	uint32_t i;
 });
 
-PACKED_ALIGNED(4,
+PACKED(
 struct mmm_test2 {
 	struct msg base;
 	uint32_t i;
@@ -66,14 +67,14 @@ void foo_cb(struct mconn *conn, struct mtran *tr)
 		fprintf(stderr, "foo_cb: send error %d\n", PTR_ERR(tr->m));
 		goto done;
 	}
-	ty = be16toh(tr->m->ty);
+	ty = unpack_from_be16(&tr->m->ty);
 	if (ty != MMM_TEST2) {
 		fprintf(stderr, "foo_cb: expected type %d, got type %d\n",
 			MMM_TEST2, ty);
 		goto done;
 	}
 	mm = (struct mmm_test2*)tr->m;
-	i = be32toh(mm->i);
+	i = unpack_from_be32(&mm->i);
 	if (i != (ft->i + 1)) {
 		fprintf(stderr, "foo_cb: expected i=%d, got i=%d\n",
 			ft->i + 1, i);
@@ -104,7 +105,7 @@ void bar_cb(struct mconn *conn, struct mtran *tr)
 		return;
 	}
 	m = (struct mmm_test1*)tr->m;
-	ty = be16toh(m->base.ty);
+	ty = unpack_from_be16(&m->base.ty);
 	if (ty != MMM_TEST1) {
 		fprintf(stderr, "bar_cb: expected type %d, got type %d\n",
 			MMM_TEST1, ty);
@@ -112,13 +113,13 @@ void bar_cb(struct mconn *conn, struct mtran *tr)
 	}
 //	fprintf(stderr, "%02x %02x %02x %02x\n", m->base.data[0],
 //		m->base.data[1], m->base.data[2], m->base.data[3]);
-	i = be32toh(m->i);
+	i = unpack_from_be32(&m->i);
 	mout = calloc_msg(MMM_TEST2, sizeof(struct mmm_test2));
 	if (!mout) {
 		fprintf(stderr, "bar_cb: oom\n");
 		goto done;
 	}
-	mout->i = htobe32(i + 1);
+	pack_to_be32(&mout->i, i + 1);
 	mtran_send_next(conn, tr, (struct msg*)mout);
 
 done:
@@ -179,7 +180,7 @@ static int send_foo_tr(struct msgr* foo_msgr, uint32_t i)
 	mout = calloc_msg(MMM_TEST1, sizeof(struct mmm_test1));
 	if (!mout)
 		return -ENOMEM;
-	mout->i = htobe32(i);
+	pack_to_be32(&mout->i, i);
 	tr->i = i;
 	mtran_send(foo_msgr, (struct mtran*)tr, g_localhost,
 		MSGR_UNIT_PORT, (struct msg*)mout);
