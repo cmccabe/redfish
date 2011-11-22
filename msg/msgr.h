@@ -64,23 +64,28 @@ typedef void (*msgr_cb_t)(struct mconn *conn, struct mtran *tr);
 
 /** Initialize the messenger.
  *
- * @param err		(out param) error buffer
- * @param err_len	length of err
- * @param max_conn	Maximum number of connections to allow.
- * @param max_tran	Maximum number of simultaneous transactions to allow
- * @param tran_sz	Size to use when allocating mtran objects. Should be
- *			 at least sizeof(struct mtran), but it may be much
- *			 more if you want to store your own state in the
- *			 transactor structure.
- * @param cb		Callback to invoke when a complete message is sent or
- *			 received.
- * @param mgr		Fast log manager to use for fast logs
+ * @param err			(out param) error buffer
+ * @param err_len		length of err
+ * @param max_conn		Maximum number of connections to allow.
+ * @param max_tran		Maximum number of simultaneous transactors to
+ *				allow
+ * @param tran_sz		Size to use when allocating mtran objects.
+ *				Should be at least sizeof(struct mtran), but
+ *				it may be much more if you want to store your
+ *				own state in the transactor structure.
+ * @param cb			Callback to invoke when a complete message is
+ *				sent or received.
+ * @param timeout_period	Timeout period in seconds
+ * @param timeout_cnt_max	Number of timeout periods to allow to expire
+ *				before timing out a connection or transactor.
+ * @param mgr			Fast log manager to use for fast logs
  *
- * @return		the messenger on success; NULL otherwise
+ * @return			the messenger on success; NULL otherwise
  */
 extern struct msgr *msgr_init(char *err, size_t err_len,
 		int max_conn, int max_tran, size_t tran_sz,
-		msgr_cb_t cb, struct fast_log_mgr *mgr);
+		msgr_cb_t cb, int timeout_period, int timeout_cnt_max,
+		struct fast_log_mgr *mgr);
 
 /** Configure the messenger to listen on a given TCP port.
  *

@@ -185,11 +185,6 @@ void fast_log_msgr_dump(struct fast_log_msgr_entry *fe, char *buf)
 			"error writing message body: error %d\n",
 			fe->event_data);
 		break;
-	case FLME_UNEXPECTED_ERROR:
-		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,
-			"unexpected error at point %d\n",
-			fe->event_data);
-		break;
 	default:
 		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,
 			 "(unknown event %d\n)", fe->event);

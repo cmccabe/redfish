@@ -65,22 +65,21 @@ void foo_cb(struct mconn *conn, struct mtran *tr)
 	}
 	else if (IS_ERR(tr->m)) {
 		fprintf(stderr, "foo_cb: send error %d\n", PTR_ERR(tr->m));
-		goto done;
+		abort();
 	}
 	ty = unpack_from_be16(&tr->m->ty);
 	if (ty != MMM_TEST2) {
 		fprintf(stderr, "foo_cb: expected type %d, got type %d\n",
 			MMM_TEST2, ty);
-		goto done;
+		abort();
 	}
 	mm = (struct mmm_test2*)tr->m;
 	i = unpack_from_be32(&mm->i);
 	if (i != (ft->i + 1)) {
 		fprintf(stderr, "foo_cb: expected i=%d, got i=%d\n",
 			ft->i + 1, i);
-		goto done;
+		abort();
 	}
-done:
 	sem_post(&g_msgr_test_simple_send_sem);
 	mtran_free(tr);
 }
@@ -102,14 +101,14 @@ void bar_cb(struct mconn *conn, struct mtran *tr)
 	else if (IS_ERR(tr->m)) {
 		fprintf(stderr, "bar_cb: send error %d\n", PTR_ERR(tr->m));
 		mtran_free(tr);
-		return;
+		abort();
 	}
 	m = (struct mmm_test1*)tr->m;
 	ty = unpack_from_be16(&m->base.ty);
 	if (ty != MMM_TEST1) {
 		fprintf(stderr, "bar_cb: expected type %d, got type %d\n",
 			MMM_TEST1, ty);
-		goto done;
+		abort();
 	}
 //	fprintf(stderr, "%02x %02x %02x %02x\n", m->base.data[0],
 //		m->base.data[1], m->base.data[2], m->base.data[3]);
@@ -117,12 +116,10 @@ void bar_cb(struct mconn *conn, struct mtran *tr)
 	mout = calloc_msg(MMM_TEST2, sizeof(struct mmm_test2));
 	if (!mout) {
 		fprintf(stderr, "bar_cb: oom\n");
-		goto done;
+		abort();
 	}
 	pack_to_be32(&mout->i, i + 1);
 	mtran_send_next(conn, tr, (struct msg*)mout);
-
-done:
 	free(m);
 }
 
@@ -146,11 +143,11 @@ static int msgr_test_init_shutdown(int start)
 	size_t err_len = sizeof(err);
 
 	foo_msgr = msgr_init(err, err_len, 10, 10, sizeof(struct foo_tran),
-			foo_cb, g_fast_log_mgr);
+			foo_cb, 60, 5, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
 	bar_msgr = msgr_init(err, err_len, 10, 10, sizeof(struct bar_tran),
-			bar_cb, g_fast_log_mgr);
+			bar_cb, 60, 5, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
 	if (start) {
@@ -197,11 +194,11 @@ static int msgr_test_simple_send(int num_sends)
 	EXPECT_ZERO(sem_init(&g_msgr_test_simple_send_sem, 0, 0));
 
 	foo_msgr = msgr_init(err, err_len, 10, 10, sizeof(struct foo_tran),
-				foo_cb, g_fast_log_mgr);
+				foo_cb, 60, 5, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
 	bar_msgr = msgr_init(err, err_len, 10, 10, sizeof(struct bar_tran),
-				bar_cb, g_fast_log_mgr);
+				bar_cb, 60, 5, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
 	msgr_listen(bar_msgr, MSGR_UNIT_PORT, err, err_len);
@@ -230,6 +227,67 @@ handle_error:
 	return 1;
 }
 
+static sem_t g_msgr_test_conn_timeout_sem;
+
+void baz_cb(struct mconn *conn, struct mtran *tr)
+{
+	//fprintf(stderr, "invoking tr %p\n", tr);
+	if (tr->m == NULL) {
+		mtran_recv_next(conn, tr);
+		return;
+	}
+	else if (IS_ERR(tr->m)) {
+		if (PTR_ERR(tr->m) == ETIMEDOUT) {
+			mtran_free(tr);
+			sem_post(&g_msgr_test_conn_timeout_sem);
+			return;
+		}
+		fprintf(stderr, "baz_cb: unexpected send error %d\n",
+				PTR_ERR(tr->m));
+		abort();
+	}
+	mtran_free(tr);
+}
+
+static int msgr_test_conn_timeout(void)
+{
+	int res;
+	struct msgr *baz1_msgr, *baz2_msgr;
+	char err[512] = { 0 };
+	size_t err_len = sizeof(err);
+
+	EXPECT_ZERO(sem_init(&g_msgr_test_conn_timeout_sem, 0, 0));
+
+	baz1_msgr = msgr_init(err, err_len, 10, 10, sizeof(struct foo_tran),
+				baz_cb, 1, 1, g_fast_log_mgr);
+	if (err[0])
+		goto handle_error;
+	baz2_msgr = msgr_init(err, err_len, 10, 10, sizeof(struct foo_tran),
+				baz_cb, 1, 1, g_fast_log_mgr);
+	if (err[0])
+		goto handle_error;
+	msgr_listen(baz2_msgr, MSGR_UNIT_PORT, err, err_len);
+	if (err[0])
+		goto handle_error;
+	msgr_start(baz1_msgr, err, err_len);
+	if (err[0])
+		goto handle_error;
+	msgr_start(baz2_msgr, err, err_len);
+	if (err[0])
+		goto handle_error;
+	EXPECT_ZERO(send_foo_tr(baz1_msgr, 101));
+	RETRY_ON_EINTR(res, sem_wait(&g_msgr_test_conn_timeout_sem));
+	EXPECT_ZERO(sem_destroy(&g_msgr_test_conn_timeout_sem));
+
+	msgr_shutdown(baz1_msgr);
+	msgr_shutdown(baz2_msgr);
+	return 0;
+
+handle_error:
+	fprintf(stderr, "msgr_test_conn_timeout: got error %s\n", err);
+	return 1;
+}
+
 int main(POSSIBLY_UNUSED(int argc), char **argv)
 {
 	EXPECT_ZERO(utility_ctx_init(argv[0]));
@@ -238,6 +296,7 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 	EXPECT_ZERO(msgr_test_init_shutdown(1));
 	EXPECT_ZERO(msgr_test_simple_send(1));
 	EXPECT_ZERO(msgr_test_simple_send(100));
+	EXPECT_ZERO(msgr_test_conn_timeout());
 	process_ctx_shutdown();
 
 	return EXIT_SUCCESS;

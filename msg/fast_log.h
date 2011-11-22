@@ -38,7 +38,6 @@ enum fast_log_msgr_event {
 	FLME_HDR_READ_ERROR,
 	FLME_READ_ERROR,
 	FLME_WRITE_ERROR,
-	FLME_UNEXPECTED_ERROR,
 };
 
 extern void fast_log_msgr_impl(struct fast_log_buf *fb, uint16_t ty,

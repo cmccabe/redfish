@@ -37,6 +37,8 @@ static void mconn_writable_cb(struct ev_loop *loop, struct ev_io *w,
 		int revents);
 static void mconn_readable_cb(struct ev_loop *loop, struct ev_io *w,
 		int revents);
+static void run_msgr_timeout_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
+               struct ev_timer *w, int revents);
 static void run_msgr_notify_cb(struct ev_loop *loop, struct ev_async *w,
 		int revents);
 static void mconn_next_state_logic(struct mconn *conn);
@@ -84,6 +86,8 @@ struct mconn {
 	struct active_tr active_head;
 	/** Pending transactions */
 	struct pending_tr pending_head;
+	/** Number of timeout periods that have passed without any TCP traffic */
+	int timeout_cnt;
 };
 
 enum msgr_state_t {
@@ -130,10 +134,17 @@ struct msgr {
 	/** Async watcher. Lets us know that another thread asked us to shut
 	 * down or send a message. */
 	struct ev_async w_notify;
+	/** event watcher for connection timeout */
+	struct ev_timer w_timeout;
 	/** Pending transactions not yet assigned to a connection */
 	struct pending_tr pending_tr_head;
 	/** Fast log buffer manager */
 	struct fast_log_mgr *fb_mgr;
+	/** Timeout period length, in seconds */
+	int timeout_period;
+	/** Maximum number of timeout periods to wait for before timing out a
+	 * connection or transactor */
+	int timeout_cnt_max;
 };
 
 /****************************** utility ********************************/
@@ -323,7 +334,7 @@ static struct mconn* mconn_find(struct msgr* msgr, uint32_t ip, uint16_t port)
  */
 static void mconn_teardown(struct mconn *conn, int failcode)
 {
-	int res;
+	int res, num_failed;
 	struct msgr *msgr = conn->msgr;
 	struct mtran *tr, *tr_tmp;
 
@@ -341,17 +352,26 @@ static void mconn_teardown(struct mconn *conn, int failcode)
 		RETRY_ON_EINTR(res, close(conn->sock));
 	}
 	/* Deliver a failure message to all pending transactors */
+	num_failed = 0;
 	while (1) {
 		tr = STAILQ_FIRST(&conn->pending_head);
 		if (!tr)
 			break;
 		STAILQ_REMOVE_HEAD(&conn->pending_head, u.pending_entry);
 		mtran_deliver_netfail(conn, tr, failcode);
+		++num_failed;
 	}
 	/* Deliver a failure message to all active transactors */
 	RB_FOREACH_SAFE(tr, active_tr, &conn->active_head, tr_tmp) {
 		RB_REMOVE(active_tr, &conn->active_head, tr);
 		mtran_deliver_netfail(conn, tr, failcode);
+		++num_failed;
+	}
+	if (failcode == ETIMEDOUT) {
+		int severity = (num_failed == 0) ?
+			FAST_LOG_MSGR_INFO : FAST_LOG_MSGR_ERROR;
+		fast_log_msgr(msgr, severity, conn->port, conn->ip, 0, 0,
+			FLME_CONN_TIMED_OUT, cram_into_u16(num_failed));
 	}
 	free(conn);
 }
@@ -453,12 +473,13 @@ static void mconn_writable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 
 	if (revents & EV_ERROR) {
 		fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, conn->port,
-			conn->ip, 0, 0, FLME_UNEXPECTED_ERROR, 1);
+			conn->ip, 0, 0, FLME_EV_ERROR, 1);
 		mconn_teardown(conn, ENOMEDIUM);
 		return;
 	}
 	if (!(revents & EV_WRITE))
 		return;
+	conn->timeout_cnt = 0; /* register some activity */
 	switch (conn->state) {
 	case MCONN_CONNECTING: {
 		int val = 0, ret;
@@ -547,12 +568,13 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 
 	if (revents & EV_ERROR) {
 		fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, conn->port,
-			conn->ip, 0, 0, FLME_UNEXPECTED_ERROR, 2);
+			conn->ip, 0, 0, FLME_EV_ERROR, 2);
 		mconn_teardown(conn, ENOMEDIUM);
 		return;
 	}
 	if (!(revents & EV_READ))
 		return;
+	conn->timeout_cnt = 0; /* register some activity */
 	switch (conn->state) {
 	case MCONN_QUIESCENT:
 	case MCONN_AWAITING_HDR:
@@ -671,6 +693,7 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 /****************************** msgr ********************************/
 struct msgr *msgr_init(char *err, size_t err_len,
 		int max_conn, int max_tran, size_t tran_sz, msgr_cb_t cb,
+		int timeout_period, int timeout_cnt_max,
 		struct fast_log_mgr *fb_mgr)
 {
 	struct msgr *msgr;
@@ -697,10 +720,14 @@ struct msgr *msgr_init(char *err, size_t err_len,
 	msgr->max_tran = max_tran;
 	msgr->cur_conn = 0;
 	msgr->max_conn = max_conn;
+	msgr->timeout_period = timeout_period;
+	msgr->timeout_cnt_max = timeout_cnt_max;
 	RB_INIT(&msgr->conn_head);
 	ev_init(&msgr->w_listen_fd, NULL);
 	STAILQ_INIT(&msgr->pending_tr_head);
 	ev_async_init(&msgr->w_notify, run_msgr_notify_cb);
+	ev_timer_init(&msgr->w_timeout, run_msgr_timeout_cb,
+		msgr->timeout_period, msgr->timeout_period);
 	msgr->loop = ev_loop_new(0);
 	if (!msgr->loop) {
 		snprintf(err, err_len, "init_msgr: ev_loop_new failed.");
@@ -708,6 +735,7 @@ struct msgr *msgr_init(char *err, size_t err_len,
 		return NULL;
 	}
 	ev_async_start(msgr->loop, &msgr->w_notify);
+	ev_timer_start(msgr->loop, &msgr->w_timeout);
 	msgr->fb_mgr = fb_mgr;
 	return msgr;
 }
@@ -734,6 +762,7 @@ void msgr_shutdown(struct msgr *msgr)
 	pthread_spin_destroy(&msgr->lock);
 	ev_io_stop(msgr->loop, &msgr->w_listen_fd);
 	ev_async_stop(msgr->loop, &msgr->w_notify);
+	ev_timer_stop(msgr->loop, &msgr->w_timeout);
 	ev_loop_destroy(msgr->loop);
 	if (msgr->listen_fd > 0)
 		RETRY_ON_EINTR(res, close(msgr->listen_fd));
@@ -787,6 +816,25 @@ void msgr_listen(struct msgr *msgr, uint16_t port, char *err, size_t err_len)
 	msgr->listen_port = port;
 }
 
+static void run_msgr_timeout_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
+               struct ev_timer *w, int revents)
+{
+	struct msgr *msgr = GET_OUTER(w, struct msgr, w_timeout);
+	struct mconn *conn, *conn_tmp;
+	int timeout_cnt_max = msgr->timeout_cnt_max;
+
+	if (revents & EV_ERROR) {
+		fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, 0, 0, 0,
+			0, FLME_EV_ERROR, 3);
+		return;
+	}
+	RB_FOREACH_SAFE(conn, msgr_conn, &msgr->conn_head, conn_tmp) {
+		conn->timeout_cnt++;
+		if (conn->timeout_cnt >= timeout_cnt_max)
+			mconn_teardown(conn, ETIMEDOUT);
+	}
+}
+
 static void run_msgr_listen_fd_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		struct ev_io *w, int revents)
 {
@@ -800,7 +848,7 @@ static void run_msgr_listen_fd_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 	msgr = GET_OUTER(w, struct msgr, w_listen_fd);
 	if (revents & EV_ERROR) {
 		fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, 0, 0, 0,
-			0, FLME_EV_ERROR, 0);
+			0, FLME_EV_ERROR, 4);
 		return;
 	}
 	if (!(revents & EV_READ)) {
