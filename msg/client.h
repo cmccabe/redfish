@@ -17,10 +17,10 @@
 /* Network messages that can be sent to the client */
 
 enum {
-	/** A new partition ID for the client.  The MDS will send this in
+	/** A new chunk ID for the client.  The MDS will send this in
 	 * response to a 'create file' request, and also if the client requests
-	 * a new partition ID for a file. */
-	MMM_NEW_PARTITION = 2000,
+	 * a new chunk ID for a file. */
+	MMM_NEW_CHUNK = 2000,
 	/** MDS response to an 'open file' request */
 	MMM_OPEN_RFILE_RESP,
 	/** MDS response to a 'list directory' or 'list entries' request */
@@ -31,11 +31,11 @@ enum {
 
 /* Create file */
 PACKED(
-struct mmm_new_partition{
+struct mmm_new_chunk {
 	struct msg base;
 	uint64_t prid;
-	uint32_t part_ip;
-	uint16_t part_port;
+	uint32_t chunk_ip;
+	uint16_t chunk_port;
 });
 PACKED(
 struct mmm_open_rfile_resp {
