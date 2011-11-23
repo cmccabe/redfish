@@ -521,7 +521,7 @@ static void mconn_writable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			mconn_next_state_logic(conn);
 			return;
 		}
-		full = sizeof(struct msg) + be32toh(tr->m->len);
+		full = be32toh(tr->m->len);
 		amt = full - conn->cnt;
 		res = write(conn->sock, tr->m, amt);
 		if (res < 0) {
@@ -559,7 +559,8 @@ static void mconn_writable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		struct ev_io *w, int revents)
 {
-	int amt, res, m_len;
+	int amt, res;
+	uint32_t m_len;
 	struct msg *m;
 	struct mconn *conn = GET_OUTER(w, struct mconn, w_read);
 	struct msgr *msgr = conn->msgr;
@@ -606,7 +607,13 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			return;
 		}
 		m_len = be32toh(conn->inbound_msg->len);
-		m = realloc(conn->inbound_msg, sizeof(struct msg) + m_len);
+		if (m_len < sizeof(struct msg)) {
+			fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, conn->port,
+				conn->ip, 0, 0, FLME_HDR_READ_ERROR, ENODATA);
+			mconn_teardown(conn, ENAMETOOLONG);
+			return;
+		}
+		m = realloc(conn->inbound_msg, m_len);
 		if (!m) {
 			fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, conn->port,
 				conn->ip, 0, 0, FLME_OOM, 3);
@@ -614,7 +621,6 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			return;
 		}
 		conn->inbound_msg = m;
-		conn->cnt = 0;
 		trid = be32toh(conn->inbound_msg->trid);
 		if (trid == 0) {
 			/* A trid of 0 means that no transactor has been allocated
@@ -669,7 +675,7 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			return;
 		}
 		conn->cnt += res;
-		if (conn->cnt != m_len) {
+		if (conn->cnt != (int)m_len) {
 			return;
 		}
 		RB_REMOVE(active_tr, &conn->active_head, conn->inbound_tr);

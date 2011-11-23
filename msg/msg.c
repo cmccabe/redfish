@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 void *calloc_msg(uint32_t ty, uint32_t len)
 {
@@ -23,10 +24,20 @@ void *calloc_msg(uint32_t ty, uint32_t len)
 	m = calloc(1, len);
 	if (!m)
 		return NULL;
-	len -= sizeof(struct msg);
 	pack_to_be32(&m->len, len);
 	pack_to_be16(&m->ty, ty);
 	return m;
+}
+
+struct msg *copy_msg(const struct msg *m)
+{
+	struct msg *m2;
+	uint32_t len;
+
+	len = unpack_from_be32(&m->len);
+	m2 = malloc(len);
+	memcpy(m2, m, len);
+	return m2;
 }
 
 struct msg *calloc_nack_msg(uint32_t error)

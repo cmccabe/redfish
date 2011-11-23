@@ -50,6 +50,8 @@ struct mtran {
 
 extern void *calloc_msg(uint32_t ty, uint32_t len);
 
+extern struct msg *copy_msg(const struct msg *m);
+
 extern void dump_msg_hdr(struct msg *msg, char *buf, size_t buf_len);
 
 /** A typecast that returns NULL if the message is not long enough
@@ -57,6 +59,6 @@ extern void dump_msg_hdr(struct msg *msg, char *buf, size_t buf_len);
  * This only validates that we can access the fixed-offset fields, of course.
  */
 #define MSG_TYPECAST(m, ty) \
-	(struct ty*)((pbe32_to_h(m->len) < sizeof(struct ty)) ? NULL : m)
+	(struct ty*)((unpack_be32(m->len) < sizeof(struct ty)) ? NULL : m)
 
 #endif
