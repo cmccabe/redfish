@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 
-uint8_t unpack_from_8(void *v)
+uint8_t unpack_from_8(const void *v)
 {
 	uint8_t u;
 	memcpy(&u, v, sizeof(uint8_t));
@@ -28,7 +28,7 @@ void pack_to_8(void *v, uint8_t u)
 }
 
 /**************** pack to big-endian byte order ********************/
-uint16_t unpack_from_be16(void *v)
+uint16_t unpack_from_be16(const void *v)
 {
 	uint16_t u;
 	memcpy(&u, v, sizeof(uint16_t));
@@ -41,7 +41,7 @@ void pack_to_be16(void *v, uint16_t u)
 	memcpy(v, &u, sizeof(uint16_t));
 }
 
-uint32_t unpack_from_be32(void *v)
+uint32_t unpack_from_be32(const void *v)
 {
 	uint32_t u;
 	memcpy(&u, v, sizeof(uint32_t));
@@ -54,7 +54,7 @@ void pack_to_be32(void *v, uint32_t u)
 	memcpy(v, &u, sizeof(uint32_t));
 }
 
-uint64_t unpack_from_be64(void *v)
+uint64_t unpack_from_be64(const void *v)
 {
 	uint64_t u;
 	memcpy(&u, v, sizeof(uint64_t));
@@ -68,7 +68,7 @@ void pack_to_be64(void *v, uint64_t u)
 }
 
 /**************** pack to host byte order ********************/
-uint16_t unpack_from_h16(void *v)
+uint16_t unpack_from_h16(const void *v)
 {
 	uint16_t u;
 	memcpy(&u, v, sizeof(uint16_t));
@@ -80,7 +80,7 @@ void pack_to_h16(void *v, uint16_t u)
 	memcpy(v, &u, sizeof(uint16_t));
 }
 
-uint32_t unpack_from_h32(void *v)
+uint32_t unpack_from_h32(const void *v)
 {
 	uint32_t u;
 	memcpy(&u, v, sizeof(uint32_t));
@@ -92,7 +92,7 @@ void pack_to_h32(void *v, uint32_t u)
 	memcpy(v, &u, sizeof(uint32_t));
 }
 
-uint64_t unpack_from_h64(void *v)
+uint64_t unpack_from_h64(const void *v)
 {
 	uint64_t u;
 	memcpy(&u, v, sizeof(uint64_t));
@@ -104,7 +104,7 @@ void pack_to_h64(void *v, uint64_t u)
 	memcpy(v, &u, sizeof(uint64_t));
 }
 
-void* unpack_from_hptr(void *v)
+void* unpack_from_hptr(const void *v)
 {
 	void *ptr;
 	memcpy(&ptr, v, sizeof(void*));
@@ -117,7 +117,7 @@ void pack_to_hptr(void *v, void *ptr)
 }
 
 /**************** pack to variable-sized data ********************/
-int unpack_str(void *v, uint32_t *off, uint32_t len,
+int unpack_str(const void *v, uint32_t *off, uint32_t len,
 			char *out, size_t out_len)
 {
 	size_t o, rem;
