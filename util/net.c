@@ -7,7 +7,6 @@
  */
 
 #include "util/net.h"
-#include "core/glitch_log.h"
 #include "jorm/json.h"
 #include "util/error.h"
 #include "util/platform/socket.h"
@@ -23,7 +22,8 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-int blocking_read_json_req(const char *fn, int fd, struct json_object **jo)
+int blocking_read_json_req(POSSIBLY_UNUSED(const char *fn),
+			int fd, struct json_object **jo)
 {
 	char err[128] = { 0 };
 	struct json_object *zjo;
@@ -33,8 +33,8 @@ int blocking_read_json_req(const char *fn, int fd, struct json_object **jo)
 
 	res = safe_read(fd, &len, sizeof(uint32_t));
 	if (res != sizeof(uint32_t)) {
-		glitch_log("%s: error reading JSON length: error %Zd\n",
-			   fn, res);
+//		glitch_log("%s: error reading JSON length: error %Zd\n",
+//			   fn, res);
 		return -EIO;
 	}
 	len = ntohl(len);
@@ -42,7 +42,7 @@ int blocking_read_json_req(const char *fn, int fd, struct json_object **jo)
 	if (!b)
 		return -ENOMEM;
 	if ((uint32_t)safe_read(fd, b, len) != len) {
-		glitch_log("%s: short read of msg body\n", fn);
+		//glitch_log("%s: short read of msg body\n", fn);
 		free(b);
 		return -EIO;
 	}
@@ -50,25 +50,26 @@ int blocking_read_json_req(const char *fn, int fd, struct json_object **jo)
 	zjo = parse_json_string(b, err, sizeof(err));
 	free(b);
 	if (err[0]) {
-		glitch_log("%s: invalid JSON: %s\n", fn, err);
+		//glitch_log("%s: invalid JSON: %s\n", fn, err);
 		return -EINVAL;
 	}
 	*jo = zjo;
 	return 0;
 }
 
-int blocking_write_json_req(const char *fn, int fd, struct json_object *jo)
+int blocking_write_json_req(POSSIBLY_UNUSED(const char *fn),
+		int fd, struct json_object *jo)
 {
 	const char *buf = json_object_to_json_string(jo);
 	uint32_t b_len = strlen(buf);
 	uint32_t n_len = htonl(b_len);
 
 	if (safe_write(fd, &n_len, sizeof(uint32_t))) {
-		glitch_log("%s: short write of len\n", fn);
+		//glitch_log("%s: short write of len\n", fn);
 		return -EIO;
 	}
 	if (safe_write(fd, buf, b_len)) {
-		glitch_log("%s: short write of msg body\n", fn);
+		//glitch_log("%s: short write of msg body\n", fn);
 		return -EIO;
 	}
 	return 0;
@@ -112,14 +113,14 @@ error:
 	return -1;
 }
 
-int write_u32(const char *fn, int fd, uint32_t u)
+int write_u32(POSSIBLY_UNUSED(const char *fn), int fd, uint32_t u)
 {
 	int ret;
 	uint32_t eu = htonl(u);
 
 	ret = safe_write(fd, &eu, sizeof(uint32_t));
 	if (ret) {
-		glitch_log("%s: short write of %d\n", fn, u);
+		//glitch_log("%s: short write of %d\n", fn, u);
 		return ret;
 	}
 	return 0;
