@@ -12,6 +12,9 @@
 /** maximum length of a path name in RedFish */
 #define RF_PATH_MAX 4096
 
+/** maximum number of replicas for any delegation */
+#define RF_MAX_REPLICAS 7
+
 /** maximum length of a path component in RedFish */
 #define RF_PATH_COMPONENT_MAX 256
 
