@@ -6,7 +6,7 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#include "core/config/osdc.h"
+#include "common/config/osdc.h"
 #include "core/glitch_log.h"
 #include "msg/client.h"
 #include "msg/generic.h"

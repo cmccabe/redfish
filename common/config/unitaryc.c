@@ -6,12 +6,12 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#include "core/config/logc.h"
-#include "core/config/mdsc.h"
-#include "core/config/osdc.h"
-#include "core/config/unitaryc.h"
+#include "common/config/logc.h"
+#include "common/config/mdsc.h"
+#include "common/config/osdc.h"
+#include "common/config/unitaryc.h"
 
-#define JORM_CUR_FILE "core/config/unitaryc.jorm"
+#define JORM_CUR_FILE "common/config/unitaryc.jorm"
 #include "jorm/jorm_generate_body.h"
 #undef JORM_CUR_FILE
 

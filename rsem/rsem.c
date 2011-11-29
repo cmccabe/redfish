@@ -6,7 +6,7 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#include "core/config/logc.h"
+#include "common/config/logc.h"
 #include "rsem/rsem.h"
 
 #define JORM_CUR_FILE "rsem/rsem.jorm"

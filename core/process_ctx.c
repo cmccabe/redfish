@@ -7,7 +7,7 @@
  */
 
 #include "core/process_ctx.h"
-#include "core/config/logc.h"
+#include "common/config/logc.h"
 #include "core/glitch_log.h"
 #include "core/pid_file.h"
 #include "core/signal.h"

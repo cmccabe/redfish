@@ -7,7 +7,7 @@
  */
 
 #include "core/glitch_log.h"
-#include "core/config/logc.h"
+#include "common/config/logc.h"
 #include "util/error.h"
 #include "util/safe_io.h"
 #include "util/tempfile.h"

@@ -6,9 +6,9 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#include "core/config/logc.h"
-#include "core/config/mdsc.h"
-#include "core/config/unitaryc.h"
+#include "common/config/logc.h"
+#include "common/config/mdsc.h"
+#include "common/config/unitaryc.h"
 #include "core/glitch_log.h"
 #include "core/process_ctx.h"
 #include "jorm/json.h"

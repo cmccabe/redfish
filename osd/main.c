@@ -6,9 +6,9 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#include "core/config/logc.h"
-#include "core/config/osdc.h"
-#include "core/config/unitaryc.h"
+#include "common/config/logc.h"
+#include "common/config/osdc.h"
+#include "common/config/unitaryc.h"
 #include "core/glitch_log.h"
 #include "core/pid_file.h"
 #include "core/process_ctx.h"

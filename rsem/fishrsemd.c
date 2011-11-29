@@ -7,7 +7,7 @@
  */
 
 #include "core/glitch_log.h"
-#include "core/config/logc.h"
+#include "common/config/logc.h"
 #include "core/pid_file.h"
 #include "core/signal.h"
 #include "jorm/json.h"

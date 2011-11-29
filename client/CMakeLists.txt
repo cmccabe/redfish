@@ -18,20 +18,20 @@ add_library(fishc_stub SHARED
     stub/stub.c
     stub/xattrs.c
 )
-target_link_libraries(fishc_stub util pthread)
+target_link_libraries(fishc_stub common util pthread)
 IF(${REDFISH_CLIENT_LIB} STREQUAL fishc_stub)
     set_target_properties(fishc_stub PROPERTIES OUTPUT_NAME fishc)
 ENDIF(${REDFISH_CLIENT_LIB} STREQUAL fishc_stub)
 
 add_executable(xattrs_unit stub/xattrs.c stub/xattrs_unit.c)
-target_link_libraries(xattrs_unit util utest)
+target_link_libraries(xattrs_unit common util utest)
 add_test(xattrs_unit ${CMAKE_CURRENT_BINARY_DIR}/xattrs_unit xattrs_unit)
 
 #add_library(fishc_hdfs SHARED
 #    mloc.c
 #    hdfs/...
 #)
-#target_link_libraries(fishc_hdfs util pthread)
+#target_link_libraries(fishc_hdfs common util pthread)
 #IF(${REDFISH_CLIENT_LIB} STREQUAL fishc_hdfs)
 #    set_target_properties(fishc_hdfs PROPERTIES OUTPUT_NAME fishc)
 #ENDIF(${REDFISH_CLIENT_LIB} STREQUAL fishc_hdfs)
@@ -40,7 +40,7 @@ add_test(xattrs_unit ${CMAKE_CURRENT_BINARY_DIR}/xattrs_unit xattrs_unit)
 #    mloc.c
 #    true/...
 #)
-#target_link_libraries(fishc_real util pthread)
+#target_link_libraries(fishc_real common util pthread)
 #IF(${REDFISH_CLIENT_LIB} STREQUAL fishc_real)
 #    set_target_properties(fishc_real PROPERTIES OUTPUT_NAME fishc)
 #ENDIF(${REDFISH_CLIENT_LIB} STREQUAL fishc_real)

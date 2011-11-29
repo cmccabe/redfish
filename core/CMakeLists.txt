@@ -1,15 +1,10 @@
 add_library(core
-    config/logc.c
-    config/mdsc.c
-    config/mstorc.c
-    config/osdc.c
-    config/unitaryc.c
-    process_ctx.c
     glitch_log.c
     pid_file.c
+    process_ctx.c
     signal.c
 )
-target_link_libraries(core jorm util pthread)
+target_link_libraries(core common jorm util pthread)
 
 add_executable(glitch_log_unit glitch_log_unit.c)
 target_link_libraries(glitch_log_unit core utest)

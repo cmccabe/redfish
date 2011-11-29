@@ -6,7 +6,7 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#include "core/config/logc.h"
+#include "common/config/logc.h"
 #include "core/signal.h"
 #include "util/error.h"
 #include "util/simple_io.h"

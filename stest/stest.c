@@ -8,7 +8,7 @@
 
 #include "client/fishc.h"
 #include "client/fishc_internal.h"
-#include "core/config/logc.h"
+#include "common/config/logc.h"
 #include "core/signal.h"
 #include "stest/stest.h"
 #include "util/compiler.h"
