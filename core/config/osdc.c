@@ -6,8 +6,9 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#include "mds/mstor_config.h"
+#include "core//config/logc.h"
+#include "core//config/osdc.h"
 
-#define JORM_CUR_FILE "mds/mstor_config.jorm"
+#define JORM_CUR_FILE "core/config/osdc.jorm"
 #include "jorm/jorm_generate_body.h"
 #undef JORM_CUR_FILE

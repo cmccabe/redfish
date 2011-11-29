@@ -7,7 +7,7 @@
  */
 
 #include "core/glitch_log.h"
-#include "core/log_config.h"
+#include "core/config/logc.h"
 #include "util/simple_io.h"
 #include "util/tempfile.h"
 #include "util/test.h"
@@ -83,12 +83,12 @@ int main(void)
 {
 	char tempdir[PATH_MAX];
 	char glitch_log[PATH_MAX];
-	struct log_config lc;
+	struct logc lc;
 
 	EXPECT_ZERO(get_tempdir(tempdir, PATH_MAX, 0700));
 	EXPECT_ZERO(register_tempdir_for_cleanup(tempdir));
 	snprintf(glitch_log, sizeof(glitch_log), "%s/glitch_log.txt", tempdir);
-	memset(&lc, 0, sizeof(struct log_config));
+	memset(&lc, 0, sizeof(struct logc));
 	lc.glitch_log = glitch_log;
 	EXPECT_ZERO(test_stderr_output(tempdir));
 	configure_glitch_log(&lc);

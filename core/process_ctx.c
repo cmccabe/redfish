@@ -7,7 +7,7 @@
  */
 
 #include "core/process_ctx.h"
-#include "core/log_config.h"
+#include "core/config/logc.h"
 #include "core/glitch_log.h"
 #include "core/pid_file.h"
 #include "core/signal.h"
@@ -55,7 +55,7 @@ static void configure_fast_log(void)
 }
 
 static int process_ctx_init_impl(const char *argv0, int daemonize,
-				struct log_config *lc)
+				struct logc *lc)
 {
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
@@ -98,12 +98,12 @@ error_close_glitchlog:
 	return 1;
 }
 
-int process_ctx_init(const char *argv0, int daemonize, struct log_config *lc)
+int process_ctx_init(const char *argv0, int daemonize, struct logc *lc)
 {
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 
-	harmonize_log_config(lc, err, err_len, 1, 1);
+	harmonize_logc(lc, err, err_len, 1);
 	if (err[0]) {
 		glitch_log("log config error: %s\n", err);
 		return 1;
@@ -113,7 +113,7 @@ int process_ctx_init(const char *argv0, int daemonize, struct log_config *lc)
 
 int utility_ctx_init(const char *argv0)
 {
-	struct log_config lc;
+	struct logc lc;
 	memset(&lc, 0, sizeof(lc));
 	return process_ctx_init_impl(argv0, 0, &lc);
 }

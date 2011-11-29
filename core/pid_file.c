@@ -6,7 +6,7 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#include "core/log_config.h"
+#include "core/config/logc.h"
 #include "core/pid_file.h"
 #include "util/error.h"
 #include "util/safe_io.h"
@@ -24,7 +24,7 @@
 
 static char g_pid_file[PATH_MAX];
 
-void create_pid_file(const struct log_config *lc, char *err, size_t err_len)
+void create_pid_file(const struct logc *lc, char *err, size_t err_len)
 {
 	char pid_buf[512];
 	int fd, ret, res;

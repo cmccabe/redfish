@@ -7,7 +7,7 @@
  */
 
 #include "core/glitch_log.h"
-#include "core/log_config.h"
+#include "core/config/logc.h"
 #include "util/error.h"
 #include "util/safe_io.h"
 #include "util/tempfile.h"
@@ -152,7 +152,7 @@ void close_glitch_log(void)
 	pthread_mutex_unlock(&g_glitch_log_lock);
 }
 
-void configure_glitch_log(const struct log_config *lc)
+void configure_glitch_log(const struct logc *lc)
 {
 	int ret;
 	int nfd = -1;

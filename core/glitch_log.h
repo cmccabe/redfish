@@ -13,7 +13,7 @@
 
 #include <unistd.h> /* for size_t */
 
-struct log_config;
+struct logc;
 
 /** Glitch log is a log that daemons use specifically to log glitches-- bad
  * conditions that should not ever occur. Because it's designed to log only
@@ -33,7 +33,7 @@ struct log_config;
  *
  * @param lc		The log configuration
  */
-void configure_glitch_log(const struct log_config *lc);
+void configure_glitch_log(const struct logc *lc);
 
 /** Issue a glitch_log message.
  * This function is thread-safe because it uses the log_config lock.

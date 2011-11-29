@@ -16,7 +16,7 @@ JORM_CONTAINER_END
 JORM_CONTAINER_BEGIN(rsem_server_conf)
 	JORM_INT(port)
 	JORM_ARRAY(sems, rsem_conf)
-	JORM_EMBEDDED(lc, log_config)
+	JORM_EMBEDDED(lc, logc)
 JORM_CONTAINER_END
 
 JORM_CONTAINER_BEGIN(rsem_conf)

@@ -9,7 +9,7 @@
 #ifndef REDFISH_CORE_PID_FILE_DOT_H
 #define REDFISH_CORE_PID_FILE_DOT_H
 
-struct log_config;
+struct logc;
 
 /** Create a pid file and register it to be deleted when the program exits.
  *
@@ -21,7 +21,7 @@ struct log_config;
  * @param err		(out param) the error buffer
  * @param err_len	length of the error buffer
  */
-extern void create_pid_file(const struct log_config *lc,
+extern void create_pid_file(const struct logc *lc,
 			char *err, size_t err_len);
 
 /** Delete the pid file, if it exists.

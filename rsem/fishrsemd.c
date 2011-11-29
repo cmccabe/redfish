@@ -7,7 +7,7 @@
  */
 
 #include "core/glitch_log.h"
-#include "core/log_config.h"
+#include "core/config/logc.h"
 #include "core/pid_file.h"
 #include "core/signal.h"
 #include "jorm/json.h"
@@ -106,9 +106,9 @@ int main(int argc, char **argv)
 		ret = EXIT_FAILURE;
 		goto done;
 	}
-	harmonize_log_config(conf->lc, err, sizeof(err), 1, 1);
+	harmonize_logc(conf->lc, err, sizeof(err), 1);
 	if (err[0]) {
-		glitch_log("log_config error: %s\n", err);
+		glitch_log("logc error: %s\n", err);
 		ret = EXIT_FAILURE;
 		goto free_conf;
 	}

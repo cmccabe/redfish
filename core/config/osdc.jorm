@@ -6,13 +6,8 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-JORM_CONTAINER_BEGIN(log_config)
-	JORM_BOOL(use_syslog)
-	JORM_STR(base_dir)
-	JORM_STR(crash_log)
-	JORM_STR(fast_log)
-	JORM_STR(glitch_log)
-	JORM_STR(mon_data_dir)
-	JORM_STR(pid_file)
-	JORM_STR(socket_path)
+JORM_CONTAINER_BEGIN(osdc)
+	JORM_EMBEDDED(lc, logc)
+	JORM_INT(port)
+	JORM_INT(rack)
 JORM_CONTAINER_END

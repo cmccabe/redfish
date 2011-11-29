@@ -6,7 +6,7 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#include "core/log_config.h"
+#include "core/config/logc.h"
 #include "core/signal.h"
 #include "util/error.h"
 #include "util/simple_io.h"
@@ -59,7 +59,7 @@ static int test_signal_handler(const char *argv0, const char *tempdir, int sig)
 		return ret;
 	}
 	else if (pid == 0) {
-		struct log_config lc;
+		struct logc lc;
 		memset(&lc, 0, sizeof(lc));
 		lc.crash_log = crash_log;
 		signal_init(argv0, err, sizeof(err), &lc, NULL);

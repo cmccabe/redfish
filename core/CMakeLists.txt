@@ -1,7 +1,11 @@
 add_library(core
+    config/logc.c
+    config/mdsc.c
+    config/mstorc.c
+    config/osdc.c
+    config/unitaryc.c
     process_ctx.c
     glitch_log.c
-    log_config.c
     pid_file.c
     signal.c
 )

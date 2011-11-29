@@ -6,9 +6,8 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#include "core/config/logc.h"
-#include "rsem/rsem.h"
-
-#define JORM_CUR_FILE "rsem/rsem.jorm"
-#include "jorm/jorm_generate_body.h"
-#undef JORM_CUR_FILE
+JORM_CONTAINER_BEGIN(mstorc)
+	JORM_STR(mstor_path)
+	JORM_DOUBLE(mstor_cache_size)
+	JORM_INT(mstor_io_threads)
+JORM_CONTAINER_END

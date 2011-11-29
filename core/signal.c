@@ -6,7 +6,7 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-#include "core/log_config.h"
+#include "core/config/logc.h"
 #include "core/pid_file.h"
 #include "core/process_ctx.h"
 #include "core/signal.h"
@@ -195,7 +195,7 @@ void signal_shutdown(void)
 }
 
 void signal_init(const char *argv0, char *err, size_t err_len,
-		 const struct log_config *lc, signal_cb_t fatal_signal_cb)
+		 const struct logc *lc, signal_cb_t fatal_signal_cb)
 {
 	if ((g_alt_stack.ss_sp != NULL) || (g_crash_log_fd != -1)) {
 		snprintf(err, err_len, "signal_init: already "

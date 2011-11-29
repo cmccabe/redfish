@@ -6,8 +6,13 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-JORM_CONTAINER_BEGIN(mstor_config)
-	JORM_STR(mstor_path)
-	JORM_DOUBLE(mstor_cache_size)
-	JORM_INT(mstor_io_threads)
+JORM_CONTAINER_BEGIN(logc)
+	JORM_BOOL(use_syslog)
+	JORM_STR(base_dir)
+	JORM_STR(crash_log)
+	JORM_STR(fast_log)
+	JORM_STR(glitch_log)
+	JORM_STR(mon_data_dir)
+	JORM_STR(pid_file)
+	JORM_STR(socket_path)
 JORM_CONTAINER_END

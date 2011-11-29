@@ -6,8 +6,9 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
-JORM_CONTAINER_BEGIN(osd_config)
-	JORM_EMBEDDED(lc, log_config)
-	JORM_INT(port)
-	JORM_INT(rack)
+JORM_CONTAINER_BEGIN(unitaryc)
+	JORM_NESTED(osd_defaults, osdc)
+	JORM_ARRAY(osd, osdc)
+	JORM_NESTED(mds_defaults, mdsc)
+	JORM_ARRAY(mds, mdsc)
 JORM_CONTAINER_END

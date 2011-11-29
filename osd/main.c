@@ -6,14 +6,14 @@
  * This is licensed under the Apache License, Version 2.0.  See file COPYING.
  */
 
+#include "core/config/logc.h"
+#include "core/config/osdc.h"
 #include "core/glitch_log.h"
-#include "core/log_config.h"
 #include "core/pid_file.h"
 #include "core/process_ctx.h"
 #include "core/signal.h"
 #include "jorm/json.h"
 #include "osd/net.h"
-#include "osd/osd_config.h"
 #include "util/compiler.h"
 #include "util/fast_log.h"
 #include "util/string.h"
@@ -74,11 +74,11 @@ static void parse_argv(int argc, char **argv, int *daemonize,
 	}
 }
 
-static struct osd_config* parse_osd_config(const char *file_name)
+static struct osdc* parse_osdc(const char *file_name)
 {
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
-	struct osd_config *conf;
+	struct osdc *conf;
 	struct json_object* jo;
 	
 	jo = parse_json_file(file_name, err, err_len);
@@ -86,7 +86,7 @@ static struct osd_config* parse_osd_config(const char *file_name)
 		glitch_log("error parsing json file: %s\n", err);
 		return NULL;
 	}
-	conf = JORM_FROMJSON_osd_config(jo);
+	conf = JORM_FROMJSON_osdc(jo);
 	json_object_put(jo);
 	if (!conf) {
 		glitch_log("ran out of memory reading config file.\n");
@@ -98,11 +98,11 @@ static struct osd_config* parse_osd_config(const char *file_name)
 int main(int argc, char **argv)
 {
 	int ret, daemonize = 1;
-	const char *osd_config_file = NULL;
-	struct osd_config *conf;
+	const char *osdc_file = NULL;
+	struct osdc *conf;
 
-	parse_argv(argc, argv, &daemonize, &osd_config_file);
-	conf = parse_osd_config(osd_config_file);
+	parse_argv(argc, argv, &daemonize, &osdc_file);
+	conf = parse_osdc(osdc_file);
 	if (!conf) {
 		ret = EXIT_FAILURE;
 		goto done;
@@ -114,6 +114,6 @@ int main(int argc, char **argv)
 	ret = osd_main_loop(conf);
 done:
 	process_ctx_shutdown();
-	JORM_FREE_osd_config(conf);
+	JORM_FREE_osdc(conf);
 	return ret;
 }

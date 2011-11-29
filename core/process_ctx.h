@@ -11,7 +11,7 @@
 
 #include <unistd.h> /* for size_t */
 
-struct log_config;
+struct logc;
 
 /** The global fast log manager */
 extern struct fast_log_mgr *g_fast_log_mgr;
@@ -31,7 +31,7 @@ extern struct fast_log_mgr *g_fast_log_mgr;
  * @return			0 on success; error code otherwise
  */
 extern int process_ctx_init(const char *argv0, int daemonize,
-			struct log_config *lc);
+			struct logc *lc);
 
 /** Initialize the process context for a utility program
  *

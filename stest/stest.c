@@ -8,7 +8,7 @@
 
 #include "client/fishc.h"
 #include "client/fishc_internal.h"
-#include "core/log_config.h"
+#include "core/config/logc.h"
 #include "core/signal.h"
 #include "stest/stest.h"
 #include "util/compiler.h"
@@ -229,7 +229,7 @@ static void stest_init_signals(const char *argv0)
 {
 	char crash_log[PATH_MAX];
 	char err[512] = { 0 };
-	struct log_config lc;
+	struct logc lc;
 
 	if (zsnprintf(crash_log, sizeof(crash_log), "%s/crash", g_tempdir)) {
 		fprintf(stderr, "start_msg buffer too short!\n");
