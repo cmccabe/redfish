@@ -97,7 +97,7 @@ static void parse_argv(int argc, char **argv, int *daemonize,
 	}
 }
 
-struct osdc *get_osd_conf(struct unitaryc *conf, int ident)
+static struct osdc *get_osd_conf(struct unitaryc *conf, int ident)
 {
 	int i;
 	struct osdc **o;

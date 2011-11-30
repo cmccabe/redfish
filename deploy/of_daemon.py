@@ -105,7 +105,7 @@ class DaemonIter(object):
                 else:
                     raise StopIteration
             if has_label(darr[self.idx], self.label):
-                return Daemon(darr[self.idx],
+                return Daemon(self.jo, darr[self.idx],
                         DaemonId(self.ty, self.idx + 1))
 
 """ Represents a RedFish daemon.
@@ -113,55 +113,40 @@ FIXME: this code doesn't yet handle goofy filenames correctly
 FIXME: should distinguish between command failures and ssh failures
 """
 class Daemon(object):
-    def __init__(self, jo, id):
+    def __init__(self, jo, jd, id):
         self.jo = jo
+        self.jd = jd
         self.id = id
     """ Run a command on this daemon and give output. Throws an exception on failure. """
     def run_with_output(self, cmd):
         return subprocess_check_output([ "ssh", "-o",
-            "PasswordAuthentication=no", "-x", self.jo["host"], cmd])
+            "PasswordAuthentication=no", "-x", self.jd["host"], cmd])
     """ Run a command on this daemon. Throws an exception on failure. """
     def run(self, cmd):
         subprocess.check_call([ "ssh", "-o",
-            "PasswordAuthentication=no", "-x", self.jo["host"], cmd])
+            "PasswordAuthentication=no", "-x", self.jd["host"], cmd])
     """ Upload a file to this daemon. Throws an exception on failure. """
     def upload(self, local_path, remote_path):
         subprocess.check_call([ "rsync", "-r", "-e",
                     "ssh -o PasswordAuthentication=no -x",
                     local_path,
-                    (self.jo["host"] + ":" + remote_path)])
+                    (self.jd["host"] + ":" + remote_path)])
     """ Download a file from this daemon. Throws an exception on failure. """
     def download(self, local_path, remote_path):
         subprocess.check_call([ "rsync", "-r", "-e",
                     "ssh -o PasswordAuthentication=no -x",
-                    (self.jo["host"] + ":" + remote_path),
+                    (self.jd["host"] + ":" + remote_path),
                     local_path])
     """ Generate a RedFish config file for this daemon """ 
     def generate_daemon_conf(self, cmd):
-        jd = {}
-        CKEYS = [
-            # base daemon stuff
-            "port",
-            "rack",
-            # log_config
-            "use_syslog",
-            "base_dir",
-            "crash_log",
-            "fast_log",
-            "glitch_log",
-            "pid_file",
-        ]
-        for k in CKEYS:
-            if self.jo.has_key(k):
-                jd[i] =self.jo.get(k)
-        return jd
+        return self.jo
     def get_base_dir(self):
-        return self.jo["base_dir"]
+        return self.jd["base_dir"]
     def get_conf_file(self):
-        return self.jo["base_dir"] + "/conf"
+        return self.jd["base_dir"] + "/conf"
     def get_pid_file(self):
-        return self.jo["base_dir"] + "/pid"
+        return self.jd["base_dir"] + "/pid"
     def get_binary_name(self):
         return self.id.get_binary_name()
     def get_binary_path(self):
-        return self.jo["base_dir"] + "/usr/bin/" + self.get_binary_name()
+        return self.jd["base_dir"] + "/usr/bin/" + self.get_binary_name()
