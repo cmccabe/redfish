@@ -44,4 +44,5 @@ for d in diter:
             os.unlink(d.get_pid_file())
     except subprocess.CalledProcessError, e:
         pass
-    d.run(d.get_binary_path() +  " -c " +  d.get_conf_file())
+    d.run(d.get_binary_path() +  " -c " +  d.get_conf_file() +
+        " -k " + str(d.id.idx))

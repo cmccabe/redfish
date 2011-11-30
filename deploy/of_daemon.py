@@ -30,16 +30,22 @@ def load_conf_file(conf_file):
     return jo
 
 def validate_conf_file(jo):
-    if not jo.has_key("cluster"):
-        raise RuntimeError("validate_conf_file: failed to find /cluster\n")
-    if not jo["cluster"].has_key("daemons"):
+    if not jo.has_key("mds"):
+        raise RuntimeError("validate_conf_file: failed to find /mds\n")
+    if not jo.has_key("osd"):
         raise RuntimeError("validate_conf_file: failed to find " +
-            "/daemons/cluster\n")
+            "/osd\n")
     i = 0
-    for d in jo["cluster"]["daemons"]:
+    for d in jo["mds"]:
         i = i + 1
         if not d.has_key("base_dir"):
-            raise RuntimeError("validate_conf_file: daemon %d does not " +
+            raise RuntimeError("validate_conf_file: mds %d does not " +
+                "have a base_dir parameter" % i)
+    i = 0
+    for d in jo["osd"]:
+        i = i + 1
+        if not d.has_key("base_dir"):
+            raise RuntimeError("validate_conf_file: osd %d does not " +
                 "have a base_dir parameter" % i)
 
 def has_label(arr, label):
@@ -50,31 +56,66 @@ def has_label(arr, label):
             return True
     return False
 
+class DaemonId(object):
+    MDS = 1
+    OSD = 2
+    def __init__(self, ty, idx):
+        self.ty = ty
+        self.idx = idx
+    def __repl__(self):
+        if (self.ty == DaemonId.MDS):
+            return "MDS%03d" % self.idx
+        elif (self.ty == DaemonId.OSD):
+            return "OSD%03d" % self.idx
+        else:
+            raise Exception("unknown type " + type)
+    def get_binary_name(self):
+        if (self.ty == DaemonId.MDS):
+            return "fishmds"
+        elif (self.ty == DaemonId.OSD):
+            return "fishosd"
+        else:
+            raise Exception("unknown type " + self.ty)
+
 class DaemonIter(object):
     @staticmethod
     def from_conf_object(jo, label):
-        return DaemonIter(jo["cluster"]["daemons"], label)
-    def __init__(self, darr, label):
-        self.darr = darr
+        return DaemonIter(jo, label)
+    def __init__(self, jo, label):
+        self.jo = jo
         self.label = label
+        self.ty = DaemonId.MDS
         self.idx = -1
     def __iter__(self):
         return self
     def next(self):
         while (True):
+            if (self.ty == DaemonId.MDS):
+                darr = self.jo["mds"]
+            elif (self.ty == DaemonId.OSD):
+                darr = self.jo["osd"]
+            else:
+                raise RuntimeError("Illegal DaemonIter state")
             self.idx = self.idx + 1
-            if (self.idx >= len(self.darr)):
-                raise StopIteration
-            if has_label(self.darr[self.idx], self.label):
-                return Daemon(self.darr[self.idx])
+            if (self.idx >= len(darr)):
+                if (self.ty == DaemonId.MDS):
+                    self.ty = DaemonId.OSD
+                    self.idx = -1
+                    continue
+                else:
+                    raise StopIteration
+            if has_label(darr[self.idx], self.label):
+                return Daemon(darr[self.idx],
+                        DaemonId(self.ty, self.idx + 1))
 
 """ Represents a RedFish daemon.
 FIXME: this code doesn't yet handle goofy filenames correctly
 FIXME: should distinguish between command failures and ssh failures
 """
 class Daemon(object):
-    def __init__(self, jo):
+    def __init__(self, jo, id):
         self.jo = jo
+        self.id = id
     """ Run a command on this daemon and give output. Throws an exception on failure. """
     def run_with_output(self, cmd):
         return subprocess_check_output([ "ssh", "-o",
@@ -121,11 +162,6 @@ class Daemon(object):
     def get_pid_file(self):
         return self.jo["base_dir"] + "/pid"
     def get_binary_name(self):
-        if (self.jo["type"] == "mds"):
-            return "fishmds"
-        elif (self.jo["type"] == "osd"):
-            return "fishosd"
-        else:
-            raise Exception("unknown type " + type)
+        return self.id.get_binary_name()
     def get_binary_path(self):
         return self.jo["base_dir"] + "/usr/bin/" + self.get_binary_name()
