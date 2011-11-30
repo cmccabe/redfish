@@ -7,8 +7,6 @@
  */
 
 JORM_CONTAINER_BEGIN(unitaryc)
-	JORM_NESTED(osd_defaults, osdc)
 	JORM_ARRAY(osd, osdc)
-	JORM_NESTED(mds_defaults, mdsc)
 	JORM_ARRAY(mds, mdsc)
 JORM_CONTAINER_END

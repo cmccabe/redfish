@@ -11,6 +11,8 @@
 
 #include "core/config/unitaryc.h"
 
+#include <unistd.h> /* for size_t */
+
 #define JORM_CUR_FILE "core/config/unitaryc.jorm"
 #include "jorm/jorm_generate_include.h"
 #undef JORM_CUR_FILE
@@ -18,5 +20,22 @@
 #if 0 /* Give the dependency scanner a clue */
 #include "core/config/unitaryc.jorm"
 #endif
+
+/** Parse a unitary configuration file.
+ *
+ * @param fname		The file name to open
+ * @param err		(out-param) the error message, on failure
+ * @param err_len	length of the error buffer
+ *
+ * @return		the dynamically allocated unitary configuration data
+ */
+extern struct unitaryc *parse_unitary_conf_file(const char *fname,
+					char *err, size_t err_len);
+
+/** Free unitary configuration data.
+ *
+ * @param conf		The unitary configuration data
+ */
+extern void free_unitary_conf_file(struct unitaryc *conf);
 
 #endif
