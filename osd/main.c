@@ -8,6 +8,7 @@
 
 #include "core/config/logc.h"
 #include "core/config/osdc.h"
+#include "core/config/unitaryc.h"
 #include "core/glitch_log.h"
 #include "core/pid_file.h"
 #include "core/process_ctx.h"
@@ -16,6 +17,7 @@
 #include "osd/net.h"
 #include "util/compiler.h"
 #include "util/fast_log.h"
+#include "util/str_to_int.h"
 #include "util/string.h"
 
 #include <errno.h>
@@ -34,6 +36,9 @@ static void usage(int exitstatus)
 "fishosd usage:",
 "-c <osd-configuration-file>",
 "    Set the osd configuration file.",
+"-k <cluster-identity>",
+"    The ID number of this OSD..  This is an index into the array of ",
+"    OSDs in the configuration file.",
 "-f",
 "    Run in the foreground (do not daemonize)",
 "-h",
@@ -45,16 +50,26 @@ NULL
 }
 
 static void parse_argv(int argc, char **argv, int *daemonize,
-		const char **config_file)
+		int *ident, const char **config_file)
 {
+	char err[512] = { 0 };
+	size_t err_len = sizeof(err);
 	int c;
-	while ((c = getopt(argc, argv, "c:fh")) != -1) {
+
+	while ((c = getopt(argc, argv, "c:fk:h")) != -1) {
 		switch (c) {
 		case 'c':
 			*config_file = optarg;
 			break;
 		case 'f':
 			*daemonize = 0;
+			break;
+		case 'k':
+			str_to_int(optarg, 10, ident, err, err_len);
+			if (err[0]) {
+				glitch_log("Error parsing identity: %s\n", err);
+				usage(EXIT_FAILURE);
+			}
 			break;
 		case 'h':
 			usage(EXIT_SUCCESS);
@@ -72,48 +87,58 @@ static void parse_argv(int argc, char **argv, int *daemonize,
 			"file with -c.\n\n");
 		usage(EXIT_FAILURE);
 	}
+	if (*ident == 0) {
+		glitch_log("0 is not a valid OSD identity.\n");
+		usage(EXIT_FAILURE);
+	}
+	if (*ident < 0) {
+		glitch_log("You must specify an OSD identity with -k.\n");
+		usage(EXIT_FAILURE);
+	}
 }
 
-static struct osdc* parse_osdc(const char *file_name)
+struct osdc *get_osd_conf(struct unitaryc *conf, int ident)
 {
-	char err[512] = { 0 };
-	size_t err_len = sizeof(err);
-	struct osdc *conf;
-	struct json_object* jo;
+	int i;
+	struct osdc **o;
 	
-	jo = parse_json_file(file_name, err, err_len);
-	if (err[0]) {
-		glitch_log("error parsing json file: %s\n", err);
-		return NULL;
+	o = conf->osd;
+	for (i = 1; (i < ident) && (*o); ++i, o++) {
+		;
 	}
-	conf = JORM_FROMJSON_osdc(jo);
-	json_object_put(jo);
-	if (!conf) {
-		glitch_log("ran out of memory reading config file.\n");
-		return NULL;
-	}
-	return conf;
+	return *o;
 }
 
 int main(int argc, char **argv)
 {
-	int ret, daemonize = 1;
-	const char *osdc_file = NULL;
-	struct osdc *conf;
+	char err[512] = { 0 };
+	size_t err_len = sizeof(err);
+	int ret, ident = -1, daemonize = 1;
+	const char *cfname = NULL;
+	struct unitaryc *conf;
+	struct osdc *oconf;
 
-	parse_argv(argc, argv, &daemonize, &osdc_file);
-	conf = parse_osdc(osdc_file);
-	if (!conf) {
+	parse_argv(argc, argv, &daemonize, &ident, &cfname);
+	conf = parse_unitary_conf_file(cfname, err, err_len);
+	if (err[0]) {
+		glitch_log("%s\n", err);
 		ret = EXIT_FAILURE;
 		goto done;
 	}
-	if (process_ctx_init(argv[0], daemonize, conf->lc)) {
+	oconf = get_osd_conf(conf, ident);
+	if (!oconf) {
+		glitch_log("Failed to find OSD %d in the configuration file\n",
+			ident);
 		ret = EXIT_FAILURE;
 		goto done;
 	}
-	ret = osd_main_loop(conf);
+	if (process_ctx_init(argv[0], daemonize, oconf->lc)) {
+		ret = EXIT_FAILURE;
+		goto done;
+	}
+	ret = osd_main_loop(oconf);
 done:
 	process_ctx_shutdown();
-	JORM_FREE_osdc(conf);
+	free_unitary_conf_file(conf);
 	return ret;
 }
