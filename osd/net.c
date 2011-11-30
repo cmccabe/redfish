@@ -267,8 +267,8 @@ static int init_osd_proc_threads(void)
 {
 	int ret, nthreads;
 
+	memset(&g_osd_proc_threads, 0, sizeof(g_osd_proc_threads));
 	for (nthreads = 0; nthreads < NUM_OSD_PROC_THREADS; ++nthreads) {
-		memset(&g_osd_proc_threads, 0, sizeof(g_osd_proc_threads));
 		ret = pthread_create(&g_osd_proc_threads[nthreads], NULL,
 					osd_processor_thread, NULL);
 		if (ret) {
