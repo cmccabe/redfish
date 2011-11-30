@@ -316,7 +316,7 @@ int64_t redfish_ftell(struct redfish_file *ofe);
 
 /** Make all the data in this file visible to readers who open the file after
  * this call to hflush. Data will be visible eventually to readers who already
- * have the file open, but do not reopen it. 
+ * have the file open, but do not reopen it.
  *
  * This is a blocking call. It will start the hflush operation and then block
  * until it completes. Among other things, this implies that the data is

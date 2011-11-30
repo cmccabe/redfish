@@ -101,7 +101,7 @@ static struct osdc *get_osd_conf(struct unitaryc *conf, int ident)
 {
 	int i;
 	struct osdc **o;
-	
+
 	o = conf->osd;
 	for (i = 1; (i < ident) && (*o); ++i, o++) {
 		;

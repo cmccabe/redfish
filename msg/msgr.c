@@ -113,7 +113,7 @@ struct msgr {
 	int listen_fd;
 	/** Port we're listening on, if any */
 	uint16_t listen_port;
-	/** Size to use when allocating mtran objects on the heap */ 
+	/** Size to use when allocating mtran objects on the heap */
 	size_t tran_sz;
 	/** Callback to invoke when transactions receive messages */
 	msgr_cb_t cb;
@@ -703,7 +703,7 @@ struct msgr *msgr_init(char *err, size_t err_len,
 		struct fast_log_mgr *fb_mgr)
 {
 	struct msgr *msgr;
-	
+
 	msgr = calloc(1, sizeof(struct msgr));
 	if (!msgr) {
 		snprintf(err, err_len, "init_msgr: out of memory\n");
@@ -803,7 +803,7 @@ void msgr_listen(struct msgr *msgr, uint16_t port, char *err, size_t err_len)
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	addr.sin_port = htons(port);
-	addr_len = sizeof(addr); 
+	addr_len = sizeof(addr);
 	ret = bind(fd, (struct sockaddr*)&addr, addr_len);
 	if (ret) {
 		ret = -errno;

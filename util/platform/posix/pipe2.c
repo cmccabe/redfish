@@ -25,9 +25,9 @@ int do_pipe(int pipefd[2], enum redfish_plat_flags_t pf)
 		goto error;
 	}
 	if (pf & WANT_O_NONBLOCK)
-		flags |= O_NONBLOCK; 
+		flags |= O_NONBLOCK;
 	if (pf & WANT_O_CLOEXEC)
-		flags |= FD_CLOEXEC; 
+		flags |= FD_CLOEXEC;
 	if (flags == 0)
 		return 0;
 	curflags = fcntl(pipefd[PIPE_READ], F_GETFL, 0);

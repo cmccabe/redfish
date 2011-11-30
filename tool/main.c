@@ -206,7 +206,7 @@ int main(int argc, char **argv)
 {
 	int ret;
 	struct fishtool_params* params;
-	
+
 	if (utility_ctx_init(argv[0])) {
 		ret = EXIT_FAILURE;
 		goto done;

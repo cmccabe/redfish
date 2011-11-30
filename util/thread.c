@@ -36,7 +36,7 @@ void* redfish_thread_trampoline(void *v)
 	ret = rt->fn(rt);
 	if (ret)
 		return ERR_PTR(FORCE_POSITIVE(ret));
-	else 
+	else
 		return 0;
 }
 

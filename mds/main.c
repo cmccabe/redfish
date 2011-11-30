@@ -94,7 +94,7 @@ static struct mdsc *get_mds_conf(struct unitaryc *conf, int ident)
 {
 	int i;
 	struct mdsc **m;
-	
+
 	m = conf->mds;
 	for (i = 1; (i < ident) && (*m); ++i, m++) {
 		;

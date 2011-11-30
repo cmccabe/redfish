@@ -34,7 +34,7 @@ struct redfish_thread
  * @param data		some data to pass to the new thread
  * @param data2		some more data to pass to the new thread
  *
- * @return		0 on success; error code otherwise 
+ * @return		0 on success; error code otherwise
  */
 extern int redfish_thread_create(struct fast_log_mgr *mgr,
 		struct redfish_thread* rt, redfish_thread_fn_t fn,
@@ -44,7 +44,7 @@ extern int redfish_thread_create(struct fast_log_mgr *mgr,
  *
  * @param rt		the thread
  *
- * @return		0 on thread success; error code otherwise 
+ * @return		0 on thread success; error code otherwise
  */
 extern int redfish_thread_join(struct redfish_thread *rt);
 

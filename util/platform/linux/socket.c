@@ -51,7 +51,7 @@ int do_accept(int sock, struct sockaddr *addr, socklen_t len,
 {
 	int fd, flags;
 	socklen_t olen;
-	    
+
 	flags = 0;
 	if (pf & WANT_O_NONBLOCK) {
 		flags |= SOCK_NONBLOCK;

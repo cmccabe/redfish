@@ -21,7 +21,7 @@ struct unitaryc* parse_unitary_conf_file(const char *fname, char *err, size_t er
 	size_t err2_len = sizeof(err2);
 	struct unitaryc *conf;
 	struct json_object* jo;
-	
+
 	jo = parse_json_file(fname, err2, err2_len);
 	if (err2[0]) {
 		snprintf(err, err_len, "error parsing json file %s: %s",

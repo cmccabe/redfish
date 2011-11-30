@@ -26,7 +26,7 @@ void str_to_fast_log_bitfield(const char *str,
 		char *err, size_t err_len)
 {
 	char *buf, *tok, *state = NULL;
-	
+
 	buf = strdup(str);
 	if (!buf) {
 		snprintf(err, err_len, "str_to_fast_log_bitfield: OOM");

@@ -60,7 +60,7 @@ static int test_queue(void)
 	EXPECT_EQUAL(f->x, 1);
 	EXPECT_EQUAL(f->y, 1);
 
-	num_elem = 0; 
+	num_elem = 0;
 	while (!STAILQ_EMPTY(&head)) {
 		f = STAILQ_FIRST(&head);
 		++num_elem;
