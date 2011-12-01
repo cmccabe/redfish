@@ -16,6 +16,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <json/json.h>
+#include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -128,4 +129,34 @@ void ipv4_to_str(uint32_t addr, char *out, size_t out_len)
 {
 	addr = htonl(addr);
 	inet_ntop(AF_INET, &addr, out, out_len);
+}
+
+uint32_t get_first_ipv4_addr(const char *host, char *err, size_t err_len)
+{
+	uint32_t a = 0;
+	int ret;
+	struct addrinfo hints, *res, *r;
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags |= AI_CANONNAME;
+	ret = getaddrinfo(host, NULL, &hints, &res);
+	if (ret) {
+		if (ret == EAI_SYSTEM)
+			ret = errno;
+		snprintf(err, err_len, "getaddrinfo(%s): error %d", host, ret);
+		return 0;
+	}
+	for (r = res; r; r = r->ai_next) {
+		if (r->ai_family != AF_INET)
+			continue;
+		a = ((struct sockaddr_in*)res->ai_addr)->sin_addr.s_addr;
+		goto done;
+	}
+	snprintf(err, err_len, "getaddrinfo(%s): no IPv4 addresses "
+		 "found!", host);
+done:
+	freeaddrinfo(res);
+	return a;
 }

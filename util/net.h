@@ -26,4 +26,6 @@ extern int write_u32(const char *fn, int fd, uint32_t u);
 
 extern void ipv4_to_str(uint32_t addr, char *out, size_t out_len);
 
+extern uint32_t get_first_ipv4_addr(const char *host, char *err, size_t err_len);
+
 #endif

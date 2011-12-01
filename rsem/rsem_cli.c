@@ -105,33 +105,10 @@ void rsem_client_destroy(struct rsem_client* rcli)
 	free(rcli);
 }
 
-static long int get_first_ipv4_addr(const char *fn, const char *host)
-{
-	int ret;
-	long int a = 0;
-	struct addrinfo hints, *res, *r;
-
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags |= AI_CANONNAME;
-	ret = getaddrinfo(host, NULL, &hints, &res);
-	if (ret) {
-		glitch_log("%s: getaddrinfo error %d\n", fn, ret);
-		return ret;
-	}
-	for (r = res; r; r = r->ai_next) {
-		if (r->ai_family != AF_INET)
-			continue;
-		a = ((struct sockaddr_in*)res->ai_addr)->sin_addr.s_addr;
-		break;
-	}
-	freeaddrinfo(res);
-	return a;
-}
-
 static int rsem_post_impl(struct rsem_client *rcli, const char *name)
 {
+	char err[512] = { 0 };
+	size_t err_len = sizeof(err);
 	int res, ret, zfd;
 	struct json_object *jo = NULL;
 	struct sockaddr_in addr;
@@ -152,9 +129,8 @@ static int rsem_post_impl(struct rsem_client *rcli, const char *name)
 	}
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = get_first_ipv4_addr("rsem_post_impl",
-						   rcli->srv_host);
-	if (!addr.sin_addr.s_addr) {
+	addr.sin_addr.s_addr = get_first_ipv4_addr(rcli->srv_host, err, err_len);
+	if (err[0]) {
 		/* couldn't resolve hostname */
 		ret = -EIO;
 		goto done;
@@ -301,6 +277,7 @@ static int rsem_wait_for_callback(const char *name, int zsock)
 int rsem_wait(struct rsem_client *rcli, const char *name)
 {
 	char err[512] = { 0 };
+	size_t err_len = sizeof(err);
 	int ret, res, port, zfd = -1, zsock = -1;
 	struct rsem_request req;
 	struct json_object *jo;
@@ -308,7 +285,7 @@ int rsem_wait(struct rsem_client *rcli, const char *name)
 	struct sockaddr_in addr;
 
 	port = wait_for_next_free_port(rcli);
-	zsock = do_bind_and_listen(port, err, sizeof(err));
+	zsock = do_bind_and_listen(port, err, err_len);
 	if (err[0]) {
 		glitch_log("rsem_wait: do_bind_and_listen failed with "
 			   "error '%s'\n", err);
@@ -324,8 +301,9 @@ int rsem_wait(struct rsem_client *rcli, const char *name)
 	}
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = get_first_ipv4_addr("rsem_wait",rcli->srv_host);
-	if (!addr.sin_addr.s_addr) {
+	addr.sin_addr.s_addr = get_first_ipv4_addr(rcli->srv_host,
+						err, err_len);
+	if (err[0]) {
 		/* couldn't resolve hostname */
 		ret = EIO;
 		goto done;
