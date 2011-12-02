@@ -1,0 +1,62 @@
+===============================================================================
+MODULE DEPENDENCIES
+
+An arrow between A and B means "A depends on B."
+===============================================================================
+
++=====================================+          +=====================================+
+|                TOOL                 |          |                OSD                  |
+|                                     |          |                                     |
+| Tools to administer a Redfish       |          | The RedFish object storage daemon   |
+| filesystem.  fishtool, etc.         |          | core.                               |
+|                                     |          |                                     |
++=====================================+          +=====================================+
+                  |                                              |
+                  +----------------------------------------------+
+                  |
+                  V
++=====================================+          +=====================================+
+|                CORE                 |          |                MDS                  |
+|                                     |          |                                     |
+| Everything that goes into daemons   |<---------| The RedFish metadta storage daemon  |
+| and other standalone applications   |          | core.                               |
+| Signal handling, pid files, etc.    |          |                                     |
++=====================================+          +=====================================+
+                  |
+                  |                                              
+                  V                                              
++=====================================+
+|                MSG                  |
+|                                     |
+| Networking framework to multiplex   |--+
+| RPCs over TCP sockets.  Message     |  |
+| format definitions.                 |  |
++=====================================+  |
+  ^                                      V
+  |    +=====================================+         +=====================================+
+  |    |                COMMON               |         |                UTIL                 |
+  |    |                                     |         |                                     |
+  |    | Redfish-specific stuff that can go  |-------->| Generic utility stuff that can go   |
+  |    | into either a process or shared lib |         | into either a process or shared lib.|
+  |    | Config stuff, cluster map, etc.     |         | Includes platform-specific glue.    |
+  |    |                                     |         | Has NO in-project dependencies.     |
+  |    +=====================================+         +=====================================+
+  |
+  |
++=====================================+
+|              CLIENT                 |
+|                                     |
+| Library used by clients to use      |
+| RedFish (fishc.so)                  |
+|                                     |
++=====================================+
+                 ^
+                 |
+                 |
++=====================================+
+|              HADOOP                 |
+|                                     |
+| Hadoop JNI glue code to use         |
+| RedFish                             |
+|                                     |
++=====================================+
