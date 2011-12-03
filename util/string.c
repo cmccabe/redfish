@@ -122,3 +122,51 @@ uint32_t ohash_str(const char *str)
 		h = ((h << 5) + h) + (c);
 	}
 }
+
+static int hexify(int num)
+{
+	if ((num >= 0) && (num <= 9))
+		return '0' + num;
+	else if ((num >= 10) && (num <= 16))
+		return 'a' + (num - 10);
+	else
+		return 'X';
+}
+
+void hex_dump(const char *buf, size_t buf_len, char *str, size_t str_len)
+{
+	int val;
+	int mod8;
+
+	if (str_len < 4) {
+		snprintf(str, str_len, "...");
+		return;
+	}
+	mod8 = 0;
+	while (1) {
+		if (buf_len == 0)
+			break;
+		val = *((unsigned char*)buf);
+		buf++;
+		buf_len--;
+		if (str_len < 4)
+			break;
+		*str++ = hexify(val >> 4);
+		*str++ = hexify(val & 0xf);
+		if (mod8 == 7) {
+			*str++ = '\n';
+			mod8 = 0;
+		}
+		else {
+			*str++ = ' ';
+			mod8++;
+		}
+		str_len -= 3;
+	}
+	if (buf_len > 0) {
+		*str++ = '.';
+		*str++ = '.';
+		*str++ = '.';
+	}
+	*str++ = '\0';
+}

@@ -113,6 +113,50 @@ static int test_zsnprintf(size_t len, const char *str, int expect_succ)
 	return 0;
 }
 
+static int test_hex_dump(void)
+{
+	char str[512];
+	size_t i, str_len = sizeof(str);
+	const char buf[] = { 'a', 'b', 'c' };
+	const char buf2[] = { 'X' };
+	char bigone[24];
+	const char * const bigone_out = "00 01 02 03 00 01 02 03\n"
+		"00 01 02 03 00 01 02 03\n"
+		"00 01 02 03 00 01 02 03\n";
+
+
+	hex_dump(buf, sizeof(buf), str, str_len);
+	if (strcmp("61 62 63 ", str)) {
+		fprintf(stderr, "expected '61 62 63'; got '%s'\n",
+			str);
+		return 1;
+	}
+	hex_dump(buf2, sizeof(buf2), str, str_len);
+	if (strcmp("58 ", str)) {
+		fprintf(stderr, "expected '58 '; got '%s'\n", str);
+		return 1;
+	}
+	hex_dump(buf, 0, str, str_len);
+	if (strcmp("", str)) {
+		fprintf(stderr, "expected ''; got '%s'\n", str);
+		return 1;
+	}
+	for (i = 0; i < sizeof(bigone); ++i) {
+		bigone[i] = i % 4;
+	}
+	hex_dump(bigone, sizeof(bigone), str, str_len);
+	if (strcmp(bigone_out, str)) {
+		fprintf(stderr, "expected '%s'; got '%s'\n", bigone_out, str);
+		return 1;
+	}
+	hex_dump(bigone, sizeof(bigone), str, 6);
+	if (strcmp("00 ...", str)) {
+		fprintf(stderr, "expected '00 ...'; got '%s'\n", str);
+		return 1;
+	}
+	return 0;
+}
+
 int main(void)
 {
 	EXPECT_ZERO(has_suffix_succeeded("abcd", "bcd"));
@@ -133,6 +177,8 @@ int main(void)
 	EXPECT_ZERO(test_zsnprintf(128, "foobar", 1));
 	EXPECT_ZERO(test_zsnprintf(3, "ab", 1));
 	EXPECT_ZERO(test_zsnprintf(3, "abc", 0));
+
+	EXPECT_ZERO(test_hex_dump());
 
 	return EXIT_SUCCESS;
 }

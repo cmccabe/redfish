@@ -86,4 +86,15 @@ void print_lines(FILE *fp, const char **lines);
  */
 uint32_t ohash_str(const char *str);
 
+/** Convert a byte buffer into a C string.
+ *
+ * The format is similar to that produced by "od -t x1"
+ *
+ * @param buf		the buffer
+ * @param buf_len	length of the buffer
+ * @param str		the output string
+ * @param str_len	length of the output string
+ */
+void hex_dump(const char *buf, size_t buf_len, char *str, size_t str_len);
+
 #endif
