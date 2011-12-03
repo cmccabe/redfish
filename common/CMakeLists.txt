@@ -1,8 +1,8 @@
 # libcommon needs to use -fPIC so that libutil can be used in the client shared libraries.
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 
-#cluster_map.c
 add_library(common
+    cluster_map.c
     config/logc.c
     config/mdsc.c
     config/mstorc.c
@@ -11,6 +11,6 @@ add_library(common
 )
 target_link_libraries(common jorm util pthread)
 
-#add_executable(cluster_map_unit cluster_map_unit.c)
-#target_link_libraries(cluster_map_unit util utest)
-#add_test(cluster_map_unit ${CMAKE_CURRENT_BINARY_DIR}/cluster_map_unit cluster_map_unit)
+add_executable(cluster_map_unit cluster_map_unit.c)
+target_link_libraries(cluster_map_unit common utest)
+add_test(cluster_map_unit ${CMAKE_CURRENT_BINARY_DIR}/cluster_map_unit cluster_map_unit)
