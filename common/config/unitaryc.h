@@ -9,7 +9,8 @@
 #ifndef REDFISH_COMMON_CONFIG_UNITARYC_DOT_H
 #define REDFISH_COMMON_CONFIG_UNITARYC_DOT_H
 
-#include "common/config/unitaryc.h"
+#include "common/config/mdsc.h"
+#include "common/config/osdc.h"
 
 #include <unistd.h> /* for size_t */
 
