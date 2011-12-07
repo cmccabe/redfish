@@ -34,7 +34,11 @@ static struct mstor *mstor_init_unit(const char *tdir, const char *name,
 	conf = JORM_INIT_mstorc();
 	if (!conf)
 		return ERR_PTR(ENOMEM);
-	conf->mstor_path = mstor_path;
+	conf->mstor_path = strdup(mstor_path);
+	if (!conf->mstor_path) {
+		JORM_FREE_mstorc(conf);
+		return ERR_PTR(ENOMEM);
+	}
 	conf->mstor_cache_size = cache_size;
 	mstor = mstor_init(g_fast_log_mgr, conf);
 	JORM_FREE_mstorc(conf);

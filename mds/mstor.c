@@ -152,14 +152,14 @@ static int mstor_leveldb_setup(struct mstor *mstor)
 	pack_to_be64(&hdr->mtime, t);
 	pack_to_be64(&hdr->atime, t);
 	off = offsetof(struct mnode_hdr, data);
-	ret = pack_str(&hdr, &off, sizeof(body), RF_SUPERUSER);
+	ret = pack_str(body, &off, sizeof(body), RF_SUPERUSER);
 	if (ret)
 		goto done;
-	ret = pack_str(&hdr, &off, sizeof(body), RF_SUPERUSER);
+	ret = pack_str(body, &off, sizeof(body), RF_SUPERUSER);
 	if (ret)
 		goto done;
-	leveldb_put(mstor->ldb, mstor->lwropt, key, sizeof(uint64_t),
-		    body, off, &err);
+	leveldb_put(mstor->ldb, mstor->lwropt, key, MNODE_KEY_LEN,
+			body, off, &err);
 	if (err) {
 		glitch_log("mstor_leveldb_setup: error creating root "
 			   "node: '%s'\n", err);
@@ -310,6 +310,7 @@ error:
 
 void mstor_shutdown(struct mstor *mstor)
 {
+	glitch_log("mstor_shutdown: shutting down mstor\n");
 	leveldb_readoptions_destroy(mstor->lreadopt);
 	leveldb_writeoptions_destroy(mstor->lwropt);
 	leveldb_cache_destroy(mstor->lcache);
@@ -320,7 +321,7 @@ void mstor_shutdown(struct mstor *mstor)
 static int mstor_fetch_node(struct mstor *mstor, uint64_t nid,
 			struct mnode *node)
 {
-	char *val, *err;
+	char *val, *err = NULL;
 	size_t vlen;
 	uint64_t be_nid;
 
@@ -347,7 +348,7 @@ static int mstor_fetch_child(struct mstor *mstor, struct mreq *mreq,
 {
 	int ret;
 	char key[MCHILD_KEY_MAX];
-	char *val, *err;
+	char *val, *err = NULL;
 	size_t klen, vlen;
 	uint64_t cnid;
 
