@@ -19,4 +19,8 @@ add_executable(leveldb_unit leveldb_unit.c force_cpp.cc)
 target_link_libraries(leveldb_unit ${LEVELDB_LIBRARIES} util utest)
 add_test(leveldb_unit ${CMAKE_CURRENT_BINARY_DIR}/leveldb_unit leveldb_unit)
 
+add_executable(mstor_unit mstor_unit.c mstor.c force_cpp.cc)
+target_link_libraries(mstor_unit core ${LEVELDB_LIBRARIES} util utest)
+add_test(mstor_unit ${CMAKE_CURRENT_BINARY_DIR}/mstor_unit mstor_unit)
+
 INSTALL(TARGETS fishmds DESTINATION bin)
