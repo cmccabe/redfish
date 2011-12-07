@@ -137,7 +137,7 @@ int unpack_str(const void *v, uint32_t *off, uint32_t len,
 	return 0;
 }
 
-int pack_str(void *v, uint32_t *off, uint32_t len, char *str)
+int pack_str(void *v, uint32_t *off, uint32_t len, const char *str)
 {
 	size_t o, rem;
 	int res;

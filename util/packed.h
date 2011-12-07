@@ -69,6 +69,6 @@ extern int unpack_str(const void *v, uint32_t *off, uint32_t len,
  * 			-ENAMETOOLONG if there wasn't enough memory to add
  * 			the string to the supplied buffer.
  */
-extern int pack_str(void *v, uint32_t *off, uint32_t len, char *str);
+extern int pack_str(void *v, uint32_t *off, uint32_t len, const char *str);
 
 #endif
