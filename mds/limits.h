@@ -22,9 +22,12 @@
 #define MAX_MDS 64
 
 /** Maximum length of a user name */
-#define USER_MAX 64
+#define RF_USER_MAX 64
 
 /** Maximum length of a group name */
-#define GROUP_MAX 64
+#define RF_GROUP_MAX 64
+
+/** The superuser */
+#define RF_SUPERUSER "superuser"
 
 #endif
