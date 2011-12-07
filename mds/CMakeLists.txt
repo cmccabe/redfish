@@ -1,8 +1,11 @@
 add_executable(fishmds
+    force_cpp.cc
     main.c
+    mstor.c
     net.c
 )
 target_link_libraries(fishmds
+    ${LEVELDB_LIBRARIES}
     ${LIBEV_LIBRARIES}
     core
     jorm
