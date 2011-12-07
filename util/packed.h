@@ -44,6 +44,7 @@ extern void pack_to_hptr(void *v, void *ptr);
  * @param v		Pointer to the data
  * @param off		(inout) offset to start at.  When the function finishes,
  *			will be the next offset to pull things from.
+ * @param len		Total length of the data
  * @param out		(out-param) where to put the string
  * @param out_len	length of the out buffer
  *
