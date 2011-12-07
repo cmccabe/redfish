@@ -30,13 +30,13 @@ enum {
 	/** OSD heartbeat message */
 	MMM_OSD_HEARTBEAT,
 	/** Lookup some chunks for an open read-only file. */
-	MMM_LOOKUP_CHUNKS_REQ,
+	MMM_CHUNKFIND_REQ,
 	/** Get a new chunk for an open write-only file */
-	MMM_ALLOC_CHUNK_REQ,
+	MMM_CHUNKALLOC_REQ,
 	/** Make a directory and all ancestors */
 	MMM_MKDIRS_REQ,
 	/** List all files in a directory */
-	MMM_LIST_DIR_REQ,
+	MMM_LISTDIR_REQ,
 	/** Give stat information regarding a path */
 	MMM_STAT_REQ,
 	/** Client Change permissions request */
@@ -51,8 +51,6 @@ enum {
 	MMM_UNLINK_TREE_REQ,
 	/** Client rename request */
 	MMM_RENAME_REQ,
-	/** Client close remote file */
-	MMM_CLOSE_RFILE_REQ,
 };
 
 /* Create file */
@@ -63,13 +61,15 @@ struct mmm_create_rfile_req {
 	uint16_t mode;
 	uint16_t repl;
 	uint64_t mtime;
-	char data[0];
+	uint16_t path_len;
+	char path[0];
 });
 PACKED(
 struct mmm_open_rfile_req {
 	struct msg base;
+	uint64_t atime;
 	uint16_t path_len;
-	struct mmm_path path;
+	char path[0];
 });
 PACKED(
 struct mmm_chunk_report {
@@ -88,20 +88,21 @@ struct mmm_lookup_chunks_req {
 PACKED(
 struct mmm_alloc_chunk_req {
 	struct msg base;
-	int32_t rfile;
-	int32_t len;
-	int64_t start;
+	uint64_t nid;
 });
 PACKED(
 struct mmm_mkdirs_req {
 	struct msg base;
+	uint64_t mtime;
 	uint16_t mode;
-	struct mmm_path path;
+	uint16_t path_len;
+	char path[0];
 });
 PACKED(
 struct mmm_list_directory_req {
 	struct msg base;
-	struct mmm_path path;
+	uint16_t path_len;
+	char path[0];
 });
 PACKED(
 struct mmm_stat_req {
