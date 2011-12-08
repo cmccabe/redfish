@@ -494,7 +494,7 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 	int ret, npc, cpc;
 	char full_path[RF_PATH_MAX];
 
-	if (zsnprintf(full_path, sizeof(full_path), mreq->full_path))
+	if (zsnprintf(full_path, sizeof(full_path), "%s", mreq->full_path))
 		return -ENAMETOOLONG;
 	ret = canonicalize_path(full_path);
 	if (ret)
