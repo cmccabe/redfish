@@ -323,11 +323,12 @@ static int mstor_fetch_node(struct mstor *mstor, uint64_t nid,
 {
 	char *val, *err = NULL;
 	size_t vlen;
-	uint64_t be_nid;
+	char key[MNODE_KEY_LEN];
 
-	be_nid = htobe64(nid);
-	val = leveldb_get(mstor->ldb, mstor->lreadopt, (char*)&be_nid,
-				sizeof(uint64_t), &vlen, &err);
+	key[0] = 'n';
+	pack_to_be64(key + 1, nid);
+	val = leveldb_get(mstor->ldb, mstor->lreadopt, key, MNODE_KEY_LEN,
+				&vlen, &err);
 	if (err) {
 		glitch_log("mstor_fetch_node: leveldb_get(%" PRIx64 ") "
 			   "returned error '%s'\n", nid, err);
