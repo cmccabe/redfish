@@ -71,7 +71,7 @@ static int mstor_do_creat(struct mstor *mstor, const char *full_path,
 }
 
 static int mstor_do_mkdirs(struct mstor *mstor, const char *full_path,
-		uint64_t mtime)
+		int mode, uint64_t mtime)
 {
 	struct mreq_mkdirs mreq;
 
@@ -80,7 +80,7 @@ static int mstor_do_mkdirs(struct mstor *mstor, const char *full_path,
 	mreq.base.full_path = full_path;
 	mreq.base.user = "superuser";
 	mreq.base.group = "superuser";
-	mreq.mode = 0644;
+	mreq.mode = mode;
 	mreq.mtime = mtime;
 	return mstor_do_operation(mstor, (struct mreq*)&mreq);
 }
@@ -91,9 +91,9 @@ static int mstor_test1(const char *tdir)
 
 	mstor = mstor_init_unit(tdir, "test1", 1024);
 	EXPECT_NOT_ERRPTR(mstor);
-	EXPECT_NONZERO(mstor_do_creat(mstor, "/a", 123));
-	EXPECT_NONZERO(mstor_do_mkdirs(mstor, "/b/c", 123));
-	EXPECT_EQUAL(mstor_do_mkdirs(mstor, "/a/d/e", 123), -ENOTDIR);
+	EXPECT_ZERO(mstor_do_creat(mstor, "/a", 123));
+	EXPECT_ZERO(mstor_do_mkdirs(mstor, "/b/c", 0644, 123));
+	EXPECT_EQUAL(mstor_do_mkdirs(mstor, "/a/d/e", 0644, 123), -ENOTDIR);
 	mstor_shutdown(mstor);
 	return 0;
 }
