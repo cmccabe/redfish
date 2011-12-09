@@ -120,8 +120,8 @@ extern int do_touch2(const char *dir, const char *fname);
 #define EXPECT_NOT_ERRPTR(p) \
 	do { \
 		if (IS_ERR(p)) { \
-			fprintf(stderr, "failed on line %d: %p\n",\
-				__LINE__, #p); \
+			fprintf(stderr, "failed on line %d: error %d\n",\
+				__LINE__, PTR_ERR(p)); \
 			return 1; \
 		} \
 	} while (0);
