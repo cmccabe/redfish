@@ -243,7 +243,7 @@ static int mstor_leveldb_is_empty(struct mstor *mstor)
 		goto done;
 	}
 	leveldb_iter_seek_to_first(iter);
-	ret = leveldb_iter_valid(iter);
+	ret = !leveldb_iter_valid(iter);
 
 done:
 	if (iter)
