@@ -9,12 +9,13 @@
 #ifndef REDFISH_MDS_MSTOR_DOT_H
 #define REDFISH_MDS_MSTOR_DOT_H
 
+#include <stdio.h> /* for FILE */
 #include <stdint.h> /* uint32_t, etc. */
 
 struct fast_log_mgr;
 struct mstor;
 
-enum mstor_op {
+enum mstor_op_ty {
 	MSTOR_OP_CREAT = 1,
 	MSTOR_OP_OPEN,
 	MSTOR_OP_CHUNKFIND,
@@ -31,14 +32,16 @@ enum mstor_op {
 };
 
 struct mreq {
-	/** Operation type */
-	enum mstor_op op;
-	/** Full path of request */
+	/** (caller sets) Operation type */
+	enum mstor_op_ty op;
+	/** (caller sets) Full path of request */
 	const char *full_path;
-	/** User performing request */
+	/** (caller sets) User performing request */
 	const char *user;
-	/** Group performing request */
+	/** (caller sets) Group performing request */
 	const char *group;
+	/** (internal) Flags. */
+	int flags;
 	/** Operation type-specific data */
 	char data[0];
 };
@@ -84,5 +87,23 @@ extern int mstor_do_operation(struct mstor *mstor, struct mreq *mreq);
  * @param mstor		The metadata store
  */
 extern void mstor_shutdown(struct mstor *mstor);
+
+/** Translate an mstor operation type to a string
+ *
+ * @param op		The mstor operation type
+ *
+ * @return		A statically allocated string representing the operation
+ *			type
+ */
+extern const char *mstor_op_ty_to_str(enum mstor_op_ty op);
+
+/** Dump the contents of the mstor out to a file
+ *
+ * @param mstor		The mstor
+ * @param out		The file
+ *
+ * @return		0 on success; error code otherwise
+ */
+extern int mstor_dump(struct mstor *mstor, FILE *out);
 
 #endif
