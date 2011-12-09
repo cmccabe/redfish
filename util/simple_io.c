@@ -11,6 +11,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -54,4 +55,18 @@ int copy_fd_to_fd(int ifd, int ofd)
 		if (res < (ssize_t)sizeof(buf))
 			return 0;
 	}
+}
+
+int zfprintf(FILE *out, const char *fmt, ...)
+{
+	int ret;
+	va_list ap;
+
+	va_start(ap, fmt);
+	ret = vfprintf(out, fmt, ap);
+	va_end(ap);
+
+	if (ret < 0)
+		return -EIO;
+	return 0;
 }

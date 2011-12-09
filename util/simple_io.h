@@ -9,6 +9,9 @@
 #ifndef REDFISH_SIMPLE_IO_DOT_H
 #define REDFISH_SIMPLE_IO_DOT_H
 
+#include "util/compiler.h"
+
+#include <stdio.h> /* for FILE */
 #include <unistd.h> /* for ssize_t */
 
 /** Read a whole file using read(2)
@@ -17,11 +20,15 @@
  * part. The bytes we don't read will be zeroed. The last byte will always be
  * zero.
  *
- * file: the file name to read
+ * @param file	the file name to read
+ * @param buf	the buffer to read the file into
+ * @param sz	size of the buffer
  *
- * Returns the number of bytes read on success; error code otherwise.
+ * @return	The number of bytes read on success; a negative error code
+ *		otherwise.
  */
-ssize_t simple_io_read_whole_file_zt(const char *file, char *buf, int sz);
+extern ssize_t simple_io_read_whole_file_zt(const char *file, char *buf,
+						int sz);
 
 /** Copy_to_fd failed because of an error on the source fd. */
 #define COPY_FD_TO_FD_SRCERR 0x08000000
@@ -35,6 +42,16 @@ ssize_t simple_io_read_whole_file_zt(const char *file, char *buf, int sz);
  * 		If the source caused the problem, the error number will be ORed
  * 		with COPY_FD_TO_FD_SRCERR.
  */
-int copy_fd_to_fd(int ifd, int ofd);
+extern int copy_fd_to_fd(int ifd, int ofd);
+
+/** Thin wrapper around fprintf that returns either 0 or -EIO.
+ *
+ * @param out	FILE to write to
+ * @param fmt	Format string, as in printf
+ * @param ...	varargs (see man page for fprintf)
+ *
+ * @return	0 on success; a negative error code on I/O error
+ */
+extern int zfprintf(FILE *out, const char *fmt, ...) PRINTF_FORMAT(2, 3);
 
 #endif

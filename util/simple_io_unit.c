@@ -116,6 +116,44 @@ static int test_copy_fd_to_fd(const char *tempdir, int *next_id,
 	return 0;
 }
 
+static int test_zfprintf(const char *tdir)
+{
+	int ret, i;
+	FILE *fp;
+	char fname[PATH_MAX], buf[512];
+	char expected[] = "abracadabra i=123";
+	size_t expected_len;
+	ssize_t res;
+
+	EXPECT_ZERO(zsnprintf(fname, sizeof(fname), "%s/zfprintf", tdir));
+	fp = fopen(fname, "w");
+	if (!fp) {
+		ret = -errno;
+		fprintf(stderr, "test_zfprintf: error opening %s for "
+			"write: error %d\n", fname, ret);
+		return ret;
+	}
+	i = 123;
+	EXPECT_ZERO(zfprintf(fp, "abracadabra i=%d", i));
+	EXPECT_ZERO(fclose(fp));
+	expected_len = strlen(expected);
+	res = simple_io_read_whole_file_zt(fname, buf, sizeof(buf) - 1);
+	EXPECT_EQUAL(res, (ssize_t)expected_len);
+	EXPECT_ZERO(memcmp(expected, buf, res));
+	fp = fopen(fname, "r");
+	if (!fp) {
+		ret = -errno;
+		fprintf(stderr, "test_zfprintf: error opening %s for "
+			"read: error %d\n", fname, ret);
+		return ret;
+	}
+	/* can't write to a file opened for reading!  Should see an error 
+	 * here. */
+	EXPECT_NONZERO(zfprintf(fp, "abracadabra i=%d\n", i));
+	EXPECT_ZERO(fclose(fp));
+	return 0;
+}
+
 int main(void)
 {
 	char *bigbuf, tempdir[PATH_MAX];
@@ -135,5 +173,6 @@ int main(void)
 	EXPECT_NOT_EQUAL(bigbuf, NULL);
 	EXPECT_ZERO(test_copy_fd_to_fd(tempdir, &next_id, bigbuf));
 	free(bigbuf);
+	EXPECT_ZERO(test_zfprintf(tempdir));
 	return EXIT_SUCCESS;
 }
