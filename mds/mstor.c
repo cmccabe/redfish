@@ -642,7 +642,7 @@ static int mstor_make_node(struct mstor *mstor, uint16_t mode_and_type,
 	ret = pack_str(body, &off, body_len, group);
 	if (ret)
 		goto error;
-	leveldb_writebatch_put(bat, pkey, plen, nkey, sizeof(uint64_t));
+	leveldb_writebatch_put(bat, pkey, plen, nkey + 1, sizeof(uint64_t));
 	leveldb_writebatch_put(bat, nkey, MNODE_KEY_LEN, body, off);
 	leveldb_write(mstor->ldb, mstor->lwropt, bat, &err);
 	if (err) {
@@ -716,7 +716,7 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 		++pcomp;
 		++npc;
 	}
-	pcomp = full_path;
+	pcomp = full_path + 1;
 	cpc = 0;
 	ret = mstor_fetch_node(mstor, MSTOR_ROOT_NID, pnode);
 	if (ret) {
@@ -759,7 +759,7 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 		else if (ret) {
 			return ret;
 		}
-		pcomp = memchr(pcomp, '\0', RF_PATH_MAX);
+		pcomp = memchr(pcomp, '\0', RF_PATH_MAX) + 1;
 		mnode_free(pnode);
 		memcpy(pnode, cnode, sizeof(struct mnode));
 		memset(cnode, 0, sizeof(struct mnode));
@@ -832,7 +832,7 @@ static int mstor_dump_child(FILE *out, const char *k, size_t klen,
 			   "illegal length.  length = %Zd\n", vlen);
 		return -EINVAL;
 	}
-	pnid = unpack_from_be64(k);
+	pnid = unpack_from_be64(k + 1);
 	cnid = unpack_from_be64(v);
 	memset(pcomp, 0, RF_PATH_MAX);
 	memcpy(pcomp, k + 1 + sizeof(uint64_t), klen - 1 - sizeof(uint64_t));
@@ -865,7 +865,7 @@ static int mstor_dump_node(FILE *out, const char *k, size_t klen,
 			   "length!  Length = %Zd\n", vlen);
 		return -EINVAL;
 	}
-	nid = unpack_from_be64(k);
+	nid = unpack_from_be64(k + 1);
 	hdr = (struct mnode_hdr*)v;
 	mode = unpack_from_be16(&hdr->mode_and_type);
 	is_dir = mode & MNODE_IS_DIR;
