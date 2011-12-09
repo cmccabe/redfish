@@ -433,7 +433,7 @@ static int mstor_leveldb_init(struct mstor *mstor,
 		ret = -ENOMEM;
 		goto error;
 	}
-	leveldb_options_set_create_if_missing(lopt, 1);
+	leveldb_options_set_create_if_missing(lopt, (conf->mstor_create != 0));
 	leveldb_options_set_compression(lopt, leveldb_no_compression);
 	lcache = leveldb_cache_create_lru(conf->mstor_cache_size);
 	leveldb_options_set_cache(lopt, lcache);

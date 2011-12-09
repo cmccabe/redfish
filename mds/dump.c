@@ -90,6 +90,7 @@ int run(const char *mstor_path, FILE *ofp)
 		goto done;
 	}
 	conf->mstor_cache_size = 1024;
+	conf->mstor_create = 0;
 	mstor = mstor_init(g_fast_log_mgr, conf);
 	if (IS_ERR(mstor)) {
 		ret = PTR_ERR(mstor);
