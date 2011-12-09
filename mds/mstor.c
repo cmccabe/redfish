@@ -336,6 +336,7 @@ static int mstor_leveldb_load(struct mstor *mstor)
 	nkey[0] = 'n';
 	pack_to_be64(nkey + 1, MSTOR_NID_MAX);
 	leveldb_iter_seek(iter, nkey, MNODE_KEY_LEN);
+	leveldb_iter_prev(iter);
 	if (!leveldb_iter_valid(iter)) {
 		glitch_log("mstor_leveldb_load: failed to seek to highest "
 			   "node id.\n");
@@ -353,7 +354,7 @@ static int mstor_leveldb_load(struct mstor *mstor)
 	mstor->next_nid = next_nid;
 	__sync_synchronize();
 	glitch_log("mstor_leveldb_setup: using existing mstor.  "
-		   "Highest nid = 0x%"PRIx64"\n", next_nid);
+		   "Next nid = 0x%"PRIx64"\n", next_nid);
 	ret = 0;
 
 done:
