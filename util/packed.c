@@ -153,3 +153,29 @@ int pack_str(void *v, uint32_t *off, uint32_t len, const char *str)
 	*off = o + res + 1;
 	return 0;
 }
+
+int repack_str(void *ov, uint32_t *ooff, uint32_t olen,
+		const void *iv, uint32_t *ioff, uint32_t ilen)
+{
+	size_t x, y, orem, irem;
+	int res;
+	char *o = (char*)ov;
+	char *i = (char*)iv;
+
+	x = *ooff;
+	if (x > olen)
+		return -ENAMETOOLONG;
+	orem = olen - x;
+	y = *ioff;
+	if (y > ilen)
+		return -EINVAL;
+	irem = ilen - y;
+	if (!memchr(i + y, '\0', irem))
+		return -EINVAL;
+	res = snprintf(o + x, orem, "%s", i + y);
+	if ((unsigned int)res > orem)
+		return -ENAMETOOLONG;
+	*ooff = x + res + 1;
+	*ioff = y + res + 1;
+	return 0;
+}

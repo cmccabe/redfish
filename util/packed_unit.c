@@ -99,10 +99,30 @@ static int test_packed_string_functions(void)
 	return 0;
 }
 
+static int test_repack_str(void)
+{
+	char b1[128] = { 0 }, b2[128] = { 0 };
+	uint32_t o1, o2;
+
+	o1 = 0;
+	EXPECT_ZERO(pack_str(b1, &o1, sizeof(b1), "abc"));
+	EXPECT_ZERO(pack_str(b1, &o1, sizeof(b1), "def"));
+	o1 = 0;
+	o2 = 0;
+	EXPECT_ZERO(repack_str(b2, &o2, sizeof(b2),
+				b1, &o1, sizeof(b1)));
+	EXPECT_ZERO(repack_str(b2, &o2, sizeof(b2),
+				b1, &o1, sizeof(b1)));
+	EXPECT_EQUAL(o1, o2);
+	EXPECT_ZERO(memcmp(b1, b2, o1));
+	return 0;
+}
+
 int main(void)
 {
 	EXPECT_ZERO(test_fixed_field_functions());
 	EXPECT_ZERO(test_packed_string_functions());
+	EXPECT_ZERO(test_repack_str());
 
 	return EXIT_SUCCESS;
 }

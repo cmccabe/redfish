@@ -71,4 +71,22 @@ extern int unpack_str(const void *v, uint32_t *off, uint32_t len,
  */
 extern int pack_str(void *v, uint32_t *off, uint32_t len, const char *str);
 
+/** Copy a packed NULL-terminated string from one buffer to another
+ *
+ * @param ov		Pointer to the output data
+ * @param ooff		(inout) offset to start at.  When the function finishes,
+ *			will be the next offset to push things to.
+ * @param olen		Total available length in the output buffer
+ * @param iv		Pointer to the input data
+ * @param ioff		(inout) offset to start at.  When the function finishes,
+ *			will be the next offset to read things from.
+ * @param ilen		Total available length in the input buffer
+ *
+ * @return		0 on success.
+ * 			-ENAMETOOLONG if there wasn't enough memory to add
+ * 			the string to the supplied buffer.
+ */
+extern int repack_str(void *ov, uint32_t *ooff, uint32_t olen,
+			const void *iv, uint32_t *ioff, uint32_t ilen);
+
 #endif
