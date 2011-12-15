@@ -45,6 +45,12 @@ struct mmm_open_rfile_resp {
 	uint64_t chunk_id;
 });
 PACKED(
+struct mmm_stat_resp {
+	struct msg base;
+	/* see net/generic for a description of this format */
+	char packed_stat[0];
+});
+PACKED(
 struct mmm_list_resp {
 	struct msg base;
 	/* see net/generic for a description of this format */

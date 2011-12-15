@@ -32,35 +32,24 @@ struct mmm_nack {
 
 /* stat information for a file or directory
  *
- * 'A packed stat array' is just a series of mmm_stat structures put
- * together without any padding. At the very end is 16 bits of 0.
- * (This exploits the fact that path_len cannot be 0 for a valid mmm_stat
- * entry.)
+ * 'A packed stat array' is just a series of mmm_stat structures put together
+ * without any padding. At the very end is 16 bits of 0.  (This exploits the
+ * fact that stat_len cannot be 0 for a valid stat entry.)
  */
 PACKED(
-struct mmm_stat {
-	struct msg base;
-	uint16_t path_len;
-	uint16_t mode;
+struct mmm_stat_hdr {
+	uint16_t stat_len;
+	uint16_t mode_and_type;
 	uint32_t block_sz;
-	int64_t mtime;
-	int64_t atime;
-	int64_t length;
-	uint8_t is_dir;
+	uint64_t mtime;
+	uint64_t atime;
+	uint64_t length;
 	uint8_t repl;
-	uint16_t owner;
-	uint16_t group;
-	char path[0];
+	char data[0];
+	/* path */
+	/* owner */
+	/* group */
 });
-PACKED(
-struct mmm_path {
-	struct msg base;
-	uint16_t len;
-	char str[0];
-});
-
-extern int safe_read_path(char *path_out, size_t path_max,
-			struct mmm_path *path, int fd);
 
 extern int send_nack(int fd, int error);
 
