@@ -734,6 +734,91 @@ static int add_stat_to_list(uint32_t *off, uint32_t out_len,
 	return 0;
 }
 
+static int mstor_do_listdir(struct mstor *mstor, struct mreq *mreq,
+		const struct mnode *pnode)
+{
+	int ret;
+	char *err = NULL;
+	leveldb_iterator_t *iter = NULL;
+	const char *k;
+	const char *v;
+	char ikey[1 + sizeof(uint64_t)], pcomp[RF_PATH_COMPONENT_MAX];
+	size_t klen, vlen;
+	struct mnode node;
+	uint32_t off;
+	uint64_t nid;
+	struct mreq_listdir *req;
+
+	req = (struct mreq_listdir*)mreq;
+	memset(&node, 0, sizeof(struct mnode));
+	if (!(pnode->val->mode_and_type & MNODE_IS_DIR)) {
+		ret = -ENOTDIR;
+		goto done;
+	}
+	iter = leveldb_create_iterator(mstor->ldb, mstor->lreadopt);
+	if (!iter) {
+		glitch_log("mstor_do_listdir: leveldb_create_iterator failed.\n");
+		ret = -ENOMEM;
+		goto done;
+	}
+	ikey[0] = 'c';
+	pack_to_be64(ikey + 1, pnode->nid);
+	leveldb_iter_seek(iter, ikey, sizeof(ikey));
+	off = 0;
+	while (1) {
+		if (!leveldb_iter_valid(iter)) {
+			break;
+		}
+		k = leveldb_iter_key(iter, &klen);
+		v = leveldb_iter_value(iter, &vlen);
+		if (klen < 2 + sizeof(uint64_t)) {
+			glitch_log("mstor_do_listdir: leveldb_iter_key "
+				"returned klen = %Zd.  That should not be "
+				"possible.\n", klen);
+			ret = -EIO;
+			goto done;
+		}
+		if (vlen != sizeof(uint64_t)) {
+			glitch_log("mstor_do_listdir: leveldb_iter_value "
+				"returned vlen = %Zd.  That should not be "
+				"possible.\n", vlen);
+			ret = -EIO;
+			goto done;
+		}
+		nid = unpack_from_be64(v);
+		if (zsnprintf(pcomp, sizeof(pcomp), "%s",
+				k + 1 + sizeof(uint64_t))) {
+			ret = -ENAMETOOLONG;
+			goto done;
+		}
+		ret = mstor_fetch_node(mstor, nid, &node);
+		if (ret == -ENOENT) {
+			/* possible race between us and a rename/delete */
+			goto next;
+		}
+		else {
+			/* error condition */
+			goto done;
+		}
+		ret = add_stat_to_list(&off, req->out_len, pcomp,
+				&node, req->out);
+		if (ret)
+			goto done;
+next:
+		mnode_free(&node);
+		memset(&node, 0, sizeof(struct mnode));
+		leveldb_iter_next(iter);
+	}
+	ret = 0;
+done:
+	if (err)
+		free(err);
+	if (iter)
+		leveldb_iter_destroy(iter);
+	mnode_free(&node);
+	return ret;
+}
+
 static int mstor_do_stat(struct mreq *mreq,
 		const char *pcomp, const struct mnode *pnode)
 {
@@ -830,7 +915,7 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 	case MSTOR_OP_MKDIRS:
 		return 0;
 	case MSTOR_OP_LISTDIR:
-		return -ENOTSUP;
+		return mstor_do_listdir(mstor, mreq, pnode);
 	case MSTOR_OP_STAT:
 		return mstor_do_stat(mreq, pcomp, pnode);
 	case MSTOR_OP_CHMOD:
