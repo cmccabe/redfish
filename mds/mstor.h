@@ -62,6 +62,25 @@ struct mreq_mkdirs {
 	uint64_t mtime;
 };
 
+struct mreq_stat {
+	struct mreq base;
+	/** Pointer to buffer to use to return the results.
+	 * The result will be returned as a packed stat entry. */
+	char *out;
+	/** Length of the out buffer. */
+	size_t out_len;
+};
+
+struct mreq_listdir {
+	struct mreq base;
+	/** Pointer to buffer to use to return the results.
+	 * The results will be returned as a series of NULL-terminated UTF-8
+	 * strings followed by a double NULL. */
+	char *out;
+	/** Length of the out buffer. */
+	size_t out_len;
+};
+
 /** Initialize the metadata store.
  *
  * @param mgr		The fast log manager to use for fast logs

@@ -10,6 +10,7 @@
 #include "core/glitch_log.h"
 #include "mds/limits.h"
 #include "mds/mstor.h"
+#include "msg/generic.h"
 #include "util/error.h"
 #include "util/fast_log.h"
 #include "util/packed.h"
@@ -693,6 +694,58 @@ static int mstor_do_mkdir(struct mstor *mstor, struct mreq *mreq,
 	return ret;
 }
 
+static int add_stat_to_list(uint32_t *off, uint32_t out_len,
+		const char *pcomp, const struct mnode *node, char *out)
+{
+	int ret;
+	struct mmm_stat_hdr *hdr;
+	uint32_t o = *off;
+	uint32_t mo;
+
+	if ((out_len - o) < sizeof(struct mmm_stat_hdr)) {
+		return -ENAMETOOLONG;
+	}
+	hdr = (struct mmm_stat_hdr*)(out + o);
+	hdr->stat_len = 0;
+	hdr->mode_and_type = node->val->mode_and_type;
+	hdr->block_sz = 0; // TODO: fill in
+	hdr->mtime = node->val->mtime;
+	hdr->atime = node->val->atime;
+	hdr->length = 0; // TODO: needs to be calculated by looking at chunks
+			// for this nid
+	hdr->repl = 1; // TODO: this ought to be the 'target' value in
+			// mnode_hdr?
+	o += sizeof(struct mnode_hdr);
+	/* path name */
+	ret = pack_str(out, &o, out_len, pcomp);
+	if (ret)
+		return ret;
+	/* owner */
+	mo = offsetof(struct mnode_hdr, data);
+	ret = repack_str(out, &o, out_len, node->val, &mo, node->len);
+	if (ret)
+		return ret;
+	/* group */
+	ret = repack_str(out, &o, out_len, node->val, &mo, node->len);
+	if (ret)
+		return ret;
+	/* success */
+	*off = o;
+	return 0;
+}
+
+static int mstor_do_stat(struct mreq *mreq,
+		const char *pcomp, const struct mnode *pnode)
+{
+	int ret;
+	struct mreq_stat *req;
+	uint32_t off = 0;
+
+	req = (struct mreq_stat*)mreq;
+	ret = add_stat_to_list(&off, req->out_len, pcomp, pnode, req->out);
+	return ret;
+}
+
 static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 			    struct mnode *pnode, struct mnode *cnode)
 {
@@ -779,7 +832,7 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 	case MSTOR_OP_LISTDIR:
 		return -ENOTSUP;
 	case MSTOR_OP_STAT:
-		return -ENOTSUP;
+		return mstor_do_stat(mreq, pcomp, pnode);
 	case MSTOR_OP_CHMOD:
 		return -ENOTSUP;
 	case MSTOR_OP_CHOWN:
