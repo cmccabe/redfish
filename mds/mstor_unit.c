@@ -8,9 +8,12 @@
 
 #include "common/config/mstorc.h"
 #include "core/process_ctx.h"
+#include "mds/limits.h"
 #include "mds/mstor.h"
+#include "msg/generic.h"
 #include "util/compiler.h"
 #include "util/error.h"
+#include "util/packed.h"
 #include "util/string.h"
 #include "util/tempfile.h"
 #include "util/test.h"
@@ -21,6 +24,9 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+
+typedef int (*stat_check_fn_t)(void *arg, struct mmm_stat_hdr *hdr,
+		const char *pcomp, const char *owner, const char *group);
 
 static struct mstor *mstor_init_unit(const char *tdir, const char *name,
 		int cache_size)
@@ -85,6 +91,89 @@ static int mstor_do_mkdirs(struct mstor *mstor, const char *full_path,
 	return mstor_do_operation(mstor, (struct mreq*)&mreq);
 }
 
+static int unpack_stat_hdr(struct mmm_stat_hdr *hdr,
+		char *pcomp, char *owner, char *group)
+{
+	int ret;
+	uint16_t stat_len;
+	uint32_t off;
+
+	stat_len = unpack_from_be16(&hdr->stat_len);
+	off = offsetof(struct mmm_stat_hdr, data);
+	ret = unpack_str(hdr, &off, stat_len, pcomp, RF_PCOMP_MAX);
+	if (ret)
+		return ret;
+	//printf("WW unpacked pcomp as '%s'\n", pcomp);
+	ret = unpack_str(hdr, &off, stat_len, owner, RF_USER_MAX);
+	if (ret)
+		return ret;
+	//printf("WW unpacked owner as '%s'\n", owner);
+	ret = unpack_str(hdr, &off, stat_len, group, RF_GROUP_MAX);
+	if (ret)
+		return ret;
+	//printf("WW unpacked group as '%s'\n", group);
+	return 0;
+}
+
+static int mstor_do_listdir(struct mstor *mstor, const char *full_path,
+			    void *arg, stat_check_fn_t fn)
+{
+	int ret, num_entries;
+	struct mmm_stat_hdr *hdr;
+	struct mreq_listdir mreq;
+	char buf[16384];
+	char pcomp[RF_PCOMP_MAX], owner[RF_USER_MAX], group[RF_GROUP_MAX];
+	uint32_t off;
+
+	memset(&mreq, 0, sizeof(mreq));
+	memset(buf, 0, sizeof(buf));
+	mreq.base.op = MSTOR_OP_LISTDIR;
+	mreq.base.full_path = full_path;
+	mreq.base.user = "superuser";
+	mreq.base.group = "superuser";
+	mreq.out = buf;
+	mreq.out_len = sizeof(buf);
+	ret = mstor_do_operation(mstor, (struct mreq*)&mreq);
+	if (ret) {
+		fprintf(stderr, "do_listdir failed with error %d\n", ret);
+		return FORCE_NEGATIVE(ret);
+	}
+	off = 0;
+	num_entries = 0;
+	while (1) {
+		if (off >= mreq.used_len)
+			break;
+		hdr = (struct mmm_stat_hdr*)(buf + off);
+		ret = unpack_stat_hdr(hdr, pcomp, owner, group);
+		if (ret) {
+			return FORCE_NEGATIVE(ret);
+		}
+		if (fn)
+			ret = fn(arg, hdr, pcomp, owner, group);
+		if (ret) {
+			return FORCE_NEGATIVE(ret);
+		}
+		off += unpack_from_be16(&hdr->stat_len);
+		num_entries++;
+	}
+	//fprintf(stderr, "mreq.used_len = %Zd\n", mreq.used_len);
+	return num_entries;
+}
+
+static int test1_expect_c(POSSIBLY_UNUSED(void *arg),
+		struct mmm_stat_hdr *hdr, const char *pcomp, const char *owner,
+		const char *group)
+{
+	EXPECT_EQUAL(unpack_from_be16(&hdr->mode_and_type),
+			MNODE_IS_DIR | 0644);
+	EXPECT_EQUAL(unpack_from_be64(&hdr->mtime), 123ULL);
+	EXPECT_EQUAL(unpack_from_be64(&hdr->atime), 123ULL);
+	EXPECT_ZERO(strcmp(pcomp, "c"));
+	EXPECT_ZERO(strcmp(owner, "superuser"));
+	EXPECT_ZERO(strcmp(group, "superuser"));
+	return 0;
+}
+
 static int mstor_test1(const char *tdir)
 {
 	struct mstor *mstor;
@@ -94,6 +183,10 @@ static int mstor_test1(const char *tdir)
 	EXPECT_ZERO(mstor_do_creat(mstor, "/a", 123));
 	EXPECT_ZERO(mstor_do_mkdirs(mstor, "/b/c", 0644, 123));
 	EXPECT_EQUAL(mstor_do_mkdirs(mstor, "/a/d/e", 0644, 123), -ENOTDIR);
+
+	//mstor_dump(mstor, stdout);
+	EXPECT_EQUAL(mstor_do_listdir(mstor, "/a", NULL, NULL), -ENOTDIR);
+	EXPECT_EQUAL(mstor_do_listdir(mstor, "/b", NULL, test1_expect_c), 1);
 	mstor_shutdown(mstor);
 	return 0;
 }

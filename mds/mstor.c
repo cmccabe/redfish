@@ -55,6 +55,7 @@
 #define MNODE_MAX_SZ (sizeof(struct mnode_hdr) + RF_USER_MAX + RF_GROUP_MAX)
 #define MSTOR_NID_MAX 0xffffffffffff0000ULL
 #define MNODE_KEY_LEN (1 + sizeof(uint64_t))
+#define MCHILD_KEY_LEN_PREFIX (1 + sizeof(uint64_t))
 #define MCHUNK_KEY_LEN (1 + sizeof(uint64_t))
 #define MFILE_KEY_LEN (1 + sizeof(uint64_t) + sizeof(uint64_t))
 #define MNODE_BODY_MAX (sizeof(struct mnode_hdr) + RF_USER_MAX + 1 + \
@@ -722,23 +723,23 @@ static int add_stat_to_list(uint32_t *off, uint32_t out_len,
 {
 	int ret;
 	struct mmm_stat_hdr *hdr;
-	uint32_t o = *off;
-	uint32_t mo;
+	uint32_t old, o, mo;
+	uint32_t stat_len;
 
+	old = o = *off;
 	if ((out_len - o) < sizeof(struct mmm_stat_hdr)) {
 		return -ENAMETOOLONG;
 	}
 	hdr = (struct mmm_stat_hdr*)(out + o);
-	hdr->stat_len = 0;
 	hdr->mode_and_type = node->val->mode_and_type;
 	hdr->block_sz = 0; // TODO: fill in
 	hdr->mtime = node->val->mtime;
 	hdr->atime = node->val->atime;
 	hdr->length = 0; // TODO: needs to be calculated by looking at chunks
 			// for this nid
-	hdr->repl = 1; // TODO: this ought to be the 'target' value in
-			// mnode_hdr?
-	o += sizeof(struct mnode_hdr);
+	pack_to_8(&hdr->repl, 1); // TODO: this ought to be the 'target' value in
+					// mnode_hdr?
+	o += sizeof(struct mmm_stat_hdr);
 	/* path name */
 	ret = pack_str(out, &o, out_len, pcomp);
 	if (ret)
@@ -753,7 +754,11 @@ static int add_stat_to_list(uint32_t *off, uint32_t out_len,
 	if (ret)
 		return ret;
 	/* success */
+	stat_len = o - old;
+	if (stat_len > 0xffff)
+		return -ENAMETOOLONG;
 	*off = o;
+	pack_to_be16(&hdr->stat_len, (uint16_t)stat_len);
 	return 0;
 }
 
@@ -773,7 +778,7 @@ static int mstor_do_listdir(struct mstor *mstor, struct mreq *mreq,
 	struct mreq_listdir *req;
 
 	req = (struct mreq_listdir*)mreq;
-	req->out_len = 0;
+	req->used_len = 0;
 	memset(&node, 0, sizeof(struct mnode));
 	if (!(unpack_from_be16(&pnode->val->mode_and_type) & MNODE_IS_DIR)) {
 		ret = -ENOTDIR;
@@ -795,13 +800,24 @@ static int mstor_do_listdir(struct mstor *mstor, struct mreq *mreq,
 		}
 		k = leveldb_iter_key(iter, &klen);
 		v = leveldb_iter_value(iter, &vlen);
-		if (klen < 2 + sizeof(uint64_t)) {
+		if (klen < 1) {
+			glitch_log("mstor_do_listdir: leveldb_iter_key "
+				"got illegal 0-length key\n");
+			ret = -EIO;
+			goto done;
+		}
+		if (k[0] != 'c')
+			break;
+		if (klen <= MCHILD_KEY_LEN_PREFIX) {
 			glitch_log("mstor_do_listdir: leveldb_iter_key "
 				"returned klen = %Zd.  That should not be "
 				"possible.\n", klen);
 			ret = -EIO;
 			goto done;
 		}
+		nid = unpack_from_be64(k + 1);
+		if (nid != pnode->nid)
+			break;
 		if (vlen != sizeof(uint64_t)) {
 			glitch_log("mstor_do_listdir: leveldb_iter_value "
 				"returned vlen = %Zd.  That should not be "
@@ -810,17 +826,19 @@ static int mstor_do_listdir(struct mstor *mstor, struct mreq *mreq,
 			goto done;
 		}
 		nid = unpack_from_be64(v);
-		if (zsnprintf(pcomp, sizeof(pcomp), "%s",
-				k + 1 + sizeof(uint64_t))) {
+		if (klen - MCHILD_KEY_LEN_PREFIX >= RF_PCOMP_MAX) {
 			ret = -ENAMETOOLONG;
 			goto done;
 		}
+		memcpy(pcomp, k + MCHILD_KEY_LEN_PREFIX,
+			klen - MCHILD_KEY_LEN_PREFIX);
+		pcomp[klen - MCHILD_KEY_LEN_PREFIX] = '\0';
 		ret = mstor_fetch_node(mstor, nid, &node);
 		if (ret == -ENOENT) {
 			/* possible race between us and a rename/delete */
 			goto next;
 		}
-		else {
+		else if (ret) {
 			/* error condition */
 			goto done;
 		}
@@ -833,6 +851,7 @@ next:
 		memset(&node, 0, sizeof(struct mnode));
 		leveldb_iter_next(iter);
 	}
+	req->used_len = off;
 	ret = 0;
 done:
 	if (err)

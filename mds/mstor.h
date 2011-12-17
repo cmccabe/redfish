@@ -80,6 +80,8 @@ struct mreq_listdir {
 	char *out;
 	/** Length of the out buffer. */
 	size_t out_len;
+	/** Length used in the out buffer. */
+	size_t used_len;
 };
 
 /** Initialize the metadata store.
