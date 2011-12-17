@@ -84,6 +84,14 @@ struct mreq_listdir {
 	size_t used_len;
 };
 
+struct mreq_chown {
+	struct mreq base;
+	/** New owner, or NULL for no change */
+	const char *new_owner;
+	/** New group, or NULL for no change */
+	const char *new_group;
+};
+
 /** Initialize the metadata store.
  *
  * @param mgr		The fast log manager to use for fast logs

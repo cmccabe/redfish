@@ -876,6 +876,72 @@ static int mstor_do_stat(struct mreq *mreq,
 	return ret;
 }
 
+static int mstor_do_chown(struct mstor *mstor, struct mreq *mreq,
+		const struct mnode *pnode)
+{
+	int ret;
+	struct mreq_chown *req;
+	char k[MNODE_KEY_LEN], *err = NULL;
+	char buf[sizeof(struct mnode_hdr) + RF_USER_MAX + RF_GROUP_MAX];
+	char new_owner[RF_USER_MAX], new_group[RF_GROUP_MAX];
+	uint32_t off;
+
+	// TODO: take lock here
+	off = offsetof(struct mnode_hdr, data);
+	ret = unpack_str(pnode->val, &off, pnode->len,
+			new_owner, sizeof(new_owner));
+	if (ret) {
+		glitch_log("mstor_do_chown(nid=0x%"PRIx64"): error "
+			   "unpacking owner string\n", pnode->nid);
+		ret = -EIO;
+		goto done;
+	}
+	ret = unpack_str(pnode->val, &off, pnode->len,
+			new_group, sizeof(new_group));
+	if (ret) {
+		glitch_log("mstor_do_chown(nid=0x%"PRIx64"): error "
+			   "unpacking group string\n", pnode->nid);
+		ret = -EIO;
+		goto done;
+	}
+	req = (struct mreq_chown*)mreq;
+	if (req->new_owner) {
+		ret = zsnprintf(new_owner, RF_USER_MAX, "%s", req->new_owner);
+		if (ret)
+			goto done;
+	}
+	if (req->new_group) {
+		ret = zsnprintf(new_group, RF_GROUP_MAX, "%s", req->new_group);
+		if (ret)
+			goto done;
+	}
+	memset(buf, 0, sizeof(buf));
+	memcpy(buf, pnode->val, sizeof(struct mnode_hdr));
+	off = offsetof(struct mnode_hdr, data);
+	ret = pack_str(buf, &off, sizeof(buf), new_owner);
+	if (ret)
+		goto done;
+	ret = pack_str(buf, &off, sizeof(buf), new_group);
+	if (ret)
+		goto done;
+	k[0] = 'n';
+	pack_to_be64(k + 1, pnode->nid);
+	leveldb_put(mstor->ldb, mstor->lwropt, k, MNODE_KEY_LEN,
+			buf, off, &err);
+	if (err) {
+		glitch_log("mstor_do_chown(nid=0x%"PRIx64": leveldb_put "
+			"returned error '%s'\n", pnode->nid, err);
+		ret = -EIO;
+		goto done;
+	}
+	return ret;
+
+done:
+	free(err);
+	// TODO: release lock here
+	return ret;
+}
+
 static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 			    struct mnode *pnode, struct mnode *cnode)
 {
@@ -971,7 +1037,7 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 	case MSTOR_OP_CHMOD:
 		return -ENOTSUP;
 	case MSTOR_OP_CHOWN:
-		return -ENOTSUP;
+		return mstor_do_chown(mstor, mreq, pnode);
 	case MSTOR_OP_UTIMES:
 		return -ENOTSUP;
 	case MSTOR_OP_UNLINK:
