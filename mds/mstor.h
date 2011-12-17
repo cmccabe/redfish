@@ -12,6 +12,8 @@
 #include <stdio.h> /* for FILE */
 #include <stdint.h> /* uint32_t, etc. */
 
+#define MNODE_IS_DIR 0x8000
+
 struct fast_log_mgr;
 struct mstor;
 
@@ -74,8 +76,7 @@ struct mreq_stat {
 struct mreq_listdir {
 	struct mreq base;
 	/** Pointer to buffer to use to return the results.
-	 * The results will be returned as a series of NULL-terminated UTF-8
-	 * strings followed by a double NULL. */
+	 * The results will be returned as a series of packed stat entries. */
 	char *out;
 	/** Length of the out buffer. */
 	size_t out_len;

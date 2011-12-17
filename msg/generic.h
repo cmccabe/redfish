@@ -46,7 +46,7 @@ struct mmm_stat_hdr {
 	uint64_t length;
 	uint8_t repl;
 	char data[0];
-	/* path */
+	/* pcomp */
 	/* owner */
 	/* group */
 });

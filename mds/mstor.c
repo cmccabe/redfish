@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <leveldb/c.h>
+#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,7 +48,6 @@
 #define MSTOR_ROOT_NID 0
 #define MSTOR_ROOT_NID_INIT_MODE (0755 | MNODE_IS_DIR)
 
-#define MNODE_IS_DIR 0x8000
 #define MSTOR_PERM_EXEC 01
 #define MSTOR_PERM_WRITE 02
 #define MSTOR_PERM_READ 04
@@ -59,11 +59,12 @@
 #define MFILE_KEY_LEN (1 + sizeof(uint64_t) + sizeof(uint64_t))
 #define MNODE_BODY_MAX (sizeof(struct mnode_hdr) + RF_USER_MAX + 1 + \
 			RF_GROUP_MAX + 1)
-#define MCHILD_KEY_MAX (1 + sizeof(uint64_t) + RF_PATH_COMPONENT_MAX)
+#define MCHILD_KEY_MAX (1 + sizeof(uint64_t) + RF_PCOMP_MAX)
 
 #define MREQ_FLAG_CHECK_PERMS 0x1
 
 /****************************** prototypes ********************************/
+static void mstor_leveldb_shutdown(struct mstor *mstor);
 
 /****************************** types ********************************/
 /** A metadata node representing either a file or a directory
@@ -80,8 +81,8 @@ struct mnode {
 PACKED(
 struct mnode_hdr {
 	uint16_t mode_and_type;
-	int64_t mtime;
-	int64_t atime;
+	uint64_t mtime;
+	uint64_t atime;
 	char data[0];
 	/* owner (cstr) */
 	/* group (cstr) */
@@ -98,6 +99,8 @@ struct mstor {
 	leveldb_cache_t *lcache;
 	/** Next node ID to use */
 	uint64_t next_nid;
+	/** Protects next_nid */
+	pthread_mutex_t next_nid_lock;
 };
 
 /****************************** functions ********************************/
@@ -149,7 +152,13 @@ static uint64_t mstor_next_nid(struct mstor *mstor)
 {
 	uint64_t nid;
 
+#if __WORDSIZE == 32
+	pthread_mutex_lock(&mstor->next_nid_lock);
+	nid = mstor->next_nid++;
+	pthread_mutex_unlock(&mstor->next_nid_lock);
+#else
 	nid = __sync_fetch_and_add(&mstor->next_nid, 1);
+#endif
 	if (nid > MSTOR_NID_MAX)
 		abort();
 	return nid;
@@ -488,37 +497,51 @@ struct mstor* mstor_init(POSSIBLY_UNUSED(struct fast_log_mgr *mgr),
 		ret = ENOMEM;
 		goto error;
 	}
+	ret = pthread_mutex_init(&mstor->next_nid_lock, NULL);
+	if (ret)
+		goto error_free_mstor;
 	ret = mstor_leveldb_init(mstor, conf);
 	if (ret)
-		goto error;
+		goto error_destroy_next_nid_lock;
 	ret = mstor_leveldb_is_empty(mstor);
 	if (ret < 0)
-		goto error;
+		goto error_leveldb_shutdown;
 	else if (ret == 1) {
 		ret = mstor_leveldb_create_new(mstor);
 		if (ret)
-			goto error;
+			goto error_leveldb_shutdown;
 	}
 	else {
 		ret = mstor_leveldb_load(mstor);
 		if (ret)
-			goto error;
+			goto error_leveldb_shutdown;
 	}
 	return mstor;
 
-error:
+error_leveldb_shutdown:
+	mstor_leveldb_shutdown(mstor);
+error_destroy_next_nid_lock:
+	pthread_mutex_destroy(&mstor->next_nid_lock);
+error_free_mstor:
 	free(mstor);
+error:
 	glitch_log("mstor_init failed with error %d\n", ret);
 	return ERR_PTR(FORCE_POSITIVE(ret));
+}
+
+static void mstor_leveldb_shutdown(struct mstor *mstor)
+{
+	leveldb_readoptions_destroy(mstor->lreadopt);
+	leveldb_writeoptions_destroy(mstor->lwropt);
+	leveldb_cache_destroy(mstor->lcache);
+	leveldb_close(mstor->ldb);
 }
 
 void mstor_shutdown(struct mstor *mstor)
 {
 	glitch_log("mstor_shutdown: shutting down mstor\n");
-	leveldb_readoptions_destroy(mstor->lreadopt);
-	leveldb_writeoptions_destroy(mstor->lwropt);
-	leveldb_cache_destroy(mstor->lcache);
-	leveldb_close(mstor->ldb);
+	mstor_leveldb_shutdown(mstor);
+	pthread_mutex_destroy(&mstor->next_nid_lock);
 	free(mstor);
 }
 
@@ -567,7 +590,7 @@ static int mstor_fetch_child(struct mstor *mstor, struct mreq *mreq,
 	/* Look up the child nid */
 	key[0] = 'c';
 	pack_to_be64(key + 1, pnode->nid);
-	snprintf(key + 1 + sizeof(uint64_t), RF_PATH_COMPONENT_MAX,
+	snprintf(key + 1 + sizeof(uint64_t), RF_PCOMP_MAX,
 		"%s", pcomp);
 	klen = 1 + sizeof(uint64_t) + strlen(pcomp);
 	val = leveldb_get(mstor->ldb, mstor->lreadopt, key,
@@ -627,7 +650,7 @@ static int mstor_make_node(struct mstor *mstor, uint16_t mode_and_type,
 	}
 	pkey[0] = 'c';
 	pack_to_be64(pkey + 1, pnode->nid);
-	snprintf(pkey + 1 + sizeof(uint64_t), RF_PATH_COMPONENT_MAX,
+	snprintf(pkey + 1 + sizeof(uint64_t), RF_PCOMP_MAX,
 		"%s", pcomp);
 	plen = 1 + sizeof(uint64_t) + strlen(pcomp);
 	nkey[0] = 'n';
@@ -742,7 +765,7 @@ static int mstor_do_listdir(struct mstor *mstor, struct mreq *mreq,
 	leveldb_iterator_t *iter = NULL;
 	const char *k;
 	const char *v;
-	char ikey[1 + sizeof(uint64_t)], pcomp[RF_PATH_COMPONENT_MAX];
+	char ikey[1 + sizeof(uint64_t)], pcomp[RF_PCOMP_MAX];
 	size_t klen, vlen;
 	struct mnode node;
 	uint32_t off;
@@ -750,8 +773,9 @@ static int mstor_do_listdir(struct mstor *mstor, struct mreq *mreq,
 	struct mreq_listdir *req;
 
 	req = (struct mreq_listdir*)mreq;
+	req->out_len = 0;
 	memset(&node, 0, sizeof(struct mnode));
-	if (!(pnode->val->mode_and_type & MNODE_IS_DIR)) {
+	if (!(unpack_from_be16(&pnode->val->mode_and_type) & MNODE_IS_DIR)) {
 		ret = -ENOTDIR;
 		goto done;
 	}

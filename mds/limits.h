@@ -16,7 +16,7 @@
 #define RF_MAX_REPLICAS 7
 
 /** maximum length of a path component in RedFish */
-#define RF_PATH_COMPONENT_MAX 256
+#define RF_PCOMP_MAX 256
 
 /** maximum number of MDSes in a cluster */
 #define MAX_MDS 64
