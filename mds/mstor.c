@@ -393,6 +393,10 @@ static int mstor_mode_check(const struct mnode *node,
 		if (mode & MNODE_IS_DIR)
 			return -EISDIR;
 	}
+	if (!(mreq->flags & MREQ_FLAG_CHECK_PERMS)) {
+		/* skip permission check */
+		return 0;
+	}
 	mode &= ~MNODE_IS_DIR;
 	want &= ~MNODE_IS_DIR;
 	/* Check whether everyone has the permission we seek */
@@ -581,13 +585,11 @@ static int mstor_fetch_child(struct mstor *mstor, struct mreq *mreq,
 	size_t klen, vlen;
 	uint64_t cnid;
 
-	if (mreq->flags & MREQ_FLAG_CHECK_PERMS) {
-		/* Do we have the permission to look up this child? */
-		ret = mstor_mode_check(pnode, mreq,
-				MSTOR_PERM_EXEC | MNODE_IS_DIR);
-		if (ret)
-			return ret;
-	}
+	/* Do we have the permission to look up this child? */
+	ret = mstor_mode_check(pnode, mreq,
+			MSTOR_PERM_EXEC | MNODE_IS_DIR);
+	if (ret)
+		return ret;
 	/* Look up the child nid */
 	key[0] = 'c';
 	pack_to_be64(key + 1, pnode->nid);
@@ -780,10 +782,10 @@ static int mstor_do_listdir(struct mstor *mstor, struct mreq *mreq,
 	req = (struct mreq_listdir*)mreq;
 	req->used_len = 0;
 	memset(&node, 0, sizeof(struct mnode));
-	if (!(unpack_from_be16(&pnode->val->mode_and_type) & MNODE_IS_DIR)) {
-		ret = -ENOTDIR;
+	ret = mstor_mode_check(pnode, mreq,
+			MSTOR_PERM_READ | MNODE_IS_DIR);
+	if (ret)
 		goto done;
-	}
 	iter = leveldb_create_iterator(mstor->ldb, mstor->lreadopt);
 	if (!iter) {
 		glitch_log("mstor_do_listdir: leveldb_create_iterator failed.\n");
@@ -882,6 +884,11 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 	char full_path[RF_PATH_MAX];
 
 	mreq->flags = MREQ_FLAG_CHECK_PERMS;
+	/* The superuser can do anything */
+	if (!strcmp(mreq->user, RF_SUPERUSER))
+		mreq->flags &= ~MREQ_FLAG_CHECK_PERMS;
+	else if (!strcmp(mreq->group, RF_SUPERUSER))
+		mreq->flags &= ~MREQ_FLAG_CHECK_PERMS;
 	if (zsnprintf(full_path, sizeof(full_path), "%s", mreq->full_path))
 		return -ENAMETOOLONG;
 	ret = canonicalize_path(full_path);
