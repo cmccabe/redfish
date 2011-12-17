@@ -192,6 +192,10 @@ static int mstor_test1(const char *tdir)
 			NULL, test1_expect_c), 1);
 	EXPECT_EQUAL(mstor_do_listdir(mstor, "/b/c", "spoony", "spoony",
 			NULL, NULL), -EPERM);
+	EXPECT_EQUAL(mstor_do_listdir(mstor, "/b/c", "superuser", "spoony",
+			NULL, NULL), 0);
+	EXPECT_EQUAL(mstor_do_listdir(mstor, "/b/c", "spoony", "superuser",
+			NULL, NULL), 0);
 	mstor_shutdown(mstor);
 	return 0;
 }
