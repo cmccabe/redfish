@@ -74,7 +74,7 @@ extern int do_touch2(const char *dir, const char *fname);
 
 #define EXPECT_EQUAL(x, y) \
 	do { \
-		if (x != y) { \
+		if ((x) != (y)) { \
 			fprintf(stderr, "failed on line %d: %s\n",\
 				__LINE__, #x); \
 			return 1; \
@@ -83,7 +83,7 @@ extern int do_touch2(const char *dir, const char *fname);
 
 #define EXPECT_NOT_EQUAL(x, y) \
 	do { \
-		if (x == y) { \
+		if ((x) == (y)) { \
 			fprintf(stderr, "failed on line %d: %s\n",\
 				__LINE__, #x); \
 			return 1; \
@@ -92,7 +92,7 @@ extern int do_touch2(const char *dir, const char *fname);
 
 #define EXPECT_LT(x, y) \
 	do { \
-		if (x >= y) { \
+		if ((x) >= (y)) { \
 			fprintf(stderr, "failed on line %d: %s\n",\
 				__LINE__, #x); \
 			return 1; \
@@ -101,7 +101,7 @@ extern int do_touch2(const char *dir, const char *fname);
 
 #define EXPECT_GE(x, y) \
 	do { \
-		if (x < y) { \
+		if ((x) < (y)) { \
 			fprintf(stderr, "failed on line %d: %s\n",\
 				__LINE__, #x); \
 			return 1; \
@@ -110,7 +110,7 @@ extern int do_touch2(const char *dir, const char *fname);
 
 #define EXPECT_GT(x, y) \
 	do { \
-		if (x <= y) { \
+		if ((x) <= (y)) { \
 			fprintf(stderr, "failed on line %d: %s\n",\
 				__LINE__, #x); \
 			return 1; \
