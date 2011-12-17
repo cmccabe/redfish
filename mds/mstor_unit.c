@@ -69,8 +69,8 @@ static int mstor_do_creat(struct mstor *mstor, const char *full_path,
 	memset(&mreq, 0, sizeof(mreq));
 	mreq.base.op = MSTOR_OP_CREAT;
 	mreq.base.full_path = full_path;
-	mreq.base.user = "superuser";
-	mreq.base.group = "superuser";
+	mreq.base.user = "spoony";
+	mreq.base.group = "spoony";
 	mreq.mode = 0644;
 	mreq.mtime = mtime;
 	return mstor_do_operation(mstor, (struct mreq*)&mreq);
@@ -84,8 +84,8 @@ static int mstor_do_mkdirs(struct mstor *mstor, const char *full_path,
 	memset(&mreq, 0, sizeof(mreq));
 	mreq.base.op = MSTOR_OP_MKDIRS;
 	mreq.base.full_path = full_path;
-	mreq.base.user = "superuser";
-	mreq.base.group = "superuser";
+	mreq.base.user = "spoony";
+	mreq.base.group = "spoony";
 	mreq.mode = mode;
 	mreq.mtime = mtime;
 	return mstor_do_operation(mstor, (struct mreq*)&mreq);
@@ -116,7 +116,8 @@ static int unpack_stat_hdr(struct mmm_stat_hdr *hdr,
 }
 
 static int mstor_do_listdir(struct mstor *mstor, const char *full_path,
-			    void *arg, stat_check_fn_t fn)
+		const char *muser, const char *mgroup,
+		void *arg, stat_check_fn_t fn)
 {
 	int ret, num_entries;
 	struct mmm_stat_hdr *hdr;
@@ -129,8 +130,8 @@ static int mstor_do_listdir(struct mstor *mstor, const char *full_path,
 	memset(buf, 0, sizeof(buf));
 	mreq.base.op = MSTOR_OP_LISTDIR;
 	mreq.base.full_path = full_path;
-	mreq.base.user = "superuser";
-	mreq.base.group = "superuser";
+	mreq.base.user = muser;
+	mreq.base.group = mgroup;
 	mreq.out = buf;
 	mreq.out_len = sizeof(buf);
 	ret = mstor_do_operation(mstor, (struct mreq*)&mreq);
@@ -169,8 +170,8 @@ static int test1_expect_c(POSSIBLY_UNUSED(void *arg),
 	EXPECT_EQUAL(unpack_from_be64(&hdr->mtime), 123ULL);
 	EXPECT_EQUAL(unpack_from_be64(&hdr->atime), 123ULL);
 	EXPECT_ZERO(strcmp(pcomp, "c"));
-	EXPECT_ZERO(strcmp(owner, "superuser"));
-	EXPECT_ZERO(strcmp(group, "superuser"));
+	EXPECT_ZERO(strcmp(owner, "spoony"));
+	EXPECT_ZERO(strcmp(group, "spoony"));
 	return 0;
 }
 
@@ -185,8 +186,12 @@ static int mstor_test1(const char *tdir)
 	EXPECT_EQUAL(mstor_do_mkdirs(mstor, "/a/d/e", 0644, 123), -ENOTDIR);
 
 	//mstor_dump(mstor, stdout);
-	EXPECT_EQUAL(mstor_do_listdir(mstor, "/a", NULL, NULL), -ENOTDIR);
-	EXPECT_EQUAL(mstor_do_listdir(mstor, "/b", NULL, test1_expect_c), 1);
+	EXPECT_EQUAL(mstor_do_listdir(mstor, "/a", "spoony", "spoony",
+			NULL, NULL), -ENOTDIR);
+	EXPECT_EQUAL(mstor_do_listdir(mstor, "/b", "spoony", "spoony",
+			NULL, test1_expect_c), 1);
+	EXPECT_EQUAL(mstor_do_listdir(mstor, "/b/c", "spoony", "spoony",
+			NULL, NULL), -EPERM);
 	mstor_shutdown(mstor);
 	return 0;
 }
