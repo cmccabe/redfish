@@ -170,3 +170,22 @@ void hex_dump(const char *buf, size_t buf_len, char *str, size_t str_len)
 	}
 	*str++ = '\0';
 }
+
+void fwdprintf(char *buf, size_t *off, size_t buf_len, const char *fmt, ...)
+{
+	int res;
+	size_t o;
+	va_list ap;
+
+	o = *off;
+	va_start(ap, fmt);
+	res = vsnprintf(buf + o, buf_len - o, fmt, ap);
+	va_end(ap);
+	if (res < 0)
+		return;
+	else if (o + res > buf_len)
+		*off = buf_len;
+	else
+		*off = o + res;
+}
+

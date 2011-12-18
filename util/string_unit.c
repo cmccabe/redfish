@@ -157,6 +157,28 @@ static int test_hex_dump(void)
 	return 0;
 }
 
+static int test_fwdprintf(void)
+{
+	char buf[512];
+	char small[5];
+	size_t off;
+
+	off = 0;
+	memset(buf, 0, sizeof(buf));
+	fwdprintf(buf, &off, sizeof(buf), "foo");
+	fwdprintf(buf, &off, sizeof(buf), "bar");
+	fwdprintf(buf, &off, sizeof(buf), "%d", 5);
+	EXPECT_ZERO(strcmp(buf, "foobar5"));
+
+	off = 0;
+	memset(small, 0, sizeof(small));
+	fwdprintf(buf, &off, sizeof(buf), "abc");
+	fwdprintf(buf, &off, sizeof(buf), "123");
+	EXPECT_ZERO(strcmp(buf, "abc1"));
+
+	return 0;
+}
+
 int main(void)
 {
 	EXPECT_ZERO(has_suffix_succeeded("abcd", "bcd"));
@@ -179,6 +201,8 @@ int main(void)
 	EXPECT_ZERO(test_zsnprintf(3, "abc", 0));
 
 	EXPECT_ZERO(test_hex_dump());
+
+	EXPECT_ZERO(test_fwdprintf());
 
 	return EXIT_SUCCESS;
 }

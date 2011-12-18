@@ -97,4 +97,16 @@ uint32_t ohash_str(const char *str);
  */
 void hex_dump(const char *buf, size_t buf_len, char *str, size_t str_len);
 
+/** Write a formatted string to the next available position in a
+ * fixed-length buffer
+ *
+ * @param buf		the buffer
+ * @param off		(inout) current offset in the buffer
+ * @param max		length of the buffer
+ * @param fmt		a printf-style format string
+ * @param ...		format arguments
+ */
+void fwdprintf(char *buf, size_t *off, size_t buf_len, const char *fmt, ...)
+	PRINTF_FORMAT(4, 5);
+
 #endif
