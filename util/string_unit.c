@@ -172,9 +172,9 @@ static int test_fwdprintf(void)
 
 	off = 0;
 	memset(small, 0, sizeof(small));
-	fwdprintf(buf, &off, sizeof(buf), "abc");
-	fwdprintf(buf, &off, sizeof(buf), "123");
-	EXPECT_ZERO(strcmp(buf, "abc1"));
+	fwdprintf(small, &off, sizeof(small), "abc");
+	fwdprintf(small, &off, sizeof(small), "123");
+	EXPECT_ZERO(strcmp(small, "abc1"));
 
 	return 0;
 }
