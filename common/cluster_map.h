@@ -78,6 +78,17 @@ extern struct cmap *cmap_from_buffer(const char *buf, size_t buf_len,
  */
 extern char *cmap_to_buffer(const struct cmap *cmap, size_t *buf_len);
 
+/** Serialize a cluster map to a human-readable form
+ *
+ * @param cmap		The cluster map
+ * @param buf		(out-param) output buffer
+ * @param buf_len	length of the provided buffer
+ *
+ * @return		0 on success, -ENAMETOOLONG if there wasn't enough
+ *			space.
+ */
+int cmap_to_str(const struct cmap *cmap, char *buf, size_t buf_len);
+
 /** Free a cluster map
  *
  * @param cmap		The cluster map to free

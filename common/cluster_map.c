@@ -11,8 +11,11 @@
 #include "util/compiler.h"
 #include "util/net.h"
 #include "util/packed.h"
+#include "util/string.h"
 
 #include <errno.h>
+#include <inttypes.h>
+#include <netinet/in.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -96,6 +99,42 @@ error:
 	free(minfo);
 	free(cmap);
 	return NULL;
+}
+
+static void daemon_info_to_str(const struct daemon_info *info,
+		char *buf, size_t *off, size_t buf_len)
+{
+	char ip_str[INET_ADDRSTRLEN];
+
+	ipv4_to_str(info->ip, ip_str, sizeof(ip_str));
+	fwdprintf(buf, off, buf_len, "%s:%d[%s]", ip_str,
+		info->port, (info->in ? "IN" : "OUT"));
+}
+
+int cmap_to_str(const struct cmap *cmap, char *buf, size_t buf_len)
+{
+	int i;
+	size_t off;
+	const char *prefix;
+
+	off = 0;
+	fwdprintf(buf, &off, buf_len, "{ epoch: %"PRId64", ", cmap->epoch);
+	fwdprintf(buf, &off, buf_len, "osd: [");
+	prefix = "";
+	for (i = 0; i < cmap->num_osd; ++i) {
+		fwdprintf(buf, &off, buf_len, "%s", prefix);
+		daemon_info_to_str(&cmap->oinfo[i], buf, &off, buf_len);
+		prefix = ", ";
+	}
+	fwdprintf(buf, &off, buf_len, "], mds: [");
+	prefix = "";
+	for (i = 0; i < cmap->num_osd; ++i) {
+		fwdprintf(buf, &off, buf_len, "%s", prefix);
+		daemon_info_to_str(&cmap->minfo[i], buf, &off, buf_len);
+		prefix = ", ";
+	}
+	fwdprintf(buf, &off, buf_len, "]");
+	return (off == buf_len) ?  -ENAMETOOLONG : 0;
 }
 
 struct cmap *cmap_from_buffer(const char *buf, size_t buf_len,
