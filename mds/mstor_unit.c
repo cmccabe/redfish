@@ -161,6 +161,42 @@ static int mstor_do_listdir(struct mstor *mstor, const char *full_path,
 	return num_entries;
 }
 
+static int mstor_do_stat(struct mstor *mstor, const char *full_path,
+		const char *muser, const char *mgroup,
+		void *arg, stat_check_fn_t fn)
+{
+	int ret;
+	struct mmm_stat_hdr *hdr;
+	struct mreq_stat mreq;
+	char buf[16384];
+	char pcomp[RF_PCOMP_MAX], owner[RF_USER_MAX], group[RF_GROUP_MAX];
+	uint32_t off;
+
+	memset(&mreq, 0, sizeof(mreq));
+	memset(buf, 0, sizeof(buf));
+	mreq.base.op = MSTOR_OP_STAT;
+	mreq.base.full_path = full_path;
+	mreq.base.user = muser;
+	mreq.base.group = mgroup;
+	mreq.out = buf;
+	mreq.out_len = sizeof(buf);
+	ret = mstor_do_operation(mstor, (struct mreq*)&mreq);
+	if (ret) {
+		fprintf(stderr, "do_stat failed with error %d\n", ret);
+		return FORCE_NEGATIVE(ret);
+	}
+	off = 0;
+	hdr = (struct mmm_stat_hdr*)buf;
+	ret = unpack_stat_hdr(hdr, pcomp, owner, group);
+	if (ret)
+		return FORCE_NEGATIVE(ret);
+	if (fn)
+		ret = fn(arg, hdr, pcomp, owner, group);
+	if (ret)
+		return FORCE_NEGATIVE(ret);
+	return 0;
+}
+
 static int test1_expect_c(POSSIBLY_UNUSED(void *arg),
 		struct mmm_stat_hdr *hdr, const char *pcomp, const char *owner,
 		const char *group)
@@ -169,6 +205,7 @@ static int test1_expect_c(POSSIBLY_UNUSED(void *arg),
 			MNODE_IS_DIR | 0644);
 	EXPECT_EQUAL(unpack_from_be64(&hdr->mtime), 123ULL);
 	EXPECT_EQUAL(unpack_from_be64(&hdr->atime), 123ULL);
+	//printf("pcomp='%s', owner='%s', group='%s'\n", pcomp, owner, group);
 	EXPECT_ZERO(strcmp(pcomp, "c"));
 	EXPECT_ZERO(strcmp(owner, "spoony"));
 	EXPECT_ZERO(strcmp(group, "spoony"));
@@ -196,6 +233,8 @@ static int mstor_test1(const char *tdir)
 			NULL, NULL), 0);
 	EXPECT_EQUAL(mstor_do_listdir(mstor, "/b/c", "spoony", "superuser",
 			NULL, NULL), 0);
+	EXPECT_EQUAL(mstor_do_stat(mstor, "/b/c", "superuser", "spoony",
+			NULL, test1_expect_c), 0);
 	mstor_shutdown(mstor);
 	return 0;
 }
