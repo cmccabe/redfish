@@ -970,6 +970,13 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 		++pcomp;
 		++npc;
 	}
+	if ((full_path[0] == '\0') && (full_path[1] == '\0')) {
+		/* Corner case: normally the number of path components in the
+		 * canonicalized path is equal to the number of slashes.
+		 * However, the root itself has 0 path components, but is
+		 * referred to with a single slash. */
+		npc = 0;
+	}
 	pcomp = full_path;
 	cpc = 0;
 	ret = mstor_fetch_node(mstor, MSTOR_ROOT_NID, pnode);
