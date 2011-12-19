@@ -970,7 +970,7 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 		++pcomp;
 		++npc;
 	}
-	pcomp = full_path + 1;
+	pcomp = full_path;
 	cpc = 0;
 	ret = mstor_fetch_node(mstor, MSTOR_ROOT_NID, pnode);
 	if (ret) {
@@ -979,6 +979,7 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 		return -ENOSYS;
 	}
 	for (cpc = 0; cpc < npc; ++cpc) {
+		pcomp = memchr(pcomp, '\0', RF_PATH_MAX) + 1;
 		ret = mstor_fetch_child(mstor, mreq, pcomp, pnode, cnode);
 		if (ret == -ENOENT) {
 			switch (mreq->op) {
@@ -1013,7 +1014,6 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 		else if (ret) {
 			return ret;
 		}
-		pcomp = memchr(pcomp, '\0', RF_PATH_MAX) + 1;
 		mnode_free(pnode);
 		memcpy(pnode, cnode, sizeof(struct mnode));
 		memset(cnode, 0, sizeof(struct mnode));
