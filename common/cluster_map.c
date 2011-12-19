@@ -156,8 +156,10 @@ struct cmap *cmap_from_buffer(const char *buf, size_t buf_len,
 		goto oom_error;
 	hdr = (struct packed_cmap*)buf;
 	cmap->epoch = unpack_from_be64(&hdr->epoch);
-	cmap->num_osd = unpack_from_be32(&hdr->num_osd);
-	cmap->num_mds = unpack_from_be32(&hdr->num_mds);
+	num_osd = unpack_from_be32(&hdr->num_osd);
+	num_mds = unpack_from_be32(&hdr->num_mds);
+	cmap->num_osd = num_osd;
+	cmap->num_mds = num_mds;
 	oinfo = calloc(num_osd, sizeof(struct daemon_info));
 	if (!oinfo)
 		goto oom_error;
@@ -166,7 +168,7 @@ struct cmap *cmap_from_buffer(const char *buf, size_t buf_len,
 		goto oom_error;
 	buf_len -= sizeof(struct packed_cmap);
 	buf += sizeof(struct packed_cmap);
-	for (i = 0; i < cmap->num_osd; ++i) {
+	for (i = 0; i < num_osd; ++i) {
 		if (buf_len < sizeof(struct packed_addr)) {
 			snprintf(err, err_len, "The buffer was too short "
 				 "to contain all the OSD information.");
@@ -178,7 +180,7 @@ struct cmap *cmap_from_buffer(const char *buf, size_t buf_len,
 		buf_len -= sizeof(struct packed_addr);
 		buf += sizeof(struct packed_addr);
 	}
-	for (i = 0; i < cmap->num_mds; ++i) {
+	for (i = 0; i < num_mds; ++i) {
 		if (buf_len < sizeof(struct packed_addr)) {
 			snprintf(err, err_len, "The buffer was too short "
 				 "to contain all the MDS information.");
