@@ -63,6 +63,7 @@ static int test_cmap_from_conf(const char *tdir)
 	EXPECT_EQUAL(cmap->minfo[0].ip, localhost);
 	EXPECT_EQUAL(cmap->minfo[0].port, 9000);
 	cmap_free(cmap);
+	free_unitary_conf_file(conf);
 	return 0;
 }
 
