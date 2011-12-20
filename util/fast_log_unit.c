@@ -258,6 +258,7 @@ static int test_dump_all(const char *tdir)
 		return 1;
 	}
 	free(expected);
+	fast_log_mgr_free(mgr);
 	return 0;
 }
 
