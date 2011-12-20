@@ -7,8 +7,11 @@
  */
 
 #include "common/config/logc.h"
+#include "core/process_ctx.h"
 #include "core/signal.h"
 #include "util/error.h"
+#include "util/fast_log_mgr.h"
+#include "util/fast_log_types.h"
 #include "util/simple_io.h"
 #include "util/tempfile.h"
 #include "util/test.h"
@@ -80,6 +83,9 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 {
 	char tempdir[PATH_MAX];
 	srand(time(NULL));
+
+	g_fast_log_mgr = fast_log_mgr_init(g_fast_log_dumpers);
+	EXPECT_NOT_EQUAL(g_fast_log_mgr, NULL);
 	EXPECT_ZERO(get_tempdir(tempdir, sizeof(tempdir), 0770));
 	EXPECT_ZERO(register_tempdir_for_cleanup(tempdir));
 	EXPECT_ZERO(test_signal_handler(argv[0], tempdir, SIGSEGV));
@@ -88,5 +94,6 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 	EXPECT_ZERO(test_signal_handler(argv[0], tempdir, SIGFPE));
 	EXPECT_ZERO(test_signal_handler(argv[0], tempdir, SIGABRT));
 	EXPECT_ZERO(test_signal_handler(argv[0], tempdir, SIGINT));
+	fast_log_mgr_free(g_fast_log_mgr);
 	return EXIT_SUCCESS;
 }
