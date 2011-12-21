@@ -864,15 +864,25 @@ done:
 	return ret;
 }
 
-static int mstor_do_stat(struct mreq *mreq,
-		const char *pcomp, const struct mnode *node)
+static int mstor_do_stat(struct mreq *mreq, const char *pcomp,
+		const struct mnode *pnode, const struct mnode *cnode)
 {
 	int ret;
 	struct mreq_stat *req;
 	uint32_t off = 0;
 
+	if (pnode->val) {
+		/* In order to stat an entry, we need read permissions on its
+		 * parent directory.  If pnode->val == NULL, then cnode must be
+		 * the root node.  And failing to let users stat the root node
+		 * would be quite silly... */
+		ret = mstor_mode_check(pnode, mreq,
+				MSTOR_PERM_READ | MNODE_IS_DIR);
+		if (ret)
+			return ret;
+	}
 	req = (struct mreq_stat*)mreq;
-	ret = add_stat_to_list(&off, req->out_len, pcomp, node, req->out);
+	ret = add_stat_to_list(&off, req->out_len, pcomp, cnode, req->out);
 	return ret;
 }
 
@@ -1040,7 +1050,7 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 	case MSTOR_OP_LISTDIR:
 		return mstor_do_listdir(mstor, mreq, cnode);
 	case MSTOR_OP_STAT:
-		return mstor_do_stat(mreq, pcomp, cnode);
+		return mstor_do_stat(mreq, pcomp, pnode, cnode);
 	case MSTOR_OP_CHMOD:
 		return -ENOTSUP;
 	case MSTOR_OP_CHOWN:
