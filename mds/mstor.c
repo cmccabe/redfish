@@ -765,7 +765,7 @@ static int add_stat_to_list(uint32_t *off, uint32_t out_len,
 }
 
 static int mstor_do_listdir(struct mstor *mstor, struct mreq *mreq,
-		const struct mnode *pnode)
+		const struct mnode *dnode)
 {
 	int ret;
 	char *err = NULL;
@@ -782,7 +782,7 @@ static int mstor_do_listdir(struct mstor *mstor, struct mreq *mreq,
 	req = (struct mreq_listdir*)mreq;
 	req->used_len = 0;
 	memset(&node, 0, sizeof(struct mnode));
-	ret = mstor_mode_check(pnode, mreq,
+	ret = mstor_mode_check(dnode, mreq,
 			MSTOR_PERM_READ | MNODE_IS_DIR);
 	if (ret)
 		goto done;
@@ -793,7 +793,7 @@ static int mstor_do_listdir(struct mstor *mstor, struct mreq *mreq,
 		goto done;
 	}
 	ikey[0] = 'c';
-	pack_to_be64(ikey + 1, pnode->nid);
+	pack_to_be64(ikey + 1, dnode->nid);
 	leveldb_iter_seek(iter, ikey, sizeof(ikey));
 	off = 0;
 	while (1) {
@@ -818,7 +818,7 @@ static int mstor_do_listdir(struct mstor *mstor, struct mreq *mreq,
 			goto done;
 		}
 		nid = unpack_from_be64(k + 1);
-		if (nid != pnode->nid)
+		if (nid != dnode->nid)
 			break;
 		if (vlen != sizeof(uint64_t)) {
 			glitch_log("mstor_do_listdir: leveldb_iter_value "
@@ -865,19 +865,19 @@ done:
 }
 
 static int mstor_do_stat(struct mreq *mreq,
-		const char *pcomp, const struct mnode *pnode)
+		const char *pcomp, const struct mnode *node)
 {
 	int ret;
 	struct mreq_stat *req;
 	uint32_t off = 0;
 
 	req = (struct mreq_stat*)mreq;
-	ret = add_stat_to_list(&off, req->out_len, pcomp, pnode, req->out);
+	ret = add_stat_to_list(&off, req->out_len, pcomp, node, req->out);
 	return ret;
 }
 
 static int mstor_do_chown(struct mstor *mstor, struct mreq *mreq,
-		const struct mnode *pnode)
+		const struct mnode *node)
 {
 	int ret;
 	struct mreq_chown *req;
@@ -888,19 +888,19 @@ static int mstor_do_chown(struct mstor *mstor, struct mreq *mreq,
 
 	// TODO: take lock here
 	off = offsetof(struct mnode_hdr, data);
-	ret = unpack_str(pnode->val, &off, pnode->len,
+	ret = unpack_str(node->val, &off, node->len,
 			new_owner, sizeof(new_owner));
 	if (ret) {
 		glitch_log("mstor_do_chown(nid=0x%"PRIx64"): error "
-			   "unpacking owner string\n", pnode->nid);
+			   "unpacking owner string\n", node->nid);
 		ret = -EIO;
 		goto done;
 	}
-	ret = unpack_str(pnode->val, &off, pnode->len,
+	ret = unpack_str(node->val, &off, node->len,
 			new_group, sizeof(new_group));
 	if (ret) {
 		glitch_log("mstor_do_chown(nid=0x%"PRIx64"): error "
-			   "unpacking group string\n", pnode->nid);
+			   "unpacking group string\n", node->nid);
 		ret = -EIO;
 		goto done;
 	}
@@ -916,7 +916,7 @@ static int mstor_do_chown(struct mstor *mstor, struct mreq *mreq,
 			goto done;
 	}
 	memset(buf, 0, sizeof(buf));
-	memcpy(buf, pnode->val, sizeof(struct mnode_hdr));
+	memcpy(buf, node->val, sizeof(struct mnode_hdr));
 	off = offsetof(struct mnode_hdr, data);
 	ret = pack_str(buf, &off, sizeof(buf), new_owner);
 	if (ret)
@@ -925,12 +925,12 @@ static int mstor_do_chown(struct mstor *mstor, struct mreq *mreq,
 	if (ret)
 		goto done;
 	k[0] = 'n';
-	pack_to_be64(k + 1, pnode->nid);
+	pack_to_be64(k + 1, node->nid);
 	leveldb_put(mstor->ldb, mstor->lwropt, k, MNODE_KEY_LEN,
 			buf, off, &err);
 	if (err) {
 		glitch_log("mstor_do_chown(nid=0x%"PRIx64": leveldb_put "
-			"returned error '%s'\n", pnode->nid, err);
+			"returned error '%s'\n", node->nid, err);
 		ret = -EIO;
 		goto done;
 	}
@@ -979,13 +979,16 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 	}
 	pcomp = full_path;
 	cpc = 0;
-	ret = mstor_fetch_node(mstor, MSTOR_ROOT_NID, pnode);
+	ret = mstor_fetch_node(mstor, MSTOR_ROOT_NID, cnode);
 	if (ret) {
 		glitch_log("mstor_do_operation: couldn't load "
 			"root node! Error %d\n", ret);
 		return -ENOSYS;
 	}
 	for (cpc = 0; cpc < npc; ++cpc) {
+		mnode_free(pnode);
+		memcpy(pnode, cnode, sizeof(struct mnode));
+		memset(cnode, 0, sizeof(struct mnode));
 		pcomp = memchr(pcomp, '\0', RF_PATH_MAX) + 1;
 		ret = mstor_fetch_child(mstor, mreq, pcomp, pnode, cnode);
 		if (ret == -ENOENT) {
@@ -1021,9 +1024,6 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 		else if (ret) {
 			return ret;
 		}
-		mnode_free(pnode);
-		memcpy(pnode, cnode, sizeof(struct mnode));
-		memset(cnode, 0, sizeof(struct mnode));
 	}
 	switch (mreq->op) {
 	case MSTOR_OP_CREAT:
@@ -1038,13 +1038,13 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 	case MSTOR_OP_MKDIRS:
 		return 0;
 	case MSTOR_OP_LISTDIR:
-		return mstor_do_listdir(mstor, mreq, pnode);
+		return mstor_do_listdir(mstor, mreq, cnode);
 	case MSTOR_OP_STAT:
-		return mstor_do_stat(mreq, pcomp, pnode);
+		return mstor_do_stat(mreq, pcomp, cnode);
 	case MSTOR_OP_CHMOD:
 		return -ENOTSUP;
 	case MSTOR_OP_CHOWN:
-		return mstor_do_chown(mstor, mreq, pnode);
+		return mstor_do_chown(mstor, mreq, cnode);
 	case MSTOR_OP_UTIMES:
 		return -ENOTSUP;
 	case MSTOR_OP_UNLINK:
