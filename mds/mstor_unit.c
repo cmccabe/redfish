@@ -219,6 +219,27 @@ static int mstor_do_chown(struct mstor *mstor, const char *full_path,
 	return 0;
 }
 
+static int mstor_do_chmod(struct mstor *mstor, const char *full_path,
+		const char *muser, const char *mgroup,
+		uint16_t mode)
+{
+	int ret;
+	struct mreq_chmod mreq;
+
+	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.op = MSTOR_OP_CHMOD;
+	mreq.base.full_path = full_path;
+	mreq.base.user = muser;
+	mreq.base.group = mgroup;
+	mreq.mode = mode;
+	ret = mstor_do_operation(mstor, (struct mreq*)&mreq);
+	if (ret) {
+		fprintf(stderr, "do_chmod failed with error %d\n", ret);
+		return FORCE_NEGATIVE(ret);
+	}
+	return 0;
+}
+
 static int test1_expect_c(POSSIBLY_UNUSED(void *arg),
 		struct mmm_stat_hdr *hdr, const char *pcomp, const char *owner,
 		const char *group)
@@ -234,12 +255,14 @@ static int test1_expect_c(POSSIBLY_UNUSED(void *arg),
 	return 0;
 }
 
-static int test1_expect_root(POSSIBLY_UNUSED(void *arg),
+static int test1_expect_root(void *arg,
 		struct mmm_stat_hdr *hdr, const char *pcomp, const char *owner,
 		const char *group)
 {
+	int expect_mode = (int)(uintptr_t)arg;
+
 	EXPECT_EQUAL(unpack_from_be16(&hdr->mode_and_type),
-			MNODE_IS_DIR | 0755);
+			expect_mode | MNODE_IS_DIR);
 	//printf("pcomp='%s', owner='%s', group='%s'\n", pcomp, owner, group);
 	EXPECT_ZERO(strcmp(pcomp, ""));
 	EXPECT_ZERO(strcmp(owner, "woot"));
@@ -275,7 +298,11 @@ static int mstor_test1(const char *tdir)
 //	EXPECT_EQUAL(mstor_do_chown(mstor, "/", "woot", "woot",
 //			"woot", "woot"), -EPERM);
 	EXPECT_EQUAL(mstor_do_stat(mstor, "/", "spoony", "spoony",
-			NULL, test1_expect_root), 0);
+			(void*)(uintptr_t)0755, test1_expect_root), 0);
+	EXPECT_EQUAL(mstor_do_chmod(mstor, "/", "superuser", "superuser",
+			0700), 0);
+	EXPECT_EQUAL(mstor_do_stat(mstor, "/", "spoony", "spoony",
+			(void*)(uintptr_t)0700, test1_expect_root), 0);
 	mstor_shutdown(mstor);
 	return 0;
 }
