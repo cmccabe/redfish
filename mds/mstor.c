@@ -886,6 +886,43 @@ static int mstor_do_stat(struct mreq *mreq, const char *pcomp,
 	return ret;
 }
 
+static int mstor_do_chmod(struct mstor *mstor, struct mreq *mreq,
+		const struct mnode *node)
+{
+	int ret;
+	struct mreq_chmod *req;
+	struct mnode_hdr *hdr;
+	char k[MNODE_KEY_LEN], *err = NULL;
+	uint16_t old_mode_and_type, mode_and_type;
+
+	// TODO: take lock here
+	req = (struct mreq_chmod*)mreq;
+	hdr = (struct mnode_hdr*)node->val;
+	mode_and_type = req->mode;
+	old_mode_and_type = unpack_from_be16(&hdr->mode_and_type);
+	if (old_mode_and_type & MNODE_IS_DIR)
+		mode_and_type |= MNODE_IS_DIR;
+	else
+		mode_and_type &= ~MNODE_IS_DIR;
+	pack_to_be16(&hdr->mode_and_type, mode_and_type);
+	k[0] = 'n';
+	pack_to_be64(k + 1, node->nid);
+	leveldb_put(mstor->ldb, mstor->lwropt, k, MNODE_KEY_LEN,
+			(const char*)node->val, node->len, &err);
+	if (err) {
+		glitch_log("mstor_do_chmod(nid=0x%"PRIx64": leveldb_put "
+			"returned error '%s'\n", node->nid, err);
+		ret = -EIO;
+		goto done;
+	}
+	ret = 0;
+
+done:
+	free(err);
+	// TODO: release lock here
+	return ret;
+}
+
 static int mstor_do_chown(struct mstor *mstor, struct mreq *mreq,
 		const struct mnode *node)
 {
@@ -1052,7 +1089,7 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 	case MSTOR_OP_STAT:
 		return mstor_do_stat(mreq, pcomp, pnode, cnode);
 	case MSTOR_OP_CHMOD:
-		return -ENOTSUP;
+		return mstor_do_chmod(mstor, mreq, cnode);
 	case MSTOR_OP_CHOWN:
 		return mstor_do_chown(mstor, mreq, cnode);
 	case MSTOR_OP_UTIMES:

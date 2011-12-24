@@ -92,6 +92,12 @@ struct mreq_chown {
 	const char *new_group;
 };
 
+struct mreq_chmod {
+	struct mreq base;
+	/** New mode (type bits are not included) */
+	uint16_t mode;
+};
+
 /** Initialize the metadata store.
  *
  * @param mgr		The fast log manager to use for fast logs
