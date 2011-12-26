@@ -30,4 +30,7 @@
 /** The superuser */
 #define RF_SUPERUSER "superuser"
 
+/** Invalid (u)time */
+#define RF_INVAL_TIME 0xffffffffffffffffULL
+
 #endif
