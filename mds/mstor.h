@@ -98,6 +98,16 @@ struct mreq_chmod {
 	uint16_t mode;
 };
 
+struct mreq_utimes {
+	struct mreq base;
+	/** New modification time, or RF_INVAL_TIME if the modification time
+	 * should not change.  */
+	uint64_t mtime;
+	/** New access time, or RF_INVAL_TIME if the access time should not
+	 * change.  */
+	uint64_t atime;
+};
+
 /** Initialize the metadata store.
  *
  * @param mgr		The fast log manager to use for fast logs

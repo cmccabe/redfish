@@ -989,6 +989,39 @@ done:
 	return ret;
 }
 
+static int mstor_do_utimes(struct mstor *mstor, struct mreq *mreq,
+		const struct mnode *node)
+{
+	int ret;
+	struct mreq_utimes *req;
+	struct mnode_hdr *hdr;
+	char k[MNODE_KEY_LEN], *err = NULL;
+
+	// TODO: take lock here
+	req = (struct mreq_utimes*)mreq;
+	hdr = (struct mnode_hdr*)node->val;
+	if (req->atime != RF_INVAL_TIME)
+		pack_to_be64(&hdr->atime, req->atime);
+	if (req->mtime != RF_INVAL_TIME)
+		pack_to_be64(&hdr->mtime, req->mtime);
+	k[0] = 'n';
+	pack_to_be64(k + 1, node->nid);
+	leveldb_put(mstor->ldb, mstor->lwropt, k, MNODE_KEY_LEN,
+			(const char*)node->val, node->len, &err);
+	if (err) {
+		glitch_log("mstor_do_utimes(nid=0x%"PRIx64": leveldb_put "
+			"returned error '%s'\n", node->nid, err);
+		ret = -EIO;
+		goto done;
+	}
+	ret = 0;
+
+done:
+	free(err);
+	// TODO: release lock here
+	return ret;
+}
+
 static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 			    struct mnode *pnode, struct mnode *cnode)
 {
@@ -1093,7 +1126,7 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 	case MSTOR_OP_CHOWN:
 		return mstor_do_chown(mstor, mreq, cnode);
 	case MSTOR_OP_UTIMES:
-		return -ENOTSUP;
+		return mstor_do_utimes(mstor, mreq, cnode);
 	case MSTOR_OP_UNLINK:
 		return -ENOTSUP;
 	case MSTOR_OP_UNLINK_TREE:
