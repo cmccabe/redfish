@@ -21,6 +21,13 @@
  */
 struct redfish_client;
 
+struct redfish_version
+{
+	uint32_t major;
+	uint32_t minor;
+	uint32_t patchlevel;
+};
+
 /** Represents the location of a metadata server */
 struct redfish_mds_locator
 {
@@ -59,6 +66,18 @@ struct redfish_block_loc
 	int num_hosts;
 	struct redfish_block_host hosts[0];
 };
+
+/** Get the version of the redfish client library
+ *
+ * @return		The redfish version
+ */
+struct redfish_version redfish_get_version(void);
+
+/** Get the current redfish version as a string
+ *
+ * @return		a statically allocated string
+ */
+const char* redfish_get_version_str(void);
 
 /** Initialize a RedFish client instance.
  *

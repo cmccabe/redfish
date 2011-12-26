@@ -17,6 +17,7 @@ add_library(fishc_stub SHARED
     mloc.c
     stub/stub.c
     stub/xattrs.c
+    version.c
 )
 target_link_libraries(fishc_stub common util pthread)
 IF(${REDFISH_CLIENT_LIB} STREQUAL fishc_stub)
@@ -27,9 +28,14 @@ add_executable(xattrs_unit stub/xattrs.c stub/xattrs_unit.c)
 target_link_libraries(xattrs_unit common util utest)
 add_test(xattrs_unit ${CMAKE_CURRENT_BINARY_DIR}/xattrs_unit xattrs_unit)
 
+add_executable(version_unit version_unit.c version.c)
+target_link_libraries(version_unit common util utest)
+add_test(version_unit ${CMAKE_CURRENT_BINARY_DIR}/version_unit xattrs_unit)
+
 #add_library(fishc_hdfs SHARED
 #    mloc.c
 #    hdfs/...
+#    version.c
 #)
 #target_link_libraries(fishc_hdfs common util pthread)
 #IF(${REDFISH_CLIENT_LIB} STREQUAL fishc_hdfs)
@@ -39,6 +45,7 @@ add_test(xattrs_unit ${CMAKE_CURRENT_BINARY_DIR}/xattrs_unit xattrs_unit)
 #add_library(fishc_real SHARED
 #    mloc.c
 #    true/...
+#    version.c
 #)
 #target_link_libraries(fishc_real common util pthread)
 #IF(${REDFISH_CLIENT_LIB} STREQUAL fishc_real)
