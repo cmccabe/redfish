@@ -58,6 +58,14 @@ struct mreq_creat {
 	uint64_t nid;
 };
 
+struct mreq_open {
+	struct mreq base;
+	/** New atime to use */
+	uint64_t atime;
+	/** (out param) file node ID */
+	uint64_t nid;
+};
+
 struct mreq_mkdirs {
 	struct mreq base;
 	/** Mode to create directory with */

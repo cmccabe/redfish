@@ -707,6 +707,41 @@ static int mstor_do_creat(struct mstor *mstor, struct mreq *mreq,
 	return ret;
 }
 
+static int mstor_do_open(struct mstor *mstor, struct mreq *mreq,
+		struct mnode *node)
+{
+	int ret;
+	char k[MNODE_KEY_LEN], *err = NULL;
+	struct mnode_hdr *hdr;
+	struct mreq_open *req;
+
+	/* Do we have permission to open this file?  And is it a file, rather
+	 * than a directory? */
+	ret = mstor_mode_check(node, mreq, MSTOR_PERM_READ);
+	if (ret)
+		return ret;
+	/* Update atime */
+	req = (struct mreq_open *)mreq;
+	hdr = (struct mnode_hdr*)node->val;
+	pack_to_be64(&hdr->atime, req->atime);
+	k[0] = 'n';
+	pack_to_be64(k + 1, node->nid);
+	leveldb_put(mstor->ldb, mstor->lwropt, k, MNODE_KEY_LEN,
+			(const char*)node->val, node->len, &err);
+	if (err) {
+		glitch_log("mstor_do_open(nid=0x%"PRIx64": leveldb_put "
+			"returned error '%s'\n", node->nid, err);
+		ret = -EIO;
+		goto done;
+	}
+	req->nid = node->nid;
+	ret = 0;
+
+done:
+	free(err);
+	// TODO: release lock here
+	return ret;
+}
 
 static int mstor_do_mkdir(struct mstor *mstor, struct mreq *mreq,
 		const char *pcomp, const struct mnode *pnode,
@@ -1114,7 +1149,7 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 		// TODO: implement overwrite?
 		return -EEXIST;
 	case MSTOR_OP_OPEN:
-		break;
+		return mstor_do_open(mstor, mreq, cnode);
 	case MSTOR_OP_CHUNKFIND:
 		return -ENOTSUP;
 	case MSTOR_OP_CHUNKALLOC:
