@@ -1070,6 +1070,8 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 		memcpy(pnode, cnode, sizeof(struct mnode));
 		memset(cnode, 0, sizeof(struct mnode));
 		pcomp = memchr(pcomp, '\0', RF_PATH_MAX) + 1;
+		// TODO: lock if this is a write operation, and this is the
+		// last path component.  Or if this is a mkdirs operation.
 		ret = mstor_fetch_child(mstor, mreq, pcomp, pnode, cnode);
 		if (ret == -ENOENT) {
 			switch (mreq->op) {
