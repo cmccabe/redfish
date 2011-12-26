@@ -702,6 +702,8 @@ static int mstor_do_creat(struct mstor *mstor, struct mreq *mreq,
 	req = (struct mreq_creat*)mreq;
 	ret = mstor_make_node(mstor, req->mode, req->ctime, req->ctime,
 		mreq->user, mreq->group, pcomp, pnode, cnode);
+	if (ret == 0)
+		req->nid = cnode->nid;
 	return ret;
 }
 

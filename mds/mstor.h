@@ -54,6 +54,8 @@ struct mreq_creat {
 	uint16_t mode;
 	/** time to create file with */
 	uint64_t ctime;
+	/** (out param) new node id */
+	uint64_t nid;
 };
 
 struct mreq_mkdirs {
