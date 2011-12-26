@@ -52,16 +52,16 @@ struct mreq_creat {
 	struct mreq base;
 	/** Mode to create file with */
 	uint16_t mode;
-	/** mtime / atime to create file with */
-	uint64_t mtime;
+	/** time to create file with */
+	uint64_t ctime;
 };
 
 struct mreq_mkdirs {
 	struct mreq base;
 	/** Mode to create directory with */
 	uint16_t mode;
-	/** mtime / atime to create directory with */
-	uint64_t mtime;
+	/** time to create directory with */
+	uint64_t ctime;
 };
 
 struct mreq_stat {

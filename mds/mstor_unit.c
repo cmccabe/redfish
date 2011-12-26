@@ -62,7 +62,7 @@ static int mstor_test_open_close(const char *tdir)
 }
 
 static int mstor_do_creat(struct mstor *mstor, const char *full_path,
-		uint64_t mtime)
+		uint64_t ctime)
 {
 	struct mreq_creat mreq;
 
@@ -72,12 +72,12 @@ static int mstor_do_creat(struct mstor *mstor, const char *full_path,
 	mreq.base.user = "spoony";
 	mreq.base.group = "spoony";
 	mreq.mode = 0644;
-	mreq.mtime = mtime;
+	mreq.ctime = ctime;
 	return mstor_do_operation(mstor, (struct mreq*)&mreq);
 }
 
 static int mstor_do_mkdirs(struct mstor *mstor, const char *full_path,
-		int mode, uint64_t mtime)
+		int mode, uint64_t ctime)
 {
 	struct mreq_mkdirs mreq;
 
@@ -87,7 +87,7 @@ static int mstor_do_mkdirs(struct mstor *mstor, const char *full_path,
 	mreq.base.user = "spoony";
 	mreq.base.group = "spoony";
 	mreq.mode = mode;
-	mreq.mtime = mtime;
+	mreq.ctime = ctime;
 	return mstor_do_operation(mstor, (struct mreq*)&mreq);
 }
 

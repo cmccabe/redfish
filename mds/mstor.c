@@ -700,7 +700,7 @@ static int mstor_do_creat(struct mstor *mstor, struct mreq *mreq,
 	struct mreq_creat *req;
 
 	req = (struct mreq_creat*)mreq;
-	ret = mstor_make_node(mstor, req->mode, req->mtime, req->mtime,
+	ret = mstor_make_node(mstor, req->mode, req->ctime, req->ctime,
 		mreq->user, mreq->group, pcomp, pnode, cnode);
 	return ret;
 }
@@ -715,7 +715,7 @@ static int mstor_do_mkdir(struct mstor *mstor, struct mreq *mreq,
 
 	req = (struct mreq_mkdirs*)mreq;
 	ret = mstor_make_node(mstor, req->mode | MNODE_IS_DIR,
-		req->mtime, req->mtime, mreq->user,
+		req->ctime, req->ctime, mreq->user,
 		mreq->group, pcomp, pnode, cnode);
 	return ret;
 }
