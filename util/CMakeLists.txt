@@ -18,6 +18,7 @@ add_library(util
     string.c
     tempfile.c
     thread.c
+    username.c
 )
 target_link_libraries(util ${JSON_C_LIBRARY} platform pthread)
 
@@ -85,3 +86,7 @@ add_test(bitfield_unit ${CMAKE_CURRENT_BINARY_DIR}/bitfield_unit bitfield_unit)
 add_executable(packed_unit packed_unit.c)
 target_link_libraries(packed_unit util utest)
 add_test(packed_unit ${CMAKE_CURRENT_BINARY_DIR}/packed_unit packed_unit)
+
+add_executable(username_unit username_unit.c)
+target_link_libraries(username_unit util utest)
+add_test(username_unit ${CMAKE_CURRENT_BINARY_DIR}/username_unit username_unit)
