@@ -30,7 +30,7 @@ int fishtool_unlink(struct fishtool_params *params)
 	int ret, recursive;
 	struct redfish_client *cli = NULL;
 
-	recursive = 0; //!!params->lowercase_args[ALPHA_IDX('r')];
+	recursive = !!params->lowercase_args[ALPHA_IDX('r')];
 	path = params->non_option_args[0];
 	if (!path) {
 		fprintf(stderr, "fishtool_unlink: you must give a path name "
