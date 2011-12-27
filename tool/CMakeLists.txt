@@ -6,6 +6,7 @@ add_executable(fishtool
     mkdirs.c
     ping.c
     read.c
+    rename.c
     unlink.c
     write.c
 )

@@ -23,22 +23,24 @@
 
 struct fishtool_act g_fishtool_chmod;
 struct fishtool_act g_fishtool_chown;
+struct fishtool_act g_fishtool_locate;
 struct fishtool_act g_fishtool_mkdirs;
 struct fishtool_act g_fishtool_ping;
 struct fishtool_act g_fishtool_read;
+struct fishtool_act g_fishtool_rename;
 struct fishtool_act g_fishtool_unlink;
 struct fishtool_act g_fishtool_write;
-struct fishtool_act g_fishtool_locate;
 
 const struct fishtool_act *g_fishtool_acts[] = {
 	&g_fishtool_chmod,
 	&g_fishtool_chown,
+	&g_fishtool_locate,
 	&g_fishtool_mkdirs,
 	&g_fishtool_ping,
 	&g_fishtool_read,
+	&g_fishtool_rename,
 	&g_fishtool_unlink,
 	&g_fishtool_write,
-	&g_fishtool_locate,
 	NULL,
 };
 
