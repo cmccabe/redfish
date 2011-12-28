@@ -33,4 +33,10 @@
 /** Invalid (u)time */
 #define RF_INVAL_TIME 0xffffffffffffffffULL
 
+/** Invalid user ID */
+#define RF_INVAL_UID 0xffffffffUL
+
+/** Invalid group ID */
+#define RF_INVAL_GID 0xffffffffUL
+
 #endif
