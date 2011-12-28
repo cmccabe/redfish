@@ -80,7 +80,7 @@ static int test_tree(void)
 {
 	int i, num_elem;
 	struct test_tree head;
-	struct foo *f, *f_tmp;
+	struct foo *f, *f_tmp, f2, *f3, *f4;
 	RB_INIT(&head);
 
 	for (i = 0; i < NUM_FOO; ++i) {
@@ -93,10 +93,20 @@ static int test_tree(void)
 		RB_INSERT(test_tree, &head, f);
 	}
 
+	/* test max */
 	f = RB_MAX(test_tree, &head);
 	EXPECT_EQUAL(f->x, 16);
 	EXPECT_EQUAL(f->y, 15);
 
+	/* (try to) insert duplicate */
+	f2.x = 16;
+	f2.y = 15;
+	f3 = RB_INSERT(test_tree, &head, &f2);
+	EXPECT_EQUAL(f, f3);
+	f4 = RB_MAX(test_tree, &head);
+	EXPECT_EQUAL(f, f4);
+
+	/* test min */
 	f = RB_MIN(test_tree, &head);
 	EXPECT_EQUAL(f->x, 0);
 	EXPECT_EQUAL(f->y, 0);
