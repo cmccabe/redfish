@@ -10,7 +10,9 @@
 #define REDFISH_MDS_USER_DOT_H
 
 #include <stdint.h> /* for uint32_t, etc. */
+#include <unistd.h> /* for size_t */
 
+#include "mds/limits.h" /* for RF_USER_MAX */
 #include "util/tree.h" /* for RB_ENTRY */
 
 struct user {
@@ -58,14 +60,15 @@ extern int user_in_gid(const struct user *user, uint32_t gid);
 
 /** Add a secondary group ID to a user
  *
- * @param user		The user
- * @param gid		The secondary group id
+ * @param name		The user name
+ * @param segid		The secondary group id
  *
  * @return		0 on success,
  *			-EEXIST if the user is already a member of the group,
  *			-ENOMEM on OOM
  */
-extern int user_add_segid(struct user *user, uint32_t segid);
+extern int user_add_segid(struct udata *udata, const char *name,
+			uint32_t segid);
 
 /** Get information about a user given his name
  *
@@ -74,7 +77,7 @@ extern int user_add_segid(struct user *user, uint32_t segid);
  *
  * @return		The user data, or an error pointer
  */
-extern const struct user *udata_lookup_user(struct udata *udata,
+extern struct user *udata_lookup_user(struct udata *udata,
 		const char *name);
 
 /** Get information about a group given its name
@@ -84,7 +87,7 @@ extern const struct user *udata_lookup_user(struct udata *udata,
  *
  * @return		The group data, or an error pointer
  */
-extern const struct group *udata_lookup_group(struct udata *udata,
+extern struct group *udata_lookup_group(struct udata *udata,
 		const char *name);
 
 /** Add another user
@@ -95,10 +98,10 @@ extern const struct group *udata_lookup_group(struct udata *udata,
  *			available ID
  * @param gid		The primary group ID of the new user
  *
- * @return		0 on success; error code otherwise
+ * @return		the new user on success; an error pointer otherwise
  */
-extern int udata_add_user(struct udata *udata,
-		const char *name, uint32_t uid, uint32_t gid);
+extern struct user* udata_add_user(struct udata *udata, const char *name,
+		uint32_t uid, uint32_t gid);
 
 /** Add another group
  *
@@ -107,9 +110,9 @@ extern int udata_add_user(struct udata *udata,
  * @param uid		The new group ID, or RF_INVAL_GID to use the next
  *			available ID
  *
- * @return		0 on success; error code otherwise
+ * @return		the new group; an error pointer otherwise
  */
-extern int udata_add_group(struct udata *udata,
+extern struct group* udata_add_group(struct udata *udata,
 		const char *name, uint32_t gid);
 
 /** Pack user information to a byte buffer
@@ -177,5 +180,15 @@ extern struct group *unpack_group(char *buf, uint32_t *off, uint32_t max);
  * @return		the dynamically allocated userdata, or an error ptr
  */
 extern struct udata* unpack_udata(char *buf, uint32_t *off, uint32_t max);
+
+/** Convert a userdata object to a string
+ *
+ * @param udata		The userdata
+ * @param buf		(out-param) The output buffer
+ * @param off		(inout) offset in the buffer to write to
+ * @param buf_len	size of the buffer to unpack from
+ */
+extern void udata_to_str(struct udata *udata, char *buf,
+		size_t *off, size_t buf_len);
 
 #endif

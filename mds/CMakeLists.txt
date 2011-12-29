@@ -24,6 +24,10 @@ add_executable(mstor_unit mstor_unit.c mstor.c force_cpp.cc user.c)
 target_link_libraries(mstor_unit core ${LEVELDB_LIBRARIES} util utest)
 add_test(mstor_unit ${CMAKE_CURRENT_BINARY_DIR}/mstor_unit mstor_unit)
 
+add_executable(user_unit user_unit.c user.c)
+target_link_libraries(user_unit core ${LEVELDB_LIBRARIES} util utest)
+add_test(user_unit ${CMAKE_CURRENT_BINARY_DIR}/user_unit user_unit)
+
 add_executable(fishmdump dump.c mstor.c force_cpp.cc)
 target_link_libraries(fishmdump core ${LEVELDB_LIBRARIES} util)
 

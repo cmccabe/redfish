@@ -67,9 +67,13 @@ RB_HEAD(groups, group);
 RB_GENERATE(groups, group, entry, group_compare);
 
 struct udata {
-	/** All users, sorted by ID */
+	/** Next user ID to assign */
+	uint32_t next_uid;
+	/** Next group ID to assign */
+	uint32_t next_gid;
+	/** All users, sorted by name */
 	struct users users_head;
-	/** All groups, sorted by ID */
+	/** All groups, sorted by name */
 	struct groups groups_head;
 };
 
@@ -116,27 +120,37 @@ int user_in_gid(const struct user *user, uint32_t gid)
 	return 0;
 }
 
-int user_add_segid(struct user **user, uint32_t segid)
+int user_add_segid(struct udata *udata, const char *name, uint32_t segid)
 {
-	struct user *u, *n;
-	uint32_t num_segid;
+	struct user *user, exemplar, *nuser;
+	uint32_t i, num_segid;
 
-	u = *user;
-	num_segid = u->num_segid;
+	memset(&exemplar, 0, sizeof(exemplar));
+	if (zsnprintf(exemplar.name, RF_USER_MAX, "%s", name))
+		return -ENAMETOOLONG;
+	user = RB_FIND(users, &udata->users_head, &exemplar);
+	if (!user)
+		return -ENOENT;
+	num_segid = user->num_segid;
 	for (i = 0; i < num_segid; ++i) {
-		if (u->segid[i] == segid)
+		if (user->segid[i] == segid)
 			return -EEXIST;
 	}
+	RB_REMOVE(users, &udata->users_head, user);
 	num_segid++;
-	n = realloc(u, sizeof(struct user) + (sizeof(uint32_t) * num_segid));
-	if (!n)
+	nuser = realloc(user, sizeof(struct user) +
+		(sizeof(uint32_t) * num_segid));
+	if (!nuser) {
+		RB_INSERT(users, &udata->users_head, user);
 		return -ENOMEM;
-	n[num_segid] = segid;
-	*user = n;
+	}
+	nuser->num_segid = num_segid;
+	nuser->segid[num_segid - 1] = segid;
+	RB_INSERT(users, &udata->users_head, nuser);
 	return 0;
 }
 
-const struct user *udata_lookup_user(struct udata *udata,
+struct user *udata_lookup_user(struct udata *udata,
 		const char *name)
 {
 	struct user *user, exemplar;
@@ -150,7 +164,7 @@ const struct user *udata_lookup_user(struct udata *udata,
 	return user;
 }
 
-const struct group *udata_lookup_group(struct udata *udata,
+struct group *udata_lookup_group(struct udata *udata,
 		const char *name)
 {
 	struct group *group, exemplar;
@@ -185,7 +199,7 @@ struct user* udata_add_user(struct udata *udata, const char *name,
 	}
 	user->gid = gid;
 	user->num_segid = 0;
-	prev_user = RB_INSERT(users, &udata->users_head, u);
+	prev_user = RB_INSERT(users, &udata->users_head, user);
 	if (prev_user != NULL) {
 		free(user);
 		return ERR_PTR(EEXIST);
@@ -198,7 +212,6 @@ struct user* udata_add_user(struct udata *udata, const char *name,
 struct group* udata_add_group(struct udata *udata, const char *name,
 		uint32_t gid)
 {
-	int ret;
 	struct group *group, *prev_group;
 
 	group = calloc(1, sizeof(struct group) + strlen(name) + 1);
@@ -255,7 +268,7 @@ int pack_group(const struct group *group, char *buf,
 	struct packed_group *hdr;
 
 	o = *off;
-	need = sizeof(struct packed_user);
+	need = sizeof(struct packed_group);
 	if (max - o < need)
 		return -ENAMETOOLONG;
 	hdr = (struct packed_group*)(buf + o);
@@ -362,6 +375,7 @@ struct group *unpack_group(char *buf, uint32_t *off, uint32_t max)
 		free(group);
 		return ERR_PTR(FORCE_POSITIVE(ret));
 	}
+	*off = o;
 	return group;
 }
 
@@ -382,8 +396,8 @@ struct udata* unpack_udata(char *buf, uint32_t *off, uint32_t max)
 		return ERR_PTR(ENOMEM);
 	hdr = (struct packed_udata*)(buf + o);
 	o += need;
-	udata->num_user = num_user = unpack_from_be32(&hdr->num_user);
-	udata->num_group = num_group = unpack_from_be32(&hdr->num_group);
+	num_user = unpack_from_be32(&hdr->num_user);
+	num_group = unpack_from_be32(&hdr->num_group);
 	udata->next_uid = unpack_from_be32(&hdr->next_uid);
 	udata->next_gid = unpack_from_be32(&hdr->next_gid);
 	for (i = 0; i < num_user; ++i) {
@@ -403,4 +417,62 @@ struct udata* unpack_udata(char *buf, uint32_t *off, uint32_t max)
 		RB_INSERT(groups, &udata->groups_head, g);
 	}
 	return udata;
+}
+
+static void user_to_str(const struct user *u, char *buf, size_t *off,
+		size_t buf_len)
+{
+	const char *prefix = "";
+	uint32_t i;
+
+	fwdprintf(buf, off, buf_len, "{"
+		  "\"name\" : \"%s\", "
+		  "\"uid\" : %" PRIu32 ", "
+		  "\"gid\" : %" PRIu32 ", "
+		  "\"segid\" : [ ",
+		  u->name, u->uid, u->gid);
+	for (i = 0; i < u->num_segid; ++i) {
+		fwdprintf(buf, off, buf_len, "%s%" PRId32,
+			  prefix, u->segid[i]);
+	}
+	fwdprintf(buf, off, buf_len, "] }");
+}
+
+static void group_to_str(const struct group *g, char *buf, size_t *off,
+		size_t buf_len)
+{
+	fwdprintf(buf, off, buf_len, "{ "
+		  "\"name\" : \"%s\", "
+		  "\"gid\" : %" PRIu32 "}",
+		  g->name, g->gid);
+}
+
+void udata_to_str(struct udata *udata, char *buf,
+		size_t *off, size_t buf_len)
+{
+	struct user *u;
+	struct group *g;
+	const char *prefix;
+
+	fwdprintf(buf, off, buf_len, "{ "
+		  "\"next_uid\" : %" PRIu32 ", "
+		  "\"next_gid\" : %" PRIu32 ", ",
+		  udata->next_uid, udata->next_gid);
+	prefix = "";
+	fwdprintf(buf, off, buf_len, "\"users\" : [");
+	RB_FOREACH(u, users, &udata->users_head) {
+		fwdprintf(buf, off, buf_len, "%s", prefix);
+		user_to_str(u, buf, off, buf_len);
+		prefix = ", ";
+	}
+	fwdprintf(buf, off, buf_len, "],");
+	prefix = "";
+	fwdprintf(buf, off, buf_len, "\"groups\" : [");
+	RB_FOREACH(g, groups, &udata->groups_head) {
+		fwdprintf(buf, off, buf_len, "%s", prefix);
+		group_to_str(g, buf, off, buf_len);
+		prefix = ", ";
+	}
+	fwdprintf(buf, off, buf_len, "]");
+	fwdprintf(buf, off, buf_len, "}");
 }
