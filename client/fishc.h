@@ -215,7 +215,8 @@ int redfish_get_path_status(struct redfish_client *cli, const char *path,
 int redfish_list_directory(struct redfish_client *cli, const char *dir,
 			      struct redfish_stat** osa);
 
-/** Frees the status data returned by redfish_list_directory
+/** Frees the status data returned by redfish_list_directory or
+ * redfish_get_path_status
  *
  * @param osa		array of file statuses
  * @param nosa		Length of osa
