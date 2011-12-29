@@ -117,6 +117,15 @@ extern int do_touch2(const char *dir, const char *fname);
 		} \
 	} while (0);
 
+#define EXPECT_ERRPTR(p) \
+	do { \
+		if (!IS_ERR(p)) { \
+			fprintf(stderr, "failed on line %d: failed to " \
+				"find expected error\n", __LINE__); \
+			return 1; \
+		} \
+	} while (0);
+
 #define EXPECT_NOT_ERRPTR(p) \
 	do { \
 		if (IS_ERR(p)) { \
