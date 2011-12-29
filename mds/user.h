@@ -56,6 +56,17 @@ extern void udata_free(struct udata *udata);
  */
 extern int user_in_gid(const struct user *user, uint32_t gid);
 
+/** Add a secondary group ID to a user
+ *
+ * @param user		The user
+ * @param gid		The secondary group id
+ *
+ * @return		0 on success,
+ *			-EEXIST if the user is already a member of the group,
+ *			-ENOMEM on OOM
+ */
+extern int user_add_segid(struct user *user, uint32_t segid);
+
 /** Get information about a user given his name
  *
  * @param udata		The user data
@@ -75,6 +86,31 @@ extern const struct user *udata_lookup_user(struct udata *udata,
  */
 extern const struct group *udata_lookup_group(struct udata *udata,
 		const char *name);
+
+/** Add another user
+ *
+ * @param udata		The user data
+ * @param name		The new user name
+ * @param uid		The new user ID, or RF_INVAL_UID to use the next
+ *			available ID
+ * @param gid		The primary group ID of the new user
+ *
+ * @return		0 on success; error code otherwise
+ */
+extern int udata_add_user(struct udata *udata,
+		const char *name, uint32_t uid, uint32_t gid);
+
+/** Add another group
+ *
+ * @param udata		The user data
+ * @param name		The new group name
+ * @param uid		The new group ID, or RF_INVAL_GID to use the next
+ *			available ID
+ *
+ * @return		0 on success; error code otherwise
+ */
+extern int udata_add_group(struct udata *udata,
+		const char *name, uint32_t gid);
 
 /** Pack user information to a byte buffer
  *
@@ -97,7 +133,7 @@ extern int pack_user(const struct user *user, char *buf,
  *
  * @return		0 on success; error code otherwise
  */
-int pack_group(const struct group *group, char *buf,
+extern int pack_group(const struct group *group, char *buf,
 		uint32_t *off, uint32_t max);
 
 /** Pack userdata to a byte buffer
@@ -109,7 +145,7 @@ int pack_group(const struct group *group, char *buf,
  *
  * @return		0 on success; error code otherwise
  */
-int pack_udata(struct udata *udata, char *buf,
+extern int pack_udata(struct udata *udata, char *buf,
 		uint32_t *off, uint32_t max);
 
 /** Unpack user information from a byte buffer
@@ -120,7 +156,7 @@ int pack_udata(struct udata *udata, char *buf,
  *
  * @return		the dynamically allocated user data, or an error ptr
  */
-struct user *unpack_user(char *buf, uint32_t *off, uint32_t max);
+extern struct user *unpack_user(char *buf, uint32_t *off, uint32_t max);
 
 /** Unpack group information from a byte buffer
  *
@@ -130,7 +166,7 @@ struct user *unpack_user(char *buf, uint32_t *off, uint32_t max);
  *
  * @return		the dynamically allocated group data, or an error ptr
  */
-struct group *unpack_group(char *buf, uint32_t *off, uint32_t max);
+extern struct group *unpack_group(char *buf, uint32_t *off, uint32_t max);
 
 /** Unpack userdata information from a byte buffer
  *
@@ -140,6 +176,6 @@ struct group *unpack_group(char *buf, uint32_t *off, uint32_t max);
  *
  * @return		the dynamically allocated userdata, or an error ptr
  */
-struct udata* unpack_udata(char *buf, uint32_t *off, uint32_t max);
+extern struct udata* unpack_udata(char *buf, uint32_t *off, uint32_t max);
 
 #endif

@@ -23,6 +23,8 @@ PACKED(
 struct packed_udata {
 	uint32_t num_user;
 	uint32_t num_group;
+	uint32_t next_uid;
+	uint32_t next_gid;
 	/* users */
 	/* groups */
 });
@@ -114,6 +116,26 @@ int user_in_gid(const struct user *user, uint32_t gid)
 	return 0;
 }
 
+int user_add_segid(struct user **user, uint32_t segid)
+{
+	struct user *u, *n;
+	uint32_t num_segid;
+
+	u = *user;
+	num_segid = u->num_segid;
+	for (i = 0; i < num_segid; ++i) {
+		if (u->segid[i] == segid)
+			return -EEXIST;
+	}
+	num_segid++;
+	n = realloc(u, sizeof(struct user) + (sizeof(uint32_t) * num_segid));
+	if (!n)
+		return -ENOMEM;
+	n[num_segid] = segid;
+	*user = n;
+	return 0;
+}
+
 const struct user *udata_lookup_user(struct udata *udata,
 		const char *name)
 {
@@ -139,6 +161,60 @@ const struct group *udata_lookup_group(struct udata *udata,
 	group = RB_FIND(groups, &udata->groups_head, &exemplar);
 	if (!group)
 		return ERR_PTR(ENOENT);
+	return group;
+}
+
+struct user* udata_add_user(struct udata *udata, const char *name,
+		uint32_t uid, uint32_t gid)
+{
+	int ret;
+	struct user *user, *prev_user;
+
+	user = calloc(1, sizeof(struct user));
+	if (!user)
+		return ERR_PTR(ENOMEM);
+	if (gid == RF_INVAL_GID)
+		return ERR_PTR(EINVAL);
+	if (uid == RF_INVAL_UID)
+		uid = udata->next_uid;
+	user->uid = uid;
+	ret = zsnprintf(user->name, RF_USER_MAX, "%s", name);
+	if (ret) {
+		free(user);
+		return ERR_PTR(ENAMETOOLONG);
+	}
+	user->gid = gid;
+	user->num_segid = 0;
+	prev_user = RB_INSERT(users, &udata->users_head, u);
+	if (prev_user != NULL) {
+		free(user);
+		return ERR_PTR(EEXIST);
+	}
+	if (uid >= udata->next_uid)
+		udata->next_uid = uid + 1;
+	return user;
+}
+
+struct group* udata_add_group(struct udata *udata, const char *name,
+		uint32_t gid)
+{
+	int ret;
+	struct group *group, *prev_group;
+
+	group = calloc(1, sizeof(struct group) + strlen(name) + 1);
+	if (!group)
+		return ERR_PTR(ENOMEM);
+	if (gid == RF_INVAL_GID)
+		gid = udata->next_gid;
+	group->gid = gid;
+	strcpy(group->name, name);
+	prev_group = RB_INSERT(groups, &udata->groups_head, group);
+	if (prev_group != NULL) {
+		free(group);
+		return ERR_PTR(EEXIST);
+	}
+	if (gid >= udata->next_gid)
+		udata->next_gid = gid + 1;
 	return group;
 }
 
@@ -221,6 +297,8 @@ int pack_udata(struct udata *udata, char *buf,
 	}
 	pack_to_be32(&hdr->num_user, num_user);
 	pack_to_be32(&hdr->num_group, num_group);
+	pack_to_be32(&hdr->next_uid, udata->next_uid);
+	pack_to_be32(&hdr->next_gid, udata->next_gid);
 	*off = o;
 	return 0;
 }
@@ -247,8 +325,10 @@ struct user *unpack_user(char *buf, uint32_t *off, uint32_t max)
 	user->gid = unpack_from_be32(&hdr->gid);
 	user->num_segid = num_segid;
 	ret = unpack_str(buf, &o, max, user->name, RF_USER_MAX);
-	if (ret)
+	if (ret) {
+		free(user);
 		return ERR_PTR(FORCE_POSITIVE(ret));
+	}
 	for (i = 0; i < num_segid; ++i) {
 		user->segid[i] = unpack_from_be32(buf + o);
 		o += sizeof(uint32_t);
@@ -278,8 +358,10 @@ struct group *unpack_group(char *buf, uint32_t *off, uint32_t max)
 		return ERR_PTR(ENOMEM);
 	group->gid = unpack_from_be32(&hdr->gid);
 	ret = zsnprintf(group->name, RF_GROUP_MAX, "%s", name);
-	if (ret)
+	if (ret) {
+		free(group);
 		return ERR_PTR(FORCE_POSITIVE(ret));
+	}
 	return group;
 }
 
@@ -300,8 +382,10 @@ struct udata* unpack_udata(char *buf, uint32_t *off, uint32_t max)
 		return ERR_PTR(ENOMEM);
 	hdr = (struct packed_udata*)(buf + o);
 	o += need;
-	num_user = unpack_from_be32(&hdr->num_user);
-	num_group = unpack_from_be32(&hdr->num_group);
+	udata->num_user = num_user = unpack_from_be32(&hdr->num_user);
+	udata->num_group = num_group = unpack_from_be32(&hdr->num_group);
+	udata->next_uid = unpack_from_be32(&hdr->next_uid);
+	udata->next_gid = unpack_from_be32(&hdr->next_gid);
 	for (i = 0; i < num_user; ++i) {
 		u = unpack_user(buf, &o, max);
 		if (IS_ERR(u)) {
