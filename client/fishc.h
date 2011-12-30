@@ -124,6 +124,49 @@ extern void redfish_mlocs_append(struct redfish_mds_locator ***mlocs, const char
  */
 void redfish_mlocs_free(struct redfish_mds_locator **mlocs);
 
+/** Create a new redfish user
+ *
+ * @param cli		The RedFish client
+ * @param user		The new user name
+ * @param group		The primary group of the new user
+ *
+ * @return		0 on success; return code otherwise
+ */
+int redfish_useradd(struct redfish_client *cli, const char *user,
+		const char *group);
+
+/** Delete a redfish user
+ * Files and directories assigned by this user will be reassigned to the user
+ * 'nobody'.
+ *
+ * @param cli		The RedFish client
+ * @param user		The user name
+ *
+ * @return		0 on success; return code otherwise
+ */
+int redfish_userdel(struct redfish_client *cli, const char *user);
+
+/** Create a new redfish group
+ *
+ * @param cli		The RedFish client
+ * @param group		The new group name
+ *
+ * @return		0 on success; return code otherwise
+ */
+int redfish_groupadd(struct redfish_client *cli, const char *group);
+
+/** Destroy a redfish group
+ * Files and directories assigned to this group will be reassigned to the group
+ * 'everyone'.  Users who have this group as their primary group will instead
+ * have the primary group 'everyone.'
+ *
+ * @param cli		The RedFish client
+ * @param group		The group name
+ *
+ * @return		0 on success; return code otherwise
+ */
+int redfish_groupdel(struct redfish_client *cli, const char *group);
+
 /** Create a file in RedFish
  *
  * @param cli		The RedFish client
