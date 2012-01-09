@@ -10,5 +10,6 @@ JORM_CONTAINER_BEGIN(mstorc)
 	JORM_STR(mstor_path)
 	JORM_INT(mstor_cache_size)
 	JORM_INT(mstor_io_threads)
+	JORM_INT(min_sequester_time)
 	JORM_BOOL(mstor_create)
 JORM_CONTAINER_END

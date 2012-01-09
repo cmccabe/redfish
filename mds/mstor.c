@@ -8,6 +8,7 @@
 
 #include "common/config/mstorc.h"
 #include "core/glitch_log.h"
+#include "jorm/jorm_const.h"
 #include "mds/limits.h"
 #include "mds/mstor.h"
 #include "msg/generic.h"
@@ -37,8 +38,12 @@
  *	c[8-byte node-id][child-name] => 8-byte child ID
  * for chunks:
  *      h[8-byte-chunk-id] => <array of 4-byte OSD-IDs>
+ * for trashed (sequestered) files:
+ *      t[8-byte-expiry-time][8-byte-node-id] => mnode
  */
 /****************************** constants ********************************/
+#define MSTOR_DEFAULT_SEQUESTER_TIME 300
+
 #define MSTOR_CUR_VERSION 0x000000001U
 #define MSTOR_VERSION_MAGIC "Fish"
 #define MSTOR_VERSION_MAGIC_LEN 4
@@ -100,6 +105,9 @@ struct mstor {
 	leveldb_cache_t *lcache;
 	/** Next node ID to use */
 	uint64_t next_nid;
+	/** The minimum number of seconds that we will sequester a file before
+	 * deleting it. */
+	int min_sequester_time;
 	/** Protects next_nid */
 	pthread_mutex_t next_nid_lock;
 };
@@ -128,10 +136,14 @@ const char *mstor_op_ty_to_str(enum mstor_op_ty op)
 		return "MSTOR_OP_CHOWN";
 	case MSTOR_OP_UTIMES:
 		return "MSTOR_OP_UTIMES";
-	case MSTOR_OP_UNLINK:
-		return "MSTOR_OP_UNLINK";
-	case MSTOR_OP_UNLINK_TREE:
-		return "MSTOR_OP_UNLINK_TREE";
+	case MSTOR_OP_SEQUESTER:
+		return "MSTOR_OP_SEQUESTER";
+	case MSTOR_OP_SEQUESTER_TREE:
+		return "MSTOR_OP_SEQUESTER_TREE";
+	case MSTOR_OP_FIND_SEQUESTERED:
+		return "MSTOR_OP_FIND_SEQUESTERED";
+	case MSTOR_OP_DESTROY_SEQUESTERED:
+		return "MSTOR_OP_DESTROY_SEQUESTERED";
 	case MSTOR_OP_RENAME:
 		return "MSTOR_OP_RENAME";
 	default:
@@ -148,6 +160,8 @@ const char *mstor_op_ty_to_str(enum mstor_op_ty op)
  * Node allocation (and finding highest node, etc) also needs to change to
  * partition the node ids by MDS.  This is probably a simple matter of stealing
  * the highest byte of the ID as an MDS ID.
+ *
+ * TODO: delegation-local free NID pools
  */
 static uint64_t mstor_next_nid(struct mstor *mstor)
 {
@@ -475,6 +489,10 @@ static int mstor_leveldb_init(struct mstor *mstor,
 	mstor->lreadopt = lreadopt;
 	mstor->lwropt = lwropt;
 	mstor->lcache = lcache;
+	if (conf->min_sequester_time == JORM_INVAL_INT)
+		mstor->min_sequester_time = MSTOR_DEFAULT_SEQUESTER_TIME;
+	else
+		mstor->min_sequester_time = conf->min_sequester_time;
 	return 0;
 
 error:
@@ -1166,9 +1184,13 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 		return mstor_do_chown(mstor, mreq, cnode);
 	case MSTOR_OP_UTIMES:
 		return mstor_do_utimes(mstor, mreq, cnode);
-	case MSTOR_OP_UNLINK:
+	case MSTOR_OP_SEQUESTER:
 		return -ENOTSUP;
-	case MSTOR_OP_UNLINK_TREE:
+	case MSTOR_OP_SEQUESTER_TREE:
+		return -ENOTSUP;
+	case MSTOR_OP_FIND_SEQUESTERED:
+		return -ENOTSUP;
+	case MSTOR_OP_DESTROY_SEQUESTERED:
 		return -ENOTSUP;
 	case MSTOR_OP_RENAME:
 		return -ENOTSUP;
