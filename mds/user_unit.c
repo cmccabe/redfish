@@ -27,12 +27,12 @@ static struct udata* standard_setup(void)
 	udata = udata_alloc();
 	if (IS_ERR(udata))
 		return udata;
-	group = udata_add_group(udata, "superuser", 0);
+	group = udata_add_group(udata, RF_SUPERUSER_NAME, RF_SUPERUSER_GID);
 	if (IS_ERR(group)) {
 		udata_free(udata);
 		return (struct udata*)group;
 	}
-	group = udata_add_group(udata, "nobody", 1);
+	group = udata_add_group(udata, RF_EVERYONE_NAME, RF_EVERYONE_GID);
 	if (IS_ERR(group)) {
 		udata_free(udata);
 		return (struct udata*)group;
@@ -42,12 +42,14 @@ static struct udata* standard_setup(void)
 		udata_free(udata);
 		return (struct udata*)group;
 	}
-	user = udata_add_user(udata, "superuser", 0, 0);
+	user = udata_add_user(udata, RF_SUPERUSER_NAME,
+			RF_SUPERUSER_UID, RF_SUPERUSER_GID);
 	if (IS_ERR(user)) {
 		udata_free(udata);
 		return (struct udata*)user;
 	}
-	user = udata_add_user(udata, "nobody", 1, 1);
+	user = udata_add_user(udata, RF_NOBODY_NAME,
+			RF_NOBODY_UID, RF_EVERYONE_GID);
 	if (IS_ERR(user)) {
 		udata_free(udata);
 		return (struct udata*)user;
@@ -75,19 +77,19 @@ static int do_test_lookups(struct udata *udata)
 	const struct user *u;
 	const struct group *g;
 	
-	g = udata_lookup_group(udata, "superuser");
+	g = udata_lookup_group(udata, RF_SUPERUSER_NAME);
 	EXPECT_NOT_ERRPTR(g);
-	EXPECT_ZERO(strcmp(g->name, "superuser"));
-	g = udata_lookup_group(udata, "nobody");
+	EXPECT_ZERO(strcmp(g->name, RF_SUPERUSER_NAME));
+	g = udata_lookup_group(udata, RF_EVERYONE_NAME);
 	EXPECT_NOT_ERRPTR(g);
-	EXPECT_ZERO(strcmp(g->name, "nobody"));
+	EXPECT_ZERO(strcmp(g->name, RF_EVERYONE_NAME));
 	g = udata_lookup_group(udata, "users");
 	EXPECT_NOT_ERRPTR(g);
 	EXPECT_ZERO(strcmp(g->name, "users"));
-	u = udata_lookup_user(udata, "superuser");
+	u = udata_lookup_user(udata, RF_SUPERUSER_NAME);
 	EXPECT_NOT_ERRPTR(u);
-	EXPECT_ZERO(strcmp(u->name, "superuser"));
-	EXPECT_EQUAL(user_in_gid(u, 0), 1);
+	EXPECT_ZERO(strcmp(u->name, RF_SUPERUSER_NAME));
+	EXPECT_EQUAL(user_in_gid(u, RF_SUPERUSER_GID), 1);
 	return 0;
 }
 
@@ -102,12 +104,12 @@ static int test_lookups(void)
 	u = udata_lookup_user(udata, "spoony");
 	if (IS_ERR(u))
 		return PTR_ERR(u);
-	EXPECT_EQUAL(user_in_gid(u, 0), 0);
+	EXPECT_EQUAL(user_in_gid(u, RF_SUPERUSER_GID), 0);
 	EXPECT_ZERO(user_add_segid(udata, "spoony", 0));
 	u = udata_lookup_user(udata, "spoony");
 	if (IS_ERR(u))
 		return PTR_ERR(u);
-	EXPECT_EQUAL(user_in_gid(u, 0), 1);
+	EXPECT_EQUAL(user_in_gid(u, RF_SUPERUSER_GID), 1);
 	udata_free(udata);
 	return 0;
 }

@@ -41,9 +41,9 @@ struct mreq {
 	/** (caller sets) Full path of request */
 	const char *full_path;
 	/** (caller sets) User performing request */
-	const char *user;
+	uint32_t uid;
 	/** (caller sets) Group performing request */
-	const char *group;
+	uint32_t gid;
 	/** (internal) Flags. */
 	int flags;
 	/** Operation type-specific data */
@@ -98,10 +98,10 @@ struct mreq_listdir {
 
 struct mreq_chown {
 	struct mreq base;
-	/** New owner, or NULL for no change */
-	const char *new_owner;
-	/** New group, or NULL for no change */
-	const char *new_group;
+	/** New owner, or RF_INVAL_UID for no change */
+	uint32_t new_uid;
+	/** New group, or RF_INVAL_UID for no change */
+	uint32_t new_gid;
 };
 
 struct mreq_chmod {

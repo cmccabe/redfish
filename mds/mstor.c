@@ -57,14 +57,11 @@
 #define MSTOR_PERM_WRITE 02
 #define MSTOR_PERM_READ 04
 
-#define MNODE_MAX_SZ (sizeof(struct mnode_hdr) + RF_USER_MAX + RF_GROUP_MAX)
 #define MSTOR_NID_MAX 0xffffffffffff0000ULL
 #define MNODE_KEY_LEN (1 + sizeof(uint64_t))
 #define MCHILD_KEY_LEN_PREFIX (1 + sizeof(uint64_t))
 #define MCHUNK_KEY_LEN (1 + sizeof(uint64_t))
 #define MFILE_KEY_LEN (1 + sizeof(uint64_t) + sizeof(uint64_t))
-#define MNODE_BODY_MAX (sizeof(struct mnode_hdr) + RF_USER_MAX + 1 + \
-			RF_GROUP_MAX + 1)
 #define MCHILD_KEY_MAX (1 + sizeof(uint64_t) + RF_PCOMP_MAX)
 
 #define MREQ_FLAG_CHECK_PERMS 0x1
@@ -79,19 +76,16 @@ struct mnode {
 	/** Node id */
 	uint64_t nid;
 	/** Pointer to data record */
-	struct mnode_hdr *val;
-	/** Length of data record */
-	size_t len;
+	struct mnode_payload *val;
 };
 
 PACKED(
-struct mnode_hdr {
+struct mnode_payload {
 	uint16_t mode_and_type;
 	uint64_t mtime;
 	uint64_t atime;
-	char data[0];
-	/* owner (cstr) */
-	/* group (cstr) */
+	uint32_t uid;
+	uint32_t gid;
 });
 
 struct mstor {
@@ -287,9 +281,8 @@ static int mstor_leveldb_create_new(struct mstor *mstor)
 	int ret;
 	leveldb_iterator_t *iter = NULL;
 	char *err = NULL;
-	char nkey[MNODE_KEY_LEN], nbody[MNODE_BODY_MAX];
-	struct mnode_hdr *hdr;
-	uint32_t off;
+	char nkey[MNODE_KEY_LEN], nbody[sizeof(struct mnode_payload)];
+	struct mnode_payload *hdr;
 	uint64_t t;
 
 	glitch_log("mstor_leveldb_setup: setting up new mstor\n");
@@ -298,20 +291,15 @@ static int mstor_leveldb_create_new(struct mstor *mstor)
 		goto done;
 	nkey[0] = 'n';
 	pack_to_be64(nkey + 1, MSTOR_ROOT_NID);
-	hdr = (struct mnode_hdr*)nbody;
+	hdr = (struct mnode_payload*)nbody;
 	pack_to_be16(&hdr->mode_and_type, MSTOR_ROOT_NID_INIT_MODE);
 	t = time(NULL);
 	pack_to_be64(&hdr->mtime, t);
 	pack_to_be64(&hdr->atime, t);
-	off = offsetof(struct mnode_hdr, data);
-	ret = pack_str(nbody, &off, sizeof(nbody), RF_SUPERUSER);
-	if (ret)
-		goto done;
-	ret = pack_str(nbody, &off, sizeof(nbody), RF_SUPERUSER);
-	if (ret)
-		goto done;
+	pack_to_be32(&hdr->uid, RF_SUPERUSER_UID);
+	pack_to_be32(&hdr->gid, RF_SUPERUSER_GID);
 	leveldb_put(mstor->ldb, mstor->lwropt, nkey, MNODE_KEY_LEN,
-			nbody, off, &err);
+			nbody, sizeof(struct mnode_payload), &err);
 	if (err) {
 		glitch_log("mstor_leveldb_setup: error creating root "
 			   "node: '%s'\n", err);
@@ -393,10 +381,9 @@ done:
 static int mstor_mode_check(const struct mnode *node,
 			struct mreq *mreq, int want)
 {
-	int ret, user_match = 0, group_match = 0;
+	int uid_match = 0, group_match = 0;
 	uint16_t mode;
-	uint32_t off;
-	char owner[RF_USER_MAX], group[RF_GROUP_MAX];
+	uint32_t uid, gid;
 
 	mode = unpack_from_be16(&node->val->mode_and_type);
 	if (want & MNODE_IS_DIR) {
@@ -416,26 +403,15 @@ static int mstor_mode_check(const struct mnode *node,
 	/* Check whether everyone has the permission we seek */
 	if ((want << 6) & mode)
 		return 0;
-	off = offsetof(struct mnode_hdr, data);
-	ret = unpack_str(node->val, &off, node->len, owner, sizeof(owner));
-	if (ret) {
-		glitch_log("mstor_mode_check(nid=0x%"PRIx64"): error "
-			   "unpacking owner string\n", node->nid);
-		return -EIO;
-	}
-	if (strcmp(mreq->user, owner)) {
+	uid = unpack_from_be32(&node->val->uid);
+	if (uid == mreq->uid) {
 		/* Check whether the owner has the permission we seek */
-		user_match = 1;
+		uid_match = 1;
 		if (want & mode)
 			return 0;
 	}
-	ret = unpack_str(node->val, &off, node->len, group, sizeof(group));
-	if (ret) {
-		glitch_log("mstor_mode_check(nid=0x%"PRIx64"): error "
-			   "unpacking group string\n", node->nid);
-		return -EIO;
-	}
-	if (strcmp(mreq->group, group)) {
+	gid = unpack_from_be32(&node->val->gid);
+	if (gid == mreq->gid) { // FIXME: should check for group membership
 		/* Check whether the group has the permission we seek */
 		group_match = 1;
 		if ((want << 3) & mode)
@@ -588,9 +564,16 @@ static int mstor_fetch_node(struct mstor *mstor, uint64_t nid,
 	if (!val) {
 		return -ENOENT;
 	}
+	if (vlen != sizeof(struct mnode_payload)) {
+		glitch_log("mstor_fetch_node: unexpected payload size: "
+			"got %Zd, expected %Zd\n",
+			vlen, sizeof(struct mnode_payload));
+		free(err);
+		free(val);
+		return -EIO;
+	}
 	node->nid = nid;
-	node->val =  (struct mnode_hdr *)val;
-	node->len = vlen;
+	node->val =  (struct mnode_payload *)val;
 	return 0;
 }
 
@@ -640,7 +623,7 @@ static int mstor_fetch_child(struct mstor *mstor, struct mreq *mreq,
 }
 
 static int mstor_make_node(struct mstor *mstor, uint16_t mode_and_type,
-	uint64_t mtime, uint64_t atime, const char *user, const char *group,
+	uint64_t mtime, uint64_t atime, uint32_t uid, uint32_t gid,
 	const char *pcomp, const struct mnode *pnode, struct mnode *cnode)
 {
 	int ret;
@@ -648,18 +631,15 @@ static int mstor_make_node(struct mstor *mstor, uint16_t mode_and_type,
 	leveldb_writebatch_t* bat = NULL;
 	char pkey[MCHILD_KEY_MAX], nkey[MNODE_KEY_LEN];
 	char *body = NULL, *err = NULL;
-	size_t plen, body_len;
-	struct mnode_hdr *hdr;
-	uint32_t off;
+	size_t plen;
+	struct mnode_payload *hdr;
 
 	cnid = mstor_next_nid(mstor);
 	if (cnid == MSTOR_NID_MAX) {
 		ret =-EOVERFLOW;
 		goto error;
 	}
-	body_len = sizeof(struct mnode_hdr) + strlen(user) + 1 +
-			strlen(group) + 1;
-	body = calloc(1, body_len);
+	body = calloc(1, sizeof(struct mnode_payload));
 	if (!body) {
 		ret = -ENOMEM;
 		goto error;
@@ -676,19 +656,15 @@ static int mstor_make_node(struct mstor *mstor, uint16_t mode_and_type,
 	plen = 1 + sizeof(uint64_t) + strlen(pcomp);
 	nkey[0] = 'n';
 	pack_to_be64(nkey + 1, cnid);
-	hdr = (struct mnode_hdr*)body;
+	hdr = (struct mnode_payload*)body;
 	pack_to_be16(&hdr->mode_and_type, mode_and_type);
 	pack_to_be64(&hdr->mtime, mtime);
 	pack_to_be64(&hdr->atime, atime);
-	off = offsetof(struct mnode_hdr, data);
-	ret = pack_str(body, &off, body_len, user);
-	if (ret)
-		goto error;
-	ret = pack_str(body, &off, body_len, group);
-	if (ret)
-		goto error;
+	pack_to_be32(&hdr->uid, uid);
+	pack_to_be32(&hdr->gid, gid);
 	leveldb_writebatch_put(bat, pkey, plen, nkey + 1, sizeof(uint64_t));
-	leveldb_writebatch_put(bat, nkey, MNODE_KEY_LEN, body, off);
+	leveldb_writebatch_put(bat, nkey, MNODE_KEY_LEN, body,
+			sizeof(struct mnode_payload));
 	leveldb_write(mstor->ldb, mstor->lwropt, bat, &err);
 	if (err) {
 		glitch_log("leveldb_write(%" PRIx64 ") returned error '%s'\n",
@@ -697,8 +673,7 @@ static int mstor_make_node(struct mstor *mstor, uint16_t mode_and_type,
 		goto error;
 	}
 	cnode->nid = cnid;
-	cnode->val = (struct mnode_hdr*)body;
-	cnode->len = off;
+	cnode->val = (struct mnode_payload*)body;
 	leveldb_writebatch_destroy(bat);
 	return 0;
 
@@ -719,7 +694,7 @@ static int mstor_do_creat(struct mstor *mstor, struct mreq *mreq,
 
 	req = (struct mreq_creat*)mreq;
 	ret = mstor_make_node(mstor, req->mode, req->ctime, req->ctime,
-		mreq->user, mreq->group, pcomp, pnode, cnode);
+		mreq->uid, mreq->gid, pcomp, pnode, cnode);
 	if (ret == 0)
 		req->nid = cnode->nid;
 	return ret;
@@ -730,7 +705,7 @@ static int mstor_do_open(struct mstor *mstor, struct mreq *mreq,
 {
 	int ret;
 	char k[MNODE_KEY_LEN], *err = NULL;
-	struct mnode_hdr *hdr;
+	struct mnode_payload *hdr;
 	struct mreq_open *req;
 
 	/* Do we have permission to open this file?  And is it a file, rather
@@ -740,12 +715,12 @@ static int mstor_do_open(struct mstor *mstor, struct mreq *mreq,
 		return ret;
 	/* Update atime */
 	req = (struct mreq_open *)mreq;
-	hdr = (struct mnode_hdr*)node->val;
+	hdr = (struct mnode_payload*)node->val;
 	pack_to_be64(&hdr->atime, req->atime);
 	k[0] = 'n';
 	pack_to_be64(k + 1, node->nid);
 	leveldb_put(mstor->ldb, mstor->lwropt, k, MNODE_KEY_LEN,
-			(const char*)node->val, node->len, &err);
+		(const char*)node->val, sizeof(struct mnode_payload), &err);
 	if (err) {
 		glitch_log("mstor_do_open(nid=0x%"PRIx64": leveldb_put "
 			"returned error '%s'\n", node->nid, err);
@@ -770,8 +745,8 @@ static int mstor_do_mkdir(struct mstor *mstor, struct mreq *mreq,
 
 	req = (struct mreq_mkdirs*)mreq;
 	ret = mstor_make_node(mstor, req->mode | MNODE_IS_DIR,
-		req->ctime, req->ctime, mreq->user,
-		mreq->group, pcomp, pnode, cnode);
+		req->ctime, req->ctime, mreq->uid,
+		mreq->gid, pcomp, pnode, cnode);
 	return ret;
 }
 
@@ -780,7 +755,7 @@ static int add_stat_to_list(uint32_t *off, uint32_t out_len,
 {
 	int ret;
 	struct mmm_stat_hdr *hdr;
-	uint32_t old, o, mo;
+	uint32_t old, o;
 	uint32_t stat_len;
 
 	old = o = *off;
@@ -795,21 +770,16 @@ static int add_stat_to_list(uint32_t *off, uint32_t out_len,
 	hdr->length = 0; // TODO: needs to be calculated by looking at chunks
 			// for this nid
 	pack_to_8(&hdr->repl, 1); // TODO: this ought to be the 'target' value in
-					// mnode_hdr?
+					// mnode_payload?
 	o += sizeof(struct mmm_stat_hdr);
 	/* path name */
 	ret = pack_str(out, &o, out_len, pcomp);
 	if (ret)
 		return ret;
 	/* owner */
-	mo = offsetof(struct mnode_hdr, data);
-	ret = repack_str(out, &o, out_len, node->val, &mo, node->len);
-	if (ret)
-		return ret;
+	hdr->uid = node->val->uid;
 	/* group */
-	ret = repack_str(out, &o, out_len, node->val, &mo, node->len);
-	if (ret)
-		return ret;
+	hdr->gid = node->val->gid;
 	/* success */
 	stat_len = o - old;
 	if (stat_len > 0xffff)
@@ -946,13 +916,13 @@ static int mstor_do_chmod(struct mstor *mstor, struct mreq *mreq,
 {
 	int ret;
 	struct mreq_chmod *req;
-	struct mnode_hdr *hdr;
+	struct mnode_payload *hdr;
 	char k[MNODE_KEY_LEN], *err = NULL;
 	uint16_t old_mode_and_type, mode_and_type;
 
 	// TODO: take lock here
 	req = (struct mreq_chmod*)mreq;
-	hdr = (struct mnode_hdr*)node->val;
+	hdr = (struct mnode_payload*)node->val;
 	mode_and_type = req->mode;
 	old_mode_and_type = unpack_from_be16(&hdr->mode_and_type);
 	if (old_mode_and_type & MNODE_IS_DIR)
@@ -963,7 +933,7 @@ static int mstor_do_chmod(struct mstor *mstor, struct mreq *mreq,
 	k[0] = 'n';
 	pack_to_be64(k + 1, node->nid);
 	leveldb_put(mstor->ldb, mstor->lwropt, k, MNODE_KEY_LEN,
-			(const char*)node->val, node->len, &err);
+		(const char*)node->val, sizeof(struct mnode_payload), &err);
 	if (err) {
 		glitch_log("mstor_do_chmod(nid=0x%"PRIx64": leveldb_put "
 			"returned error '%s'\n", node->nid, err);
@@ -984,59 +954,28 @@ static int mstor_do_chown(struct mstor *mstor, struct mreq *mreq,
 	int ret;
 	struct mreq_chown *req;
 	char k[MNODE_KEY_LEN], *err = NULL;
-	char buf[sizeof(struct mnode_hdr) + RF_USER_MAX + RF_GROUP_MAX];
-	char new_owner[RF_USER_MAX], new_group[RF_GROUP_MAX];
-	uint32_t off;
+	char buf[sizeof(struct mnode_payload)];
 
 	// TODO: take lock here
-	off = offsetof(struct mnode_hdr, data);
-	ret = unpack_str(node->val, &off, node->len,
-			new_owner, sizeof(new_owner));
-	if (ret) {
-		glitch_log("mstor_do_chown(nid=0x%"PRIx64"): error "
-			   "unpacking owner string\n", node->nid);
-		ret = -EIO;
-		goto done;
-	}
-	ret = unpack_str(node->val, &off, node->len,
-			new_group, sizeof(new_group));
-	if (ret) {
-		glitch_log("mstor_do_chown(nid=0x%"PRIx64"): error "
-			   "unpacking group string\n", node->nid);
-		ret = -EIO;
-		goto done;
-	}
 	req = (struct mreq_chown*)mreq;
-	if (req->new_owner) {
-		ret = zsnprintf(new_owner, RF_USER_MAX, "%s", req->new_owner);
-		if (ret)
-			goto done;
+	if (req->new_uid != RF_INVAL_UID) {
+		pack_to_be32(&node->val->uid, req->new_uid);
 	}
-	if (req->new_group) {
-		ret = zsnprintf(new_group, RF_GROUP_MAX, "%s", req->new_group);
-		if (ret)
-			goto done;
+	if (req->new_gid != RF_INVAL_GID) {
+		pack_to_be32(&node->val->gid, req->new_gid);
 	}
-	memset(buf, 0, sizeof(buf));
-	memcpy(buf, node->val, sizeof(struct mnode_hdr));
-	off = offsetof(struct mnode_hdr, data);
-	ret = pack_str(buf, &off, sizeof(buf), new_owner);
-	if (ret)
-		goto done;
-	ret = pack_str(buf, &off, sizeof(buf), new_group);
-	if (ret)
-		goto done;
+	memcpy(buf, node->val, sizeof(struct mnode_payload));
 	k[0] = 'n';
 	pack_to_be64(k + 1, node->nid);
 	leveldb_put(mstor->ldb, mstor->lwropt, k, MNODE_KEY_LEN,
-			buf, off, &err);
+			buf, sizeof(struct mnode_payload), &err);
 	if (err) {
 		glitch_log("mstor_do_chown(nid=0x%"PRIx64": leveldb_put "
 			"returned error '%s'\n", node->nid, err);
 		ret = -EIO;
 		goto done;
 	}
-	return ret;
+	ret = 0;
 
 done:
 	free(err);
@@ -1049,12 +988,12 @@ static int mstor_do_utimes(struct mstor *mstor, struct mreq *mreq,
 {
 	int ret;
 	struct mreq_utimes *req;
-	struct mnode_hdr *hdr;
+	struct mnode_payload *hdr;
 	char k[MNODE_KEY_LEN], *err = NULL;
 
 	// TODO: take lock here
 	req = (struct mreq_utimes*)mreq;
-	hdr = (struct mnode_hdr*)node->val;
+	hdr = (struct mnode_payload*)node->val;
 	if (req->atime != RF_INVAL_TIME)
 		pack_to_be64(&hdr->atime, req->atime);
 	if (req->mtime != RF_INVAL_TIME)
@@ -1062,7 +1001,7 @@ static int mstor_do_utimes(struct mstor *mstor, struct mreq *mreq,
 	k[0] = 'n';
 	pack_to_be64(k + 1, node->nid);
 	leveldb_put(mstor->ldb, mstor->lwropt, k, MNODE_KEY_LEN,
-			(const char*)node->val, node->len, &err);
+		(const char*)node->val, sizeof(struct mnode_payload), &err);
 	if (err) {
 		glitch_log("mstor_do_utimes(nid=0x%"PRIx64": leveldb_put "
 			"returned error '%s'\n", node->nid, err);
@@ -1086,9 +1025,9 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 
 	mreq->flags = MREQ_FLAG_CHECK_PERMS;
 	/* The superuser can do anything */
-	if (!strcmp(mreq->user, RF_SUPERUSER))
+	if (mreq->uid == RF_SUPERUSER_UID)
 		mreq->flags &= ~MREQ_FLAG_CHECK_PERMS;
-	else if (!strcmp(mreq->group, RF_SUPERUSER))
+	if (mreq->gid == RF_SUPERUSER_GID)
 		mreq->flags &= ~MREQ_FLAG_CHECK_PERMS;
 	if (zsnprintf(full_path, sizeof(full_path), "%s", mreq->full_path))
 		return -ENAMETOOLONG;
@@ -1245,52 +1184,42 @@ static int mstor_dump_child(FILE *out, const char *k, size_t klen,
 static int mstor_dump_node(FILE *out, const char *k, size_t klen,
 		const char *v, size_t vlen)
 {
-	int ret, is_dir;
-	struct mnode_hdr *hdr;
+	int is_dir;
+	struct mnode_payload *hdr;
 	uint16_t mode;
-	uint32_t off;
+	uint32_t uid, gid;
 	uint64_t nid, mtime, atime;
-	char owner[RF_USER_MAX], group[RF_GROUP_MAX];
 
 	if (klen != MNODE_KEY_LEN) {
 		glitch_log("mstor_dump: unknown key starting "
 			   "with 'n' of length %Zd\n", klen);
 		return -EINVAL;
 	}
-	if (vlen < sizeof(struct mnode_hdr)) {
+	if (vlen < sizeof(struct mnode_payload)) {
 		glitch_log("mstor_dump: node entry is too short to contain a "
 			   "node header!  Length = %Zd\n", vlen);
 		return -EINVAL;
 	}
-	if (vlen > MNODE_BODY_MAX) {
-		glitch_log("mstor_dump: node entry is longer than maximum "
+	if (vlen != sizeof(struct mnode_payload)) {
+		glitch_log("mstor_dump: node entry is not equal to expected "
 			   "length!  Length = %Zd\n", vlen);
 		return -EINVAL;
 	}
 	nid = unpack_from_be64(k + 1);
-	hdr = (struct mnode_hdr*)v;
+	hdr = (struct mnode_payload*)v;
 	mode = unpack_from_be16(&hdr->mode_and_type);
 	is_dir = mode & MNODE_IS_DIR;
 	mode &= ~MNODE_IS_DIR;
 	mtime = unpack_from_be64(&hdr->mtime);
 	atime = unpack_from_be64(&hdr->atime);
-	off = offsetof(struct mnode_hdr, data);
-	ret = unpack_str(v, &off, vlen, owner, sizeof(owner));
-	if (ret) {
-		glitch_log("mstor_dump: error unpacking owner string\n");
-		return -EINVAL;
-	}
-	ret = unpack_str(v, &off, vlen, group, sizeof(group));
-	if (ret) {
-		glitch_log("mstor_dump: error unpacking group string\n");
-		return -EINVAL;
-	}
+	uid = unpack_from_be32(&hdr->uid);
+	gid = unpack_from_be32(&hdr->gid);
 	return zfprintf(out, "NODE(0x%"PRIx64") => { ty=%s, mode=%04o, "
-		"mtime=%"PRId64", atime=%"PRId64", owner='%s', "
-		"group='%s' }\n",
+		"mtime=%"PRId64", atime=%"PRId64", uid='%"PRId32"', "
+		"gid='%"PRId32"' }\n",
 		nid, (is_dir ? "DIR" : "FILE"), mode,
-		mtime, atime, owner,
-		group);
+		mtime, atime, uid,
+		gid);
 }
 
 int mstor_dump(struct mstor *mstor, FILE *out)

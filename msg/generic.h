@@ -40,6 +40,8 @@ PACKED(
 struct mmm_stat_hdr {
 	uint16_t stat_len;
 	uint16_t mode_and_type;
+	uint32_t uid;
+	uint32_t gid;
 	uint32_t block_sz;
 	uint64_t mtime;
 	uint64_t atime;
@@ -47,8 +49,6 @@ struct mmm_stat_hdr {
 	uint8_t repl;
 	char data[0];
 	/* pcomp */
-	/* owner */
-	/* group */
 });
 
 extern int send_nack(int fd, int error);

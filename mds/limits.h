@@ -28,7 +28,17 @@
 #define RF_GROUP_MAX 64
 
 /** The superuser */
-#define RF_SUPERUSER "superuser"
+#define RF_SUPERUSER_NAME "superuser"
+#define RF_SUPERUSER_UID 0
+#define RF_SUPERUSER_GID 0
+
+/** nobody */
+#define RF_NOBODY_NAME "nobody"
+#define RF_NOBODY_UID 1
+
+/** everybody */
+#define RF_EVERYONE_NAME "everyone"
+#define RF_EVERYONE_GID 1
 
 /** Invalid (u)time */
 #define RF_INVAL_TIME 0xffffffffffffffffULL
