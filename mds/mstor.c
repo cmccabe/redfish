@@ -43,6 +43,8 @@
  */
 /****************************** constants ********************************/
 #define MSTOR_DEFAULT_SEQUESTER_TIME 300
+#define MSTOR_DEFAULT_MIN_REPL 2
+#define MSTOR_DEFAULT_MAN_REPL 3
 
 #define MSTOR_CUR_VERSION 0x000000001U
 #define MSTOR_VERSION_MAGIC "Fish"
@@ -79,13 +81,16 @@ struct mnode {
 	struct mnode_payload *val;
 };
 
+// TODO: create separate mfile / mdir structures.  mdir doesn't need length and
+// atime.
 PACKED(
 struct mnode_payload {
-	uint16_t mode_and_type;
 	uint64_t mtime;
 	uint64_t atime;
+	uint64_t length;
 	uint32_t uid;
 	uint32_t gid;
+	uint16_t mode_and_type;
 });
 
 struct mstor {
@@ -102,6 +107,10 @@ struct mstor {
 	/** The minimum number of seconds that we will sequester a file before
 	 * deleting it. */
 	int min_sequester_time;
+	/** Minimum replication level */
+	int min_repl;
+	/** Mandated replication level */
+	int man_repl;
 	/** Protects next_nid */
 	pthread_mutex_t next_nid_lock;
 };
@@ -296,6 +305,7 @@ static int mstor_leveldb_create_new(struct mstor *mstor)
 	t = time(NULL);
 	pack_to_be64(&hdr->mtime, t);
 	pack_to_be64(&hdr->atime, t);
+	pack_to_be64(&hdr->length, 0);
 	pack_to_be32(&hdr->uid, RF_SUPERUSER_UID);
 	pack_to_be32(&hdr->gid, RF_SUPERUSER_GID);
 	leveldb_put(mstor->ldb, mstor->lwropt, nkey, MNODE_KEY_LEN,
@@ -469,6 +479,14 @@ static int mstor_leveldb_init(struct mstor *mstor,
 		mstor->min_sequester_time = MSTOR_DEFAULT_SEQUESTER_TIME;
 	else
 		mstor->min_sequester_time = conf->min_sequester_time;
+	if (conf->min_repl == JORM_INVAL_INT)
+		mstor->min_repl = MSTOR_DEFAULT_MIN_REPL;
+	else
+		mstor->min_repl = conf->min_repl;
+	if (conf->man_repl == JORM_INVAL_INT)
+		mstor->man_repl = MSTOR_DEFAULT_MAN_REPL;
+	else
+		mstor->man_repl = conf->man_repl;
 	return 0;
 
 error:
@@ -736,6 +754,94 @@ done:
 	return ret;
 }
 
+static int mstor_do_chunkfind(struct mstor *mstor, struct mreq *mreq,
+		const struct mnode *pnode, const struct mnode *cnode)
+{
+	int ret, num_cid = 0, max_cid;
+	char key[MCHUNK_KEY_LEN], *err = NULL;
+	leveldb_iterator_t *iter = NULL;
+	const char *k;
+	const char *v;
+	size_t klen, vlen;
+	struct mreq_chunkfind *req;
+	uint64_t start, end, base;
+
+	ret = mstor_mode_check(pnode, mreq,
+			MSTOR_PERM_READ | MNODE_IS_DIR);
+	if (ret)
+		goto done;
+	req = (struct mreq_chunkfind*)mreq;
+	max_cid = req->max_cid;
+	/* Get starting element */
+	memset(key, 0, sizeof(key));
+	key[0] = 'f';
+	pack_to_be64(key + 1, cnode->nid);
+	start = req->start;
+	end = req->end;
+	pack_to_be64(key + sizeof(uint64_t) + 1, start + 1);
+	iter = leveldb_create_iterator(mstor->ldb, mstor->lreadopt);
+	if (!iter) {
+		glitch_log("mstor_do_chunkfind: leveldb_create_iterator "
+			"failed.\n");
+		ret = -ENOMEM;
+		goto done;
+	}
+	leveldb_iter_seek(iter, key, MCHUNK_KEY_LEN);
+	// TODO: get rid of this leveldb_iter_prev.  The levelDB manual says
+	// that reverse iteration may be somewhat slower than forward.
+	// We could get rid of this by using a custom comparator or by storing
+	// the starting offsets as the negative of their real value (hence
+	// getting the 'round down' semantics that we want.)
+	leveldb_iter_prev(iter);
+	if (!leveldb_iter_valid(iter)) {
+		/* no chunk entries found */
+		ret = 0;
+		goto done;
+	}
+	k = leveldb_iter_key(iter, &klen);
+	if ((klen != MCHUNK_KEY_LEN) ||
+			(memcmp(k, key, 1 + sizeof(uint64_t)))) {
+		/* no chunk entries found */
+		ret = 0;
+		goto done;
+	}
+	v = leveldb_iter_value(iter, &vlen);
+	while (1) {
+		if (num_cid + 1 >= max_cid) {
+			ret = -ENAMETOOLONG;
+			goto done;
+		}
+		if (vlen != sizeof(uint64_t)) {
+			glitch_log("mstor_do_chunkfind: leveldb_iter_key "
+				"got illegal %Zd-length cid\n", vlen);
+			ret = -EIO;
+			goto done;
+		}
+		req->chunk_ids[num_cid] = unpack_from_be64(v);
+		num_cid++;
+		leveldb_iter_next(iter);
+		if (!leveldb_iter_valid(iter)) {
+			break;
+		}
+		k = leveldb_iter_key(iter, &klen);
+		if ((klen != MCHUNK_KEY_LEN) ||
+				(memcmp(k, key, 1 + sizeof(uint64_t)))) {
+			break;
+		}
+		base = unpack_from_be64(k + 1 + sizeof(uint64_t));
+		if (base > end)
+			break;
+		v = leveldb_iter_value(iter, &vlen);
+	}
+	ret = 0;
+done:
+	req->num_cid = num_cid;
+	free(err);
+	if (iter)
+		leveldb_iter_destroy(iter);
+	return ret;
+}
+
 static int mstor_do_mkdir(struct mstor *mstor, struct mreq *mreq,
 		const char *pcomp, const struct mnode *pnode,
 		struct mnode *cnode)
@@ -750,8 +856,9 @@ static int mstor_do_mkdir(struct mstor *mstor, struct mreq *mreq,
 	return ret;
 }
 
-static int add_stat_to_list(uint32_t *off, uint32_t out_len,
-		const char *pcomp, const struct mnode *node, char *out)
+static int add_stat_to_list(struct mstor *mstor, uint32_t *off,
+		uint32_t out_len, const char *pcomp,
+		const struct mnode *node, char *out)
 {
 	int ret;
 	struct mmm_stat_hdr *hdr;
@@ -767,10 +874,9 @@ static int add_stat_to_list(uint32_t *off, uint32_t out_len,
 	hdr->block_sz = 0; // TODO: fill in
 	hdr->mtime = node->val->mtime;
 	hdr->atime = node->val->atime;
-	hdr->length = 0; // TODO: needs to be calculated by looking at chunks
-			// for this nid
-	pack_to_8(&hdr->repl, 1); // TODO: this ought to be the 'target' value in
-					// mnode_payload?
+	hdr->length = node->val->length;
+	// TODO: support custom per-file replication settings
+	pack_to_8(&hdr->man_repl, mstor->man_repl);
 	o += sizeof(struct mmm_stat_hdr);
 	/* path name */
 	ret = pack_str(out, &o, out_len, pcomp);
@@ -869,7 +975,7 @@ static int mstor_do_listdir(struct mstor *mstor, struct mreq *mreq,
 			/* error condition */
 			goto done;
 		}
-		ret = add_stat_to_list(&off, req->out_len, pcomp,
+		ret = add_stat_to_list(mstor, &off, req->out_len, pcomp,
 				&node, req->out);
 		if (ret)
 			goto done;
@@ -889,8 +995,9 @@ done:
 	return ret;
 }
 
-static int mstor_do_stat(struct mreq *mreq, const char *pcomp,
-		const struct mnode *pnode, const struct mnode *cnode)
+static int mstor_do_stat(struct mstor *mstor, struct mreq *mreq,
+		const char *pcomp, const struct mnode *pnode,
+		const struct mnode *cnode)
 {
 	int ret;
 	struct mreq_stat *req;
@@ -907,7 +1014,8 @@ static int mstor_do_stat(struct mreq *mreq, const char *pcomp,
 			return ret;
 	}
 	req = (struct mreq_stat*)mreq;
-	ret = add_stat_to_list(&off, req->out_len, pcomp, cnode, req->out);
+	ret = add_stat_to_list(mstor, &off, req->out_len, pcomp,
+			cnode, req->out);
 	return ret;
 }
 
@@ -1108,7 +1216,7 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 	case MSTOR_OP_OPEN:
 		return mstor_do_open(mstor, mreq, cnode);
 	case MSTOR_OP_CHUNKFIND:
-		return -ENOTSUP;
+		return mstor_do_chunkfind(mstor, mreq, pnode, cnode);
 	case MSTOR_OP_CHUNKALLOC:
 		return -ENOTSUP;
 	case MSTOR_OP_MKDIRS:
@@ -1116,7 +1224,7 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 	case MSTOR_OP_LISTDIR:
 		return mstor_do_listdir(mstor, mreq, cnode);
 	case MSTOR_OP_STAT:
-		return mstor_do_stat(mreq, pcomp, pnode, cnode);
+		return mstor_do_stat(mstor, mreq, pcomp, pnode, cnode);
 	case MSTOR_OP_CHMOD:
 		return mstor_do_chmod(mstor, mreq, cnode);
 	case MSTOR_OP_CHOWN:

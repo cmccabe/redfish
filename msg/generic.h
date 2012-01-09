@@ -46,7 +46,7 @@ struct mmm_stat_hdr {
 	uint64_t mtime;
 	uint64_t atime;
 	uint64_t length;
-	uint8_t repl;
+	uint8_t man_repl;
 	char data[0];
 	/* pcomp */
 });

@@ -68,6 +68,20 @@ struct mreq_open {
 	uint64_t nid;
 };
 
+struct mreq_chunkfind {
+	struct mreq base;
+	/** start of region */
+	uint64_t start;
+	/** end of region */
+	uint64_t end;
+	/** number of chunk IDs that can fit in this buffer */
+	int max_cid;
+	/** (out param) number of chunk IDs retrieved */
+	int num_cid;
+	/** (out param) retrieved chunk IDs */
+	uint64_t chunk_ids[0];
+};
+
 struct mreq_mkdirs {
 	struct mreq base;
 	/** Mode to create directory with */
