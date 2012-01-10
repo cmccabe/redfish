@@ -763,10 +763,10 @@ done:
 }
 
 static int mstor_do_chunkfind(struct mstor *mstor, struct mreq *mreq,
-		const struct mnode *pnode, const struct mnode *cnode)
+		const struct mnode *cnode)
 {
 	int ret, num_cid = 0, max_cid;
-	char key[MCHUNK_KEY_LEN], *err = NULL;
+	char key[MCHUNK_KEY_LEN];
 	leveldb_iterator_t *iter = NULL;
 	const char *k;
 	const char *v;
@@ -774,8 +774,7 @@ static int mstor_do_chunkfind(struct mstor *mstor, struct mreq *mreq,
 	struct mreq_chunkfind *req;
 	uint64_t start, end, base;
 
-	ret = mstor_mode_check(pnode, mreq,
-			MSTOR_PERM_READ | MNODE_IS_DIR);
+	ret = mstor_mode_check(cnode, mreq, MSTOR_PERM_READ);
 	if (ret)
 		goto done;
 	req = (struct mreq_chunkfind*)mreq;
@@ -844,7 +843,6 @@ static int mstor_do_chunkfind(struct mstor *mstor, struct mreq *mreq,
 	ret = 0;
 done:
 	req->num_cid = num_cid;
-	free(err);
 	if (iter)
 		leveldb_iter_destroy(iter);
 	return ret;
@@ -1224,7 +1222,7 @@ static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
 	case MSTOR_OP_OPEN:
 		return mstor_do_open(mstor, mreq, cnode);
 	case MSTOR_OP_CHUNKFIND:
-		return mstor_do_chunkfind(mstor, mreq, pnode, cnode);
+		return mstor_do_chunkfind(mstor, mreq, cnode);
 	case MSTOR_OP_CHUNKALLOC:
 		return -ENOTSUP;
 	case MSTOR_OP_MKDIRS:
