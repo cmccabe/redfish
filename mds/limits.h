@@ -20,6 +20,9 @@
 /** maximum length of a path name in RedFish */
 #define RF_PATH_MAX 4096
 
+/** maximum number of OSDs that will be used store a single chunk */
+#define RF_MAX_OID 7
+
 /** maximum number of replicas for any delegation */
 #define RF_MAX_REPLICAS 7
 

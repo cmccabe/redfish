@@ -20,6 +20,8 @@
 #include <stdio.h> /* for FILE */
 #include <stdint.h> /* uint32_t, etc. */
 
+#include "mds/limits.h"
+
 #define MNODE_IS_DIR 0x8000
 
 struct fast_log_mgr;
@@ -87,7 +89,21 @@ struct mreq_chunkfind {
 	/** (out param) number of chunk IDs retrieved */
 	int num_cid;
 	/** (out param) retrieved chunk IDs */
-	uint64_t chunk_ids[0];
+	uint64_t cids[0];
+};
+
+struct mreq_chunkalloc {
+	struct mreq base;
+	/** Node ID of file */
+	uint64_t nid;
+	/** Starting offset in the file of the new chunk */
+	uint64_t off;
+	/** (out-param) new chunk ID */
+	uint64_t cid;
+	/** (out-param) OSD IDs where the new chunk will be stored */
+	uint32_t oid[RF_MAX_OID];
+	/** (out-param) length of oid array */
+	int num_oid;
 };
 
 struct mreq_mkdirs {

@@ -40,14 +40,14 @@
 /* leveldb storage scheme:
  * for file and directory nodes:
  *	n[8-byte node-id] => mnode
- * for file chunks:
+ * for files:
  *      f[8-byte node-id][8-byte offset] => 8-byte chunk ID
  * for directory children:
  *	c[8-byte node-id][child-name] => 8-byte child ID
  * for chunks:
- *      h[8-byte-chunk-id] => <array of 4-byte OSD-IDs>
- * for trashed (sequestered) files:
- *      t[8-byte-expiry-time][8-byte-node-id] => mnode
+ *      h[8-byte-chunk-id] => <packed-array of 4-byte OSD-IDs>
+ * for unlinked chunks:
+ *      u[8-byte-unlink-time] => [8-byte-chunk-id]
  */
 /****************************** constants ********************************/
 #define MSTOR_DEFAULT_SEQUESTER_TIME 300
@@ -68,6 +68,7 @@
 #define MSTOR_PERM_READ 04
 
 #define MSTOR_NID_MAX 0xffffffffffff0000ULL
+#define MSTOR_CID_MAX 0xffffffffffff0000ULL
 #define MNODE_KEY_LEN (1 + sizeof(uint64_t))
 #define MCHILD_KEY_LEN_PREFIX (1 + sizeof(uint64_t))
 #define MCHUNK_KEY_LEN (1 + sizeof(uint64_t))
@@ -121,6 +122,10 @@ struct mstor {
 	int man_repl;
 	/** Protects next_nid */
 	pthread_mutex_t next_nid_lock;
+	/** Next node ID to use */
+	uint64_t next_cid;
+	/** Protects next_cid */
+	pthread_mutex_t next_cid_lock;
 };
 
 /****************************** functions ********************************/
@@ -188,6 +193,22 @@ static uint64_t mstor_next_nid(struct mstor *mstor)
 	if (nid > MSTOR_NID_MAX)
 		abort();
 	return nid;
+}
+
+static uint64_t mstor_next_cid(struct mstor *mstor)
+{
+	uint64_t cid;
+
+#if __WORDSIZE == 32
+	pthread_mutex_lock(&mstor->next_cid_lock);
+	cid = mstor->next_cid++;
+	pthread_mutex_unlock(&mstor->next_cid_lock);
+#else
+	cid = __sync_fetch_and_add(&mstor->next_cid, 1);
+#endif
+	if (cid > MSTOR_NID_MAX)
+		abort();
+	return cid;
 }
 
 static void mnode_free(struct mnode *node)
@@ -336,14 +357,74 @@ done:
 	return ret;
 }
 
+/** Find what the next node ID should be by looking for the highest existing
+ * node ID.
+ *
+ * @param iter		A leveldb iterator for our db
+ * @param next_nid	(out param) the next node ID to use
+ *
+ * @return		0 on success; error code otherwise
+ */
+static int mstor_load_next_nid(leveldb_iterator_t *iter, uint64_t *next_nid)
+{
+	const char *key;
+	size_t klen;
+	char nkey[MNODE_KEY_LEN];
+
+	nkey[0] = 'n';
+	pack_to_be64(nkey + 1, MSTOR_NID_MAX);
+	leveldb_iter_seek(iter, nkey, MNODE_KEY_LEN);
+	leveldb_iter_prev(iter);
+	if (!leveldb_iter_valid(iter)) {
+		glitch_log("mstor_load_highest_nid: failed to seek to highest "
+			   "node id.\n");
+		return -EINVAL;
+	}
+	key = leveldb_iter_key(iter, &klen);
+	if ((klen != MNODE_KEY_LEN) || (key[0] != 'n')) {
+		glitch_log("mstor_leveldb_setup: failed to find "
+			"highest node ID in use\n");
+		return -EINVAL;
+	}
+	*next_nid = unpack_from_be64(key + 1) + 1;
+	return 0;
+}
+
+/** Find what the next chunk ID should be by looking for the highest existing
+ * chunk ID.
+ *
+ * @param iter		A leveldb iterator for our db
+ * @param next_cid	(out param) the next chunk ID to use
+ *
+ * @return		0 on success; error code otherwise
+ */
+static int mstor_load_next_cid(leveldb_iterator_t *iter, uint64_t *next_cid)
+{
+	const char *key;
+	size_t klen;
+	char hkey[MCHUNK_KEY_LEN];
+
+	hkey[0] = 'h';
+	pack_to_be64(hkey + 1, MSTOR_CID_MAX);
+	leveldb_iter_seek(iter, hkey, MCHUNK_KEY_LEN);
+	leveldb_iter_prev(iter);
+	if (!leveldb_iter_valid(iter)) {
+		*next_cid = 1;
+		return 0;
+	}
+	key = leveldb_iter_key(iter, &klen);
+	if ((klen != MCHUNK_KEY_LEN) || (key[0] != 'h')) {
+		*next_cid = 1;
+		return 0;
+	}
+	*next_cid = unpack_from_be64(key + 1) + 1;
+	return 0;
+}
+
 static int mstor_leveldb_load(struct mstor *mstor)
 {
 	int ret;
 	leveldb_iterator_t *iter = NULL;
-	size_t klen;
-	char *err = NULL, nkey[MNODE_KEY_LEN];
-	const char *key;
-	uint64_t next_nid;
 	uint32_t vers;
 
 	vers = mstor_read_version(mstor);
@@ -364,33 +445,19 @@ static int mstor_leveldb_load(struct mstor *mstor)
 		ret = -ENOMEM;
 		goto done;
 	}
-	nkey[0] = 'n';
-	pack_to_be64(nkey + 1, MSTOR_NID_MAX);
-	leveldb_iter_seek(iter, nkey, MNODE_KEY_LEN);
-	leveldb_iter_prev(iter);
-	if (!leveldb_iter_valid(iter)) {
-		glitch_log("mstor_leveldb_load: failed to seek to highest "
-			   "node id.\n");
-		ret = -EINVAL;
+	ret = mstor_load_next_nid(iter, &mstor->next_nid);
+	if (ret)
 		goto done;
-	}
-	key = leveldb_iter_key(iter, &klen);
-	if ((klen != MNODE_KEY_LEN) || (key[0] != 'n')) {
-		glitch_log("mstor_leveldb_setup: failed to find "
-			"highest node ID in use\n");
-		ret = -EINVAL;
+	ret = mstor_load_next_cid(iter, &mstor->next_cid);
+	if (ret)
 		goto done;
-	}
-	next_nid = unpack_from_be64(key + 1) + 1;
-	mstor->next_nid = next_nid;
 	__sync_synchronize();
 	glitch_log("mstor_leveldb_setup: using existing mstor.  "
-		   "Next nid = 0x%"PRIx64"\n", next_nid);
+		"next_nid = 0x%"PRIx64", next_cid = 0x%"PRIx64"\n",
+		mstor->next_nid, mstor->next_cid);
 	ret = 0;
 
 done:
-	if (err)
-		free(err);
 	if (iter)
 		leveldb_iter_destroy(iter);
 	return ret;
@@ -441,6 +508,17 @@ static int mstor_mode_check(const struct mnode *node,
 	return -EPERM;
 }
 
+static int get_valid_repl(int conf_repl, int def_repl)
+{
+	if (conf_repl == JORM_INVAL_INT)
+		return def_repl;
+	if (conf_repl < 1)
+		return def_repl;
+	if (conf_repl > RF_MAX_OID)
+		return RF_MAX_OID;
+	return conf_repl;
+}
+
 static int mstor_leveldb_init(struct mstor *mstor,
 			const struct mstorc *conf)
 {
@@ -487,14 +565,10 @@ static int mstor_leveldb_init(struct mstor *mstor,
 		mstor->min_sequester_time = MSTOR_DEFAULT_SEQUESTER_TIME;
 	else
 		mstor->min_sequester_time = conf->min_sequester_time;
-	if (conf->min_repl == JORM_INVAL_INT)
-		mstor->min_repl = MSTOR_DEFAULT_MIN_REPL;
-	else
-		mstor->min_repl = conf->min_repl;
-	if (conf->man_repl == JORM_INVAL_INT)
-		mstor->man_repl = MSTOR_DEFAULT_MAN_REPL;
-	else
-		mstor->man_repl = conf->man_repl;
+	mstor->min_repl = get_valid_repl(mstor->min_repl,
+					MSTOR_DEFAULT_MIN_REPL);
+	mstor->man_repl = get_valid_repl(mstor->man_repl,
+					MSTOR_DEFAULT_MAN_REPL);
 	return 0;
 
 error:
@@ -525,9 +599,12 @@ struct mstor* mstor_init(POSSIBLY_UNUSED(struct fast_log_mgr *mgr),
 	ret = pthread_mutex_init(&mstor->next_nid_lock, NULL);
 	if (ret)
 		goto error_free_mstor;
-	ret = mstor_leveldb_init(mstor, conf);
+	ret = pthread_mutex_init(&mstor->next_cid_lock, NULL);
 	if (ret)
 		goto error_destroy_next_nid_lock;
+	ret = mstor_leveldb_init(mstor, conf);
+	if (ret)
+		goto error_destroy_next_cid_lock;
 	ret = mstor_leveldb_is_empty(mstor);
 	if (ret < 0)
 		goto error_leveldb_shutdown;
@@ -545,6 +622,8 @@ struct mstor* mstor_init(POSSIBLY_UNUSED(struct fast_log_mgr *mgr),
 
 error_leveldb_shutdown:
 	mstor_leveldb_shutdown(mstor);
+error_destroy_next_cid_lock:
+	pthread_mutex_destroy(&mstor->next_cid_lock);
 error_destroy_next_nid_lock:
 	pthread_mutex_destroy(&mstor->next_nid_lock);
 error_free_mstor:
@@ -567,6 +646,7 @@ void mstor_shutdown(struct mstor *mstor)
 	glitch_log("mstor_shutdown: shutting down mstor\n");
 	mstor_leveldb_shutdown(mstor);
 	pthread_mutex_destroy(&mstor->next_nid_lock);
+	pthread_mutex_destroy(&mstor->next_cid_lock);
 	free(mstor);
 }
 
@@ -762,30 +842,22 @@ done:
 	return ret;
 }
 
-static int mstor_do_chunkfind(struct mstor *mstor, struct mreq *mreq,
-		const struct mnode *cnode)
+static int mstor_chunkfind_impl(struct mstor *mstor, uint64_t nid,
+		uint64_t *cids, int max_cid, uint64_t start, uint64_t end)
 {
-	int ret, num_cid = 0, max_cid;
-	char key[MCHUNK_KEY_LEN];
+	int ret, num_cid = 0;
+	char fkey[MFILE_KEY_LEN];
 	leveldb_iterator_t *iter = NULL;
 	const char *k;
 	const char *v;
 	size_t klen, vlen;
-	struct mreq_chunkfind *req;
-	uint64_t start, end, base;
+	uint64_t base;
 
-	ret = mstor_mode_check(cnode, mreq, MSTOR_PERM_READ);
-	if (ret)
-		goto done;
-	req = (struct mreq_chunkfind*)mreq;
-	max_cid = req->max_cid;
 	/* Get starting element */
-	memset(key, 0, sizeof(key));
-	key[0] = 'f';
-	pack_to_be64(key + 1, cnode->nid);
-	start = req->start;
-	end = req->end;
-	pack_to_be64(key + sizeof(uint64_t) + 1, start + 1);
+	memset(fkey, 0, sizeof(fkey));
+	fkey[0] = 'f';
+	pack_to_be64(fkey + 1, nid);
+	pack_to_be64(fkey + sizeof(uint64_t) + 1, start + 1);
 	iter = leveldb_create_iterator(mstor->ldb, mstor->lreadopt);
 	if (!iter) {
 		glitch_log("mstor_do_chunkfind: leveldb_create_iterator "
@@ -793,7 +865,7 @@ static int mstor_do_chunkfind(struct mstor *mstor, struct mreq *mreq,
 		ret = -ENOMEM;
 		goto done;
 	}
-	leveldb_iter_seek(iter, key, MCHUNK_KEY_LEN);
+	leveldb_iter_seek(iter, fkey, MFILE_KEY_LEN);
 	// TODO: get rid of this leveldb_iter_prev.  The levelDB manual says
 	// that reverse iteration may be somewhat slower than forward.
 	// We could get rid of this by using a custom comparator or by storing
@@ -806,8 +878,8 @@ static int mstor_do_chunkfind(struct mstor *mstor, struct mreq *mreq,
 		goto done;
 	}
 	k = leveldb_iter_key(iter, &klen);
-	if ((klen != MCHUNK_KEY_LEN) ||
-			(memcmp(k, key, 1 + sizeof(uint64_t)))) {
+	if ((klen != MFILE_KEY_LEN) ||
+			(memcmp(k, fkey, 1 + sizeof(uint64_t)))) {
 		/* no chunk entries found */
 		ret = 0;
 		goto done;
@@ -824,15 +896,15 @@ static int mstor_do_chunkfind(struct mstor *mstor, struct mreq *mreq,
 			ret = -EIO;
 			goto done;
 		}
-		req->chunk_ids[num_cid] = unpack_from_be64(v);
+		cids[num_cid] = unpack_from_be64(v);
 		num_cid++;
 		leveldb_iter_next(iter);
 		if (!leveldb_iter_valid(iter)) {
 			break;
 		}
 		k = leveldb_iter_key(iter, &klen);
-		if ((klen != MCHUNK_KEY_LEN) ||
-				(memcmp(k, key, 1 + sizeof(uint64_t)))) {
+		if ((klen != MFILE_KEY_LEN) ||
+				(memcmp(k, fkey, 1 + sizeof(uint64_t)))) {
 			break;
 		}
 		base = unpack_from_be64(k + 1 + sizeof(uint64_t));
@@ -840,11 +912,107 @@ static int mstor_do_chunkfind(struct mstor *mstor, struct mreq *mreq,
 			break;
 		v = leveldb_iter_value(iter, &vlen);
 	}
-	ret = 0;
+	ret = num_cid;
 done:
-	req->num_cid = num_cid;
 	if (iter)
 		leveldb_iter_destroy(iter);
+	return ret;
+}
+
+static int mstor_do_chunkfind(struct mstor *mstor, struct mreq *mreq,
+		const struct mnode *cnode)
+{
+	int ret;
+	struct mreq_chunkfind *req;
+
+	/** TODO: have to return OSD IDs here too! */
+	ret = mstor_mode_check(cnode, mreq, MSTOR_PERM_READ);
+	if (ret)
+		return ret;
+	req = (struct mreq_chunkfind*)mreq;
+	ret = mstor_chunkfind_impl(mstor, cnode->nid,
+			req->cids, req->max_cid, req->start, req->end);
+	if (ret < 0)
+		return ret;
+	req->num_cid = ret;
+	return 0;
+}
+
+static int mstor_assign_oid(POSSIBLY_UNUSED(struct mstor *mstor),
+		uint32_t *oid)
+{
+	/** TODO: actually implement OSD ID assignment */
+	oid[0] = 123;
+	oid[1] = 456;
+	return 2;
+}
+
+static int mstor_do_chunkalloc(struct mstor *mstor, struct mreq *mreq)
+{
+	int ret, num_oid;
+	char fkey[MFILE_KEY_LEN], hkey[MCHUNK_KEY_LEN], *err = NULL;
+	struct mreq_chunkalloc *req;
+	struct mnode node;
+	uint64_t cid;
+	uint32_t oids[RF_MAX_REPLICAS];
+	leveldb_writebatch_t* bat = NULL;
+
+	memset(&node, 0, sizeof(node));
+	req = (struct mreq_chunkalloc*)mreq;
+	ret = mstor_fetch_node(mstor, req->nid, &node);
+	if (ret)
+		goto done;
+	ret = mstor_mode_check(&node, mreq, MSTOR_PERM_WRITE);
+	if (ret)
+		goto done;
+	ret = mstor_chunkfind_impl(mstor, req->nid, &cid, 1,
+			req->off, req->off);
+	if (ret < 0)
+		goto done;
+	else if (ret != 0) {
+		/* Tried to allocate a new chunk that came before some other
+		 * chunks */
+		ret = -EINVAL;
+		goto done;
+	}
+	bat = leveldb_writebatch_create();
+	if (!bat) {
+		ret = -ENOMEM;
+		goto done;
+	}
+	/** TODO: update mtime here? */
+	memset(fkey, 0, sizeof(fkey));
+	fkey[0] = 'f';
+	pack_to_be64(fkey + 1, req->nid);
+	pack_to_be64(fkey + sizeof(uint64_t) + 1, req->off);
+	cid = mstor_next_cid(mstor);
+	num_oid = mstor_assign_oid(mstor, oids);
+	if (num_oid < 0) {
+		ret = num_oid;
+		goto done;
+	}
+	leveldb_writebatch_put(bat, fkey, MFILE_KEY_LEN,
+			(const char*)&cid, sizeof(cid));
+	hkey[0] = 'h';
+	pack_to_be64(hkey + 1, cid);
+	leveldb_writebatch_put(bat, hkey, MCHUNK_KEY_LEN,
+			(const char *)oids, sizeof(uint32_t) * num_oid);
+	leveldb_write(mstor->ldb, mstor->lwropt, bat, &err);
+	if (err) {
+		glitch_log("mstor_do_chunkalloc(%" PRIx64 "): leveldb_write "
+			"returned error '%s'\n", req->nid, err);
+		ret = -EIO;
+		goto done;
+	}
+	req->cid = cid;
+	memcpy(req->oid, oids, sizeof(req->oid));
+	req->num_oid = num_oid;
+
+done:
+	if (bat)
+		leveldb_writebatch_destroy(bat);
+	free(err);
+	mnode_free(&node);
 	return ret;
 }
 
@@ -1130,7 +1298,7 @@ done:
 	return ret;
 }
 
-static int mstor_do_operation_impl(struct mstor *mstor, struct mreq *mreq,
+static int mstor_do_path_operation(struct mstor *mstor, struct mreq *mreq,
 			    struct mnode *pnode, struct mnode *cnode)
 {
 	char *pcomp;
@@ -1260,13 +1428,20 @@ int mstor_do_operation(struct mstor *mstor, struct mreq *mreq)
 	int ret;
 	struct mnode pnode, cnode;
 
-	memset(&pnode, 0, sizeof(pnode));
-	memset(&cnode, 0, sizeof(cnode));
-	ret = mstor_do_operation_impl(mstor, mreq, &pnode, &cnode);
-	glitch_log("mreq type %s returning result %d\n",
-		mstor_op_ty_to_str(mreq->op), ret);
-	mnode_free(&pnode);
-	mnode_free(&cnode);
+	switch (mreq->op) {
+	case MSTOR_OP_CHUNKALLOC:
+		ret = mstor_do_chunkalloc(mstor, mreq);
+		break;
+	default:
+		memset(&pnode, 0, sizeof(pnode));
+		memset(&cnode, 0, sizeof(cnode));
+		ret = mstor_do_path_operation(mstor, mreq, &pnode, &cnode);
+		glitch_log("mreq type %s returning result %d\n",
+			mstor_op_ty_to_str(mreq->op), ret);
+		mnode_free(&pnode);
+		mnode_free(&cnode);
+		break;
+	}
 	return ret;
 }
 
@@ -1293,6 +1468,63 @@ static int mstor_dump_child(FILE *out, const char *k, size_t klen,
 	memcpy(pcomp, k + 1 + sizeof(uint64_t), klen - 1 - sizeof(uint64_t));
 	return zfprintf(out, "CHILD(0x%"PRIx64", %s) => 0x%"PRIx64"\n",
 		pnid, pcomp, cnid);
+}
+
+
+static int mstor_dump_file_entry(FILE *out, const char *k, size_t klen,
+		const char *v, size_t vlen)
+{
+	uint64_t nid, off, cid;
+
+	if (klen != MFILE_KEY_LEN) {
+		glitch_log("mstor_dump: unknown key starting "
+			"with 'f' of length %Zd\n", klen);
+		return -EINVAL;
+	}
+	if (vlen != sizeof(uint64_t)) {
+		glitch_log("mstor_dump: file entry has payload of "
+			   "illegal length.  length = %Zd\n", vlen);
+		return -EINVAL;
+	}
+	nid = unpack_from_be64(k + 1);
+	off = unpack_from_be64(k + sizeof(uint64_t) + 1);
+	cid = unpack_from_be64(v);
+	return zfprintf(out, "FILE(0x%"PRIx64", 0x%"PRIx64") => 0x%"PRIx64"\n",
+		nid, off, cid);
+}
+
+static int mstor_dump_chunk_entry(FILE *out, const char *k, size_t klen,
+		const char *v, size_t vlen)
+{
+	int num_oid, i;
+	uint64_t cid;
+	uint32_t oid;
+	char buf[512];
+	const char *prefix;
+	size_t off;
+
+	if (klen != MCHUNK_KEY_LEN) {
+		glitch_log("mstor_dump: unknown key starting "
+			   "with 'h' of length %Zd\n", klen);
+		return -EINVAL;
+	}
+	if (vlen % sizeof(uint32_t)) {
+		glitch_log("mstor_dump: invalid length for chunk mapping: "
+			"expected multiple of %Zd, but got %Zd\n",
+			sizeof(uint32_t), vlen);
+		return -EINVAL;
+	}
+	cid = unpack_from_be64(k + 1);
+	num_oid = vlen / sizeof(uint32_t);
+	buf[0] = '\0';
+	off = 0;
+	prefix = "";
+	for (i = 0; i < num_oid; ++i) {
+		oid = unpack_from_be32(v + (i * sizeof(uint32_t)));
+		fwdprintf(buf, &off, sizeof(buf), "%s%"PRIx32, prefix, oid);
+		prefix = ", ";
+	}
+	return zfprintf(out, "CHUNK(0x%"PRIx64") => [ %s ]\n", cid, buf);
 }
 
 static int mstor_dump_node(FILE *out, const char *k, size_t klen,
@@ -1373,20 +1605,14 @@ int mstor_dump(struct mstor *mstor, FILE *out)
 				goto done;
 			break;
 		case 'f':
-			if (klen != MFILE_KEY_LEN) {
-				glitch_log("mstor_dump: unknown key starting "
-					   "with 'f' of length %Zd\n", klen);
-				ret = -EIO;
+			ret = mstor_dump_file_entry(out, k, klen, v, vlen);
+			if (ret)
 				goto done;
-			}
 			break;
 		case 'h':
-			if (klen != MCHUNK_KEY_LEN) {
-				glitch_log("mstor_dump: unknown key starting "
-					   "with 'h' of length %Zd\n", klen);
-				ret = -EIO;
+			ret = mstor_dump_chunk_entry(out, k, klen, v, vlen);
+			if (ret)
 				goto done;
-			}
 			break;
 		case 'n':
 			ret = mstor_dump_node(out, k, klen, v, vlen);
