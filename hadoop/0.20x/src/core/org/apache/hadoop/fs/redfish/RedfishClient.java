@@ -71,7 +71,7 @@ class RedfishClient {
   int redfishMkdirs(String path, short mode);
 
   public final native
-  String[][] redfishGetBlockLocs(long start, long len);
+  String[][] redfishGetBlockLocations(String path, long start, long len);
 
   public final native
   FileStatus redfishGetPathStatus(String path);
