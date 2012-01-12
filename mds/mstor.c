@@ -798,6 +798,9 @@ static int mstor_do_creat(struct mstor *mstor, struct mreq *mreq,
 	int ret;
 	struct mreq_creat *req;
 
+	ret = mstor_mode_check(pnode, mreq, MSTOR_PERM_WRITE);
+	if (ret)
+		return ret;
 	req = (struct mreq_creat*)mreq;
 	ret = mstor_make_node(mstor, req->mode, req->ctime, req->ctime,
 		mreq->uid, mreq->gid, pcomp, pnode, cnode);
@@ -1023,6 +1026,9 @@ static int mstor_do_mkdir(struct mstor *mstor, struct mreq *mreq,
 	int ret;
 	struct mreq_mkdirs *req;
 
+	ret = mstor_mode_check(pnode, mreq, MSTOR_PERM_WRITE);
+	if (ret)
+		return ret;
 	req = (struct mreq_mkdirs*)mreq;
 	ret = mstor_make_node(mstor, req->mode | MNODE_IS_DIR,
 		req->ctime, req->ctime, mreq->uid,
