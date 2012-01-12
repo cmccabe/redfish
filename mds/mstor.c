@@ -19,6 +19,7 @@
 #include "jorm/jorm_const.h"
 #include "mds/limits.h"
 #include "mds/mstor.h"
+#include "mds/user.h"
 #include "msg/generic.h"
 #include "util/error.h"
 #include "util/fast_log.h"
@@ -126,6 +127,8 @@ struct mstor {
 	uint64_t next_cid;
 	/** Protects next_cid */
 	pthread_mutex_t next_cid_lock;
+	/** user data */
+	struct udata *udata;
 };
 
 /****************************** functions ********************************/
@@ -466,7 +469,6 @@ done:
 static int mstor_mode_check(const struct mnode *node,
 			struct mreq *mreq, int want)
 {
-	int uid_match = 0, group_match = 0;
 	uint16_t mode;
 	uint32_t uid, gid;
 
@@ -489,16 +491,14 @@ static int mstor_mode_check(const struct mnode *node,
 	if ((want << 6) & mode)
 		return 0;
 	uid = unpack_from_be32(&node->val->uid);
-	if (uid == mreq->uid) {
+	if (uid == mreq->user->uid) {
 		/* Check whether the owner has the permission we seek */
-		uid_match = 1;
 		if (want & mode)
 			return 0;
 	}
 	gid = unpack_from_be32(&node->val->gid);
-	if (gid == mreq->gid) { // FIXME: should check for group membership
+	if (user_in_gid(mreq->user, gid)) {
 		/* Check whether the group has the permission we seek */
-		group_match = 1;
 		if ((want << 3) & mode)
 			return 0;
 	}
@@ -586,7 +586,7 @@ error:
 }
 
 struct mstor* mstor_init(POSSIBLY_UNUSED(struct fast_log_mgr *mgr),
-		const struct mstorc *conf)
+		const struct mstorc *conf, struct udata *udata)
 {
 	int ret;
 	struct mstor *mstor;
@@ -596,6 +596,7 @@ struct mstor* mstor_init(POSSIBLY_UNUSED(struct fast_log_mgr *mgr),
 		ret = ENOMEM;
 		goto error;
 	}
+	mstor->udata = udata;
 	ret = pthread_mutex_init(&mstor->next_nid_lock, NULL);
 	if (ret)
 		goto error_free_mstor;
@@ -798,12 +799,12 @@ static int mstor_do_creat(struct mstor *mstor, struct mreq *mreq,
 	int ret;
 	struct mreq_creat *req;
 
-	ret = mstor_mode_check(pnode, mreq, MSTOR_PERM_WRITE);
+	ret = mstor_mode_check(pnode, mreq, MSTOR_PERM_WRITE | MNODE_IS_DIR);
 	if (ret)
 		return ret;
 	req = (struct mreq_creat*)mreq;
 	ret = mstor_make_node(mstor, req->mode, req->ctime, req->ctime,
-		mreq->uid, mreq->gid, pcomp, pnode, cnode);
+		mreq->user->uid, mreq->user->gid, pcomp, pnode, cnode);
 	if (ret == 0)
 		req->nid = cnode->nid;
 	return ret;
@@ -1026,13 +1027,13 @@ static int mstor_do_mkdir(struct mstor *mstor, struct mreq *mreq,
 	int ret;
 	struct mreq_mkdirs *req;
 
-	ret = mstor_mode_check(pnode, mreq, MSTOR_PERM_WRITE);
+	ret = mstor_mode_check(pnode, mreq, MSTOR_PERM_WRITE | MNODE_IS_DIR);
 	if (ret)
 		return ret;
 	req = (struct mreq_mkdirs*)mreq;
 	ret = mstor_make_node(mstor, req->mode | MNODE_IS_DIR,
-		req->ctime, req->ctime, mreq->uid,
-		mreq->gid, pcomp, pnode, cnode);
+		req->ctime, req->ctime, mreq->user->uid,
+		mreq->user->gid, pcomp, pnode, cnode);
 	return ret;
 }
 
@@ -1243,14 +1244,22 @@ static int mstor_do_chown(struct mstor *mstor, struct mreq *mreq,
 	struct mreq_chown *req;
 	char k[MNODE_KEY_LEN], *err = NULL;
 	char buf[sizeof(struct mnode_payload)];
+	struct user *new_user;
+	struct group *new_group;
 
 	// TODO: take lock here
 	req = (struct mreq_chown*)mreq;
-	if (req->new_uid != RF_INVAL_UID) {
-		pack_to_be32(&node->val->uid, req->new_uid);
+	if (req->new_user) {
+		new_user = udata_lookup_user(mstor->udata, req->new_user);
+		if (IS_ERR(new_user))
+			return PTR_ERR(new_user);
+		pack_to_be32(&node->val->uid, new_user->uid);
 	}
-	if (req->new_gid != RF_INVAL_GID) {
-		pack_to_be32(&node->val->gid, req->new_gid);
+	if (req->new_group) {
+		new_group = udata_lookup_group(mstor->udata, req->new_group);
+		if (IS_ERR(new_group))
+			return PTR_ERR(new_group);
+		pack_to_be32(&node->val->gid, new_group->gid);
 	}
 	memcpy(buf, node->val, sizeof(struct mnode_payload));
 	k[0] = 'n';
@@ -1313,9 +1322,7 @@ static int mstor_do_path_operation(struct mstor *mstor, struct mreq *mreq,
 
 	mreq->flags = MREQ_FLAG_CHECK_PERMS;
 	/* The superuser can do anything */
-	if (mreq->uid == RF_SUPERUSER_UID)
-		mreq->flags &= ~MREQ_FLAG_CHECK_PERMS;
-	if (mreq->gid == RF_SUPERUSER_GID)
+	if (mreq->user->uid == RF_SUPERUSER_UID)
 		mreq->flags &= ~MREQ_FLAG_CHECK_PERMS;
 	if (zsnprintf(full_path, sizeof(full_path), "%s", mreq->full_path))
 		return -ENAMETOOLONG;
@@ -1432,6 +1439,9 @@ int mstor_do_operation(struct mstor *mstor, struct mreq *mreq)
 	int ret;
 	struct mnode pnode, cnode;
 
+	mreq->user = udata_lookup_user(mstor->udata, mreq->user_name);
+	if (IS_ERR(mreq->user))
+		return -EUSERS;
 	switch (mreq->op) {
 	case MSTOR_OP_CHUNKALLOC:
 		ret = mstor_do_chunkalloc(mstor, mreq);

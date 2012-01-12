@@ -26,6 +26,7 @@
 
 struct fast_log_mgr;
 struct mstor;
+struct udata;
 
 enum mstor_op_ty {
 	MSTOR_OP_CREAT = 1,
@@ -51,9 +52,9 @@ struct mreq {
 	/** (caller sets) Full path of request */
 	const char *full_path;
 	/** (caller sets) User performing request */
-	uint32_t uid;
-	/** (caller sets) Group performing request */
-	uint32_t gid;
+	const char *user_name;
+	/** (internal) user entry */
+	struct user *user;
 	/** (internal) Flags. */
 	int flags;
 	/** Operation type-specific data */
@@ -136,10 +137,10 @@ struct mreq_listdir {
 
 struct mreq_chown {
 	struct mreq base;
-	/** New owner, or RF_INVAL_UID for no change */
-	uint32_t new_uid;
-	/** New group, or RF_INVAL_UID for no change */
-	uint32_t new_gid;
+	/** New owner, or NULL for no change */
+	const char *new_user;
+	/** New group, or NULL for no change */
+	const char *new_group;
 };
 
 struct mreq_chmod {
@@ -167,7 +168,7 @@ struct mreq_utimes {
  *			pointer otherwise.
  */
 extern struct mstor* mstor_init(struct fast_log_mgr *mgr,
-				const struct mstorc *conf);
+			const struct mstorc *conf, struct udata *udata);
 
 /** Perform a blocking mstor operation
  *

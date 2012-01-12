@@ -97,6 +97,40 @@ struct udata *udata_alloc(void)
 	return udata;
 }
 
+struct udata *udata_create_default(void)
+{
+	struct udata *udata;
+	struct user *u;
+	struct group *g;
+
+	udata = udata_alloc();
+	if (IS_ERR(udata))
+		return udata;
+	g = udata_add_group(udata, RF_SUPERUSER_NAME, RF_SUPERUSER_GID);
+	if (IS_ERR(g)) {
+		udata_free(udata);
+		return (struct udata*)g;
+	}
+	g = udata_add_group(udata, RF_NOBODY_NAME, RF_NOBODY_GID);
+	if (IS_ERR(g)) {
+		udata_free(udata);
+		return (struct udata*)g;
+	}
+	u = udata_add_user(udata, RF_SUPERUSER_NAME,
+		RF_SUPERUSER_UID, RF_SUPERUSER_GID);
+	if (IS_ERR(u)) {
+		udata_free(udata);
+		return (struct udata*)u;
+	}
+	u = udata_add_user(udata, RF_NOBODY_NAME,
+		RF_NOBODY_UID, RF_NOBODY_GID);
+	if (IS_ERR(u)) {
+		udata_free(udata);
+		return (struct udata*)u;
+	}
+	return udata;
+}
+
 void udata_free(struct udata *udata)
 {
 	struct user *u, *u_tmp;

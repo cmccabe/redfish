@@ -20,6 +20,7 @@
 #include "jorm/json.h"
 #include "mds/mstor.h"
 #include "mds/net.h"
+#include "mds/user.h"
 #include "util/error.h"
 #include "util/str_to_int.h"
 #include "util/string.h"
@@ -86,6 +87,7 @@ int run(const char *mstor_path, FILE *ofp)
 	int ret;
 	struct mstor* mstor = NULL;
 	struct mstorc *conf = NULL;
+	struct udata *udata = NULL;
 	
 	conf = JORM_INIT_mstorc();
 	if (!conf) {
@@ -99,7 +101,9 @@ int run(const char *mstor_path, FILE *ofp)
 	}
 	conf->mstor_cache_size = 1024;
 	conf->mstor_create = 0;
-	mstor = mstor_init(g_fast_log_mgr, conf);
+	udata = udata_create_default(); // TODO: load this from the mstor
+					// itself
+	mstor = mstor_init(g_fast_log_mgr, conf, udata);
 	if (IS_ERR(mstor)) {
 		ret = PTR_ERR(mstor);
 		mstor = NULL;
@@ -116,6 +120,8 @@ done:
 		mstor_shutdown(mstor);
 	if (conf)
 		JORM_FREE_mstorc(conf);
+	if (udata)
+		udata_free(udata);
 	return ret;
 }
 

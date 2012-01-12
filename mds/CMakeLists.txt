@@ -28,7 +28,12 @@ add_executable(user_unit user_unit.c user.c)
 target_link_libraries(user_unit core ${LEVELDB_LIBRARIES} util utest)
 add_test(user_unit ${CMAKE_CURRENT_BINARY_DIR}/user_unit user_unit)
 
-add_executable(fishmdump dump.c mstor.c force_cpp.cc)
+add_executable(fishmdump
+    dump.c
+    force_cpp.cc
+    mstor.c
+    user.c
+)
 target_link_libraries(fishmdump core ${LEVELDB_LIBRARIES} util)
 
 INSTALL(TARGETS fishmds fishmdump DESTINATION bin)

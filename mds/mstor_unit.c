@@ -18,6 +18,7 @@
 #include "core/process_ctx.h"
 #include "mds/limits.h"
 #include "mds/mstor.h"
+#include "mds/user.h"
 #include "msg/generic.h"
 #include "util/compiler.h"
 #include "util/error.h"
@@ -33,16 +34,50 @@
 #include <stdio.h>
 #include <string.h>
 
+#define MSU_SPOONY_USER "spoony"
 #define MSU_SPOONY_UID 2
-#define MSU_SPOONY_GID 2
+
+#define MSU_WOOT_USER "woot"
 #define MSU_WOOT_UID 3
-#define MSU_WOOT_GID 3
+
+#define MSU_UNIT_USERS_GROUP "users"
+#define MSU_UNIT_USERS_GID 2
 
 typedef int (*stat_check_fn_t)(void *arg, struct mmm_stat_hdr *hdr,
 		const char *pcomp);
 
+static struct udata *udata_unit_create_default(void)
+{
+	struct udata *udata;
+	struct user *u;
+	struct group *g;
+
+	udata = udata_create_default();
+	if (IS_ERR(udata))
+		return udata;
+	g = udata_add_group(udata, MSU_UNIT_USERS_GROUP, MSU_UNIT_USERS_GID);
+	if (IS_ERR(g)) {
+		udata_free(udata);
+		return (struct udata*)g;
+	}
+	u = udata_add_user(udata, MSU_SPOONY_USER,
+		MSU_SPOONY_UID, MSU_UNIT_USERS_GID);
+	if (IS_ERR(u)) {
+		udata_free(udata);
+		return (struct udata*)u;
+	}
+	u = udata_add_user(udata, MSU_WOOT_USER,
+		MSU_WOOT_UID, MSU_UNIT_USERS_GID);
+	if (IS_ERR(u)) {
+		udata_free(udata);
+		return (struct udata*)u;
+	}
+
+	return udata;
+}
+
 static struct mstor *mstor_init_unit(const char *tdir, const char *name,
-		int cache_size)
+		int cache_size, struct udata *udata)
 {
 	struct mstor *mstor;
 	char mstor_path[PATH_MAX];
@@ -59,7 +94,7 @@ static struct mstor *mstor_init_unit(const char *tdir, const char *name,
 		return ERR_PTR(ENOMEM);
 	}
 	conf->mstor_cache_size = cache_size;
-	mstor = mstor_init(g_fast_log_mgr, conf);
+	mstor = mstor_init(g_fast_log_mgr, conf, udata);
 	JORM_FREE_mstorc(conf);
 	return mstor;
 }
@@ -67,10 +102,14 @@ static struct mstor *mstor_init_unit(const char *tdir, const char *name,
 static int mstor_test_open_close(const char *tdir)
 {
 	struct mstor *mstor;
+	struct udata *udata;
 
-	mstor = mstor_init_unit(tdir, "openclose", 1024);
+	udata = udata_unit_create_default();
+	EXPECT_NOT_ERRPTR(udata);
+	mstor = mstor_init_unit(tdir, "openclose", 1024, udata);
 	EXPECT_NOT_ERRPTR(mstor);
 	mstor_shutdown(mstor);
+	udata_free(udata);
 	return 0;
 }
 
@@ -82,8 +121,7 @@ static int mstor_do_creat(struct mstor *mstor, const char *full_path,
 	memset(&mreq, 0, sizeof(mreq));
 	mreq.base.op = MSTOR_OP_CREAT;
 	mreq.base.full_path = full_path;
-	mreq.base.uid = MSU_SPOONY_UID;
-	mreq.base.gid = MSU_SPOONY_GID;
+	mreq.base.user_name = MSU_SPOONY_USER;
 	mreq.mode = 0644;
 	mreq.ctime = ctime;
 	return mstor_do_operation(mstor, (struct mreq*)&mreq);
@@ -97,8 +135,7 @@ static int mstor_do_mkdirs(struct mstor *mstor, const char *full_path,
 	memset(&mreq, 0, sizeof(mreq));
 	mreq.base.op = MSTOR_OP_MKDIRS;
 	mreq.base.full_path = full_path;
-	mreq.base.uid = MSU_SPOONY_UID;
-	mreq.base.gid = MSU_SPOONY_GID;
+	mreq.base.user_name = MSU_SPOONY_USER;
 	mreq.mode = mode;
 	mreq.ctime = ctime;
 	return mstor_do_operation(mstor, (struct mreq*)&mreq);
@@ -119,7 +156,7 @@ static int unpack_stat_hdr(struct mmm_stat_hdr *hdr, char *pcomp)
 }
 
 static int mstor_do_listdir(struct mstor *mstor, const char *full_path,
-		uint32_t uid, uint32_t gid, void *arg, stat_check_fn_t fn)
+		const char *user_name, void *arg, stat_check_fn_t fn)
 {
 	int ret, num_entries;
 	struct mmm_stat_hdr *hdr;
@@ -132,8 +169,7 @@ static int mstor_do_listdir(struct mstor *mstor, const char *full_path,
 	memset(buf, 0, sizeof(buf));
 	mreq.base.op = MSTOR_OP_LISTDIR;
 	mreq.base.full_path = full_path;
-	mreq.base.uid = uid;
-	mreq.base.gid = gid;
+	mreq.base.user_name = user_name;
 	mreq.out = buf;
 	mreq.out_len = sizeof(buf);
 	ret = mstor_do_operation(mstor, (struct mreq*)&mreq);
@@ -164,7 +200,7 @@ static int mstor_do_listdir(struct mstor *mstor, const char *full_path,
 }
 
 static int mstor_do_stat(struct mstor *mstor, const char *full_path,
-		uint32_t uid, uint32_t gid, void *arg, stat_check_fn_t fn)
+		const char *user_name, void *arg, stat_check_fn_t fn)
 {
 	int ret;
 	struct mmm_stat_hdr *hdr;
@@ -177,8 +213,7 @@ static int mstor_do_stat(struct mstor *mstor, const char *full_path,
 	memset(buf, 0, sizeof(buf));
 	mreq.base.op = MSTOR_OP_STAT;
 	mreq.base.full_path = full_path;
-	mreq.base.uid = uid;
-	mreq.base.gid = gid;
+	mreq.base.user_name = user_name;
 	mreq.out = buf;
 	mreq.out_len = sizeof(buf);
 	ret = mstor_do_operation(mstor, (struct mreq*)&mreq);
@@ -199,7 +234,8 @@ static int mstor_do_stat(struct mstor *mstor, const char *full_path,
 }
 
 static int mstor_do_chown(struct mstor *mstor, const char *full_path,
-	uint32_t uid, uint32_t gid, uint32_t new_uid, uint32_t new_gid)
+		const char *user_name, const char *new_user,
+		const char *new_group)
 {
 	int ret;
 	struct mreq_chown mreq;
@@ -207,10 +243,9 @@ static int mstor_do_chown(struct mstor *mstor, const char *full_path,
 	memset(&mreq, 0, sizeof(mreq));
 	mreq.base.op = MSTOR_OP_CHOWN;
 	mreq.base.full_path = full_path;
-	mreq.base.uid = uid;
-	mreq.base.gid = gid;
-	mreq.new_uid = new_uid;
-	mreq.new_gid = new_gid;
+	mreq.base.user_name = user_name;
+	mreq.new_user = new_user;
+	mreq.new_group = new_group;
 	ret = mstor_do_operation(mstor, (struct mreq*)&mreq);
 	if (ret) {
 		fprintf(stderr, "do_chown failed with error %d\n", ret);
@@ -220,7 +255,7 @@ static int mstor_do_chown(struct mstor *mstor, const char *full_path,
 }
 
 static int mstor_do_chmod(struct mstor *mstor, const char *full_path,
-		uint32_t uid, uint32_t gid, uint16_t mode)
+		const char *user_name, uint16_t mode)
 {
 	int ret;
 	struct mreq_chmod mreq;
@@ -228,8 +263,7 @@ static int mstor_do_chmod(struct mstor *mstor, const char *full_path,
 	memset(&mreq, 0, sizeof(mreq));
 	mreq.base.op = MSTOR_OP_CHMOD;
 	mreq.base.full_path = full_path;
-	mreq.base.uid = uid;
-	mreq.base.gid = gid;
+	mreq.base.user_name = user_name;
 	mreq.mode = mode;
 	ret = mstor_do_operation(mstor, (struct mreq*)&mreq);
 	if (ret) {
@@ -249,7 +283,7 @@ static int test1_expect_c(POSSIBLY_UNUSED(void *arg),
 	//printf("pcomp='%s', uid='%d', gid='%d'\n", pcomp, uid, gid);
 	EXPECT_ZERO(strcmp(pcomp, "c"));
 	EXPECT_EQUAL(unpack_from_be32(&hdr->uid), MSU_SPOONY_UID);
-	EXPECT_EQUAL(unpack_from_be32(&hdr->gid), MSU_SPOONY_GID);
+	EXPECT_EQUAL(unpack_from_be32(&hdr->gid), MSU_UNIT_USERS_GID);
 	return 0;
 }
 
@@ -263,44 +297,48 @@ static int test1_expect_root(void *arg,
 	//printf("pcomp='%s', uid='%s', gid='%d'\n", pcomp, uid, gid);
 	EXPECT_ZERO(strcmp(pcomp, ""));
 	EXPECT_EQUAL(unpack_from_be32(&hdr->uid), MSU_WOOT_UID);
-	EXPECT_EQUAL(unpack_from_be32(&hdr->gid), MSU_WOOT_GID);
+	EXPECT_EQUAL(unpack_from_be32(&hdr->gid), MSU_UNIT_USERS_GID);
 	return 0;
 }
 
 static int mstor_test1(const char *tdir)
 {
 	struct mstor *mstor;
+	struct udata *udata;
 
-	mstor = mstor_init_unit(tdir, "test1", 1024);
+	udata = udata_unit_create_default();
+	EXPECT_NOT_ERRPTR(udata);
+	mstor = mstor_init_unit(tdir, "test1", 1024, udata);
 	EXPECT_NOT_ERRPTR(mstor);
 	EXPECT_ZERO(mstor_do_creat(mstor, "/a", 123));
 	EXPECT_ZERO(mstor_do_mkdirs(mstor, "/b/c", 0644, 123));
 	EXPECT_EQUAL(mstor_do_mkdirs(mstor, "/a/d/e", 0644, 123), -ENOTDIR);
 
 	//mstor_dump(mstor, stdout);
-	EXPECT_EQUAL(mstor_do_listdir(mstor, "/a", MSU_SPOONY_UID,
-		MSU_SPOONY_GID, NULL, NULL), -ENOTDIR);
-	EXPECT_EQUAL(mstor_do_listdir(mstor, "/b", MSU_SPOONY_UID,
-		MSU_SPOONY_GID, NULL, test1_expect_c), 1);
-	EXPECT_EQUAL(mstor_do_listdir(mstor, "/b/c", MSU_SPOONY_UID,
-		MSU_SPOONY_GID, NULL, NULL), -EPERM);
-	EXPECT_EQUAL(mstor_do_listdir(mstor, "/b/c", RF_SUPERUSER_UID,
-		MSU_SPOONY_GID, NULL, NULL), 0);
-	EXPECT_EQUAL(mstor_do_listdir(mstor, "/b/c", RF_SUPERUSER_UID,
-		RF_SUPERUSER_GID, NULL, NULL), 0);
-	EXPECT_EQUAL(mstor_do_stat(mstor, "/b/c", RF_SUPERUSER_UID,
-		MSU_SPOONY_GID, NULL, test1_expect_c), 0);
-	EXPECT_EQUAL(mstor_do_chown(mstor, "/", RF_SUPERUSER_UID,
-		RF_SUPERUSER_GID, MSU_WOOT_UID, MSU_WOOT_GID), 0);
+	EXPECT_EQUAL(mstor_do_listdir(mstor, "/a", MSU_SPOONY_USER,
+		NULL, NULL), -ENOTDIR);
+	EXPECT_EQUAL(mstor_do_listdir(mstor, "/b", MSU_SPOONY_USER,
+		NULL, test1_expect_c), 1);
+	EXPECT_EQUAL(mstor_do_listdir(mstor, "/b/c", MSU_SPOONY_USER,
+		NULL, NULL), -EPERM);
+	EXPECT_EQUAL(mstor_do_listdir(mstor, "/b/c", RF_SUPERUSER_NAME,
+		NULL, NULL), 0);
+	EXPECT_EQUAL(mstor_do_listdir(mstor, "/b/c", RF_SUPERUSER_NAME,
+		NULL, NULL), 0);
+	EXPECT_EQUAL(mstor_do_stat(mstor, "/b/c", RF_SUPERUSER_NAME,
+		NULL, test1_expect_c), 0);
+	EXPECT_EQUAL(mstor_do_chown(mstor, "/", RF_SUPERUSER_NAME,
+		MSU_WOOT_USER, MSU_UNIT_USERS_GROUP), 0);
 //	EXPECT_EQUAL(mstor_do_chown(mstor, "/", MSU_WOOT_UID,
-//		MSU_WOOT_GID, MSU_WOOT_UID, MSU_GID_WOOT), -EPERM);
-	EXPECT_EQUAL(mstor_do_stat(mstor, "/", MSU_SPOONY_UID, MSU_SPOONY_GID,
+//		MSU_UNIT_USERS_GID, MSU_WOOT_UID, MSU_GID_WOOT), -EPERM);
+	EXPECT_EQUAL(mstor_do_stat(mstor, "/", MSU_SPOONY_USER,
 			(void*)(uintptr_t)0755, test1_expect_root), 0);
-	EXPECT_EQUAL(mstor_do_chmod(mstor, "/", MSU_SPOONY_UID, MSU_SPOONY_GID,
+	EXPECT_EQUAL(mstor_do_chmod(mstor, "/", MSU_SPOONY_USER,
 			0700), 0);
-	EXPECT_EQUAL(mstor_do_stat(mstor, "/", MSU_SPOONY_UID, MSU_SPOONY_GID,
+	EXPECT_EQUAL(mstor_do_stat(mstor, "/", MSU_SPOONY_USER,
 			(void*)(uintptr_t)0700, test1_expect_root), 0);
 	mstor_shutdown(mstor);
+	udata_free(udata);
 	return 0;
 }
 

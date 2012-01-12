@@ -51,6 +51,12 @@ struct group {
  */
 extern struct udata *udata_alloc(void);
 
+/** Create a user data lookup cache with the default entries
+ *
+ * @return		The user data, or an error pointer on failure
+ */
+extern struct udata *udata_create_default(void);
+
 /** Free a user data lookup cache
  *
  * @param udata		The user data
