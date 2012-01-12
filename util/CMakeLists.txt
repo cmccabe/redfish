@@ -17,6 +17,7 @@ add_library(util
     str_to_int.c
     string.c
     tempfile.c
+    terror.c
     thread.c
     username.c
 )
