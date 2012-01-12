@@ -1397,8 +1397,6 @@ static int mstor_do_path_operation(struct mstor *mstor, struct mreq *mreq,
 		return mstor_do_open(mstor, mreq, cnode);
 	case MSTOR_OP_CHUNKFIND:
 		return mstor_do_chunkfind(mstor, mreq, cnode);
-	case MSTOR_OP_CHUNKALLOC:
-		return -ENOTSUP;
 	case MSTOR_OP_MKDIRS:
 		return 0;
 	case MSTOR_OP_LISTDIR:
