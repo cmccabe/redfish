@@ -1243,29 +1243,49 @@ static int mstor_do_chown(struct mstor *mstor, struct mreq *mreq,
 	int ret;
 	struct mreq_chown *req;
 	char k[MNODE_KEY_LEN], *err = NULL;
-	char buf[sizeof(struct mnode_payload)];
-	struct user *new_user;
-	struct group *new_group;
+	struct mnode_payload new_node;
+	struct user *new_user = NULL;
+	struct group *new_group = NULL;
 
-	// TODO: take lock here
 	req = (struct mreq_chown*)mreq;
+	memcpy(&new_node, node->val, sizeof(struct mnode_payload));
 	if (req->new_user) {
 		new_user = udata_lookup_user(mstor->udata, req->new_user);
 		if (IS_ERR(new_user))
 			return PTR_ERR(new_user);
-		pack_to_be32(&node->val->uid, new_user->uid);
+		pack_to_be32(&new_node.uid, new_user->uid);
 	}
 	if (req->new_group) {
 		new_group = udata_lookup_group(mstor->udata, req->new_group);
 		if (IS_ERR(new_group))
 			return PTR_ERR(new_group);
-		pack_to_be32(&node->val->gid, new_group->gid);
+		pack_to_be32(&new_node.gid, new_group->gid);
 	}
-	memcpy(buf, node->val, sizeof(struct mnode_payload));
+	if (mreq->flags & MREQ_FLAG_CHECK_PERMS) {
+		if (new_user) {
+			/* Only the superuser can do chown.  And the superuser
+			 * will have MREQ_FLAG_CHECK_PERMS cleared. */
+			ret = -EPERM;
+			goto done;
+		}
+		else if (new_group) {
+			/* Users can do chgrp on things they own, as long as
+			 * they are a member of the group they're moving
+			 * them into. */
+			uint32_t uid = unpack_from_be32(&node->val->uid);
+
+			if ((!user_in_gid(mreq->user, new_group->gid)) ||
+					(uid != mreq->user->uid)) {
+				ret = -EPERM;
+				goto done;
+			}
+		}
+	}
 	k[0] = 'n';
 	pack_to_be64(k + 1, node->nid);
 	leveldb_put(mstor->ldb, mstor->lwropt, k, MNODE_KEY_LEN,
-			buf, sizeof(struct mnode_payload), &err);
+			(const char*)&new_node, sizeof(struct mnode_payload),
+			&err);
 	if (err) {
 		glitch_log("mstor_do_chown(nid=0x%"PRIx64": leveldb_put "
 			"returned error '%s'\n", node->nid, err);
