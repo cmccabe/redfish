@@ -79,6 +79,11 @@ struct mreq_open {
 	uint64_t nid;
 };
 
+struct chunk_info {
+	uint64_t cid;
+	uint64_t start;
+};
+
 struct mreq_chunkfind {
 	struct mreq base;
 	/** start of region */
@@ -86,11 +91,11 @@ struct mreq_chunkfind {
 	/** end of region */
 	uint64_t end;
 	/** number of chunk IDs that can fit in this buffer */
-	int max_cid;
+	int max_cinfos;
 	/** (out param) number of chunk IDs retrieved */
-	int num_cid;
-	/** (out param) retrieved chunk IDs */
-	uint64_t cids[0];
+	int num_cinfos;
+	/** (out param) retrieved chunk information */
+	struct chunk_info cinfos[0];
 };
 
 struct mreq_chunkalloc {

@@ -843,9 +843,10 @@ done:
 }
 
 static int mstor_chunkfind_impl(struct mstor *mstor, uint64_t nid,
-		uint64_t *cids, int max_cid, uint64_t start, uint64_t end)
+		struct chunk_info *cinfos, int max_cinfos,
+		uint64_t start, uint64_t end)
 {
-	int ret, num_cid = 0;
+	int ret, num_cinfos = 0;
 	char fkey[MFILE_KEY_LEN];
 	leveldb_iterator_t *iter = NULL;
 	const char *k;
@@ -884,10 +885,11 @@ static int mstor_chunkfind_impl(struct mstor *mstor, uint64_t nid,
 		ret = 0;
 		goto done;
 	}
+	base = unpack_from_be64(k + 1 + sizeof(uint64_t));
 	v = leveldb_iter_value(iter, &vlen);
 	while (1) {
-		if (num_cid + 1 >= max_cid) {
-			ret = -ENAMETOOLONG;
+		if (num_cinfos + 1 >= max_cinfos) {
+			ret = num_cinfos;
 			goto done;
 		}
 		if (vlen != sizeof(uint64_t)) {
@@ -896,8 +898,9 @@ static int mstor_chunkfind_impl(struct mstor *mstor, uint64_t nid,
 			ret = -EIO;
 			goto done;
 		}
-		cids[num_cid] = unpack_from_be64(v);
-		num_cid++;
+		cinfos[num_cinfos].cid = unpack_from_be64(v);
+		cinfos[num_cinfos].start = base;
+		num_cinfos++;
 		leveldb_iter_next(iter);
 		if (!leveldb_iter_valid(iter)) {
 			break;
@@ -912,7 +915,7 @@ static int mstor_chunkfind_impl(struct mstor *mstor, uint64_t nid,
 			break;
 		v = leveldb_iter_value(iter, &vlen);
 	}
-	ret = num_cid;
+	ret = num_cinfos;
 done:
 	if (iter)
 		leveldb_iter_destroy(iter);
@@ -931,10 +934,10 @@ static int mstor_do_chunkfind(struct mstor *mstor, struct mreq *mreq,
 		return ret;
 	req = (struct mreq_chunkfind*)mreq;
 	ret = mstor_chunkfind_impl(mstor, cnode->nid,
-			req->cids, req->max_cid, req->start, req->end);
+			req->cinfos, req->max_cinfos, req->start, req->end);
 	if (ret < 0)
 		return ret;
-	req->num_cid = ret;
+	req->num_cinfos = ret;
 	return 0;
 }
 
@@ -953,6 +956,7 @@ static int mstor_do_chunkalloc(struct mstor *mstor, struct mreq *mreq)
 	char fkey[MFILE_KEY_LEN], hkey[MCHUNK_KEY_LEN], *err = NULL;
 	struct mreq_chunkalloc *req;
 	struct mnode node;
+	struct chunk_info cinfo;
 	uint64_t cid;
 	uint32_t oids[RF_MAX_REPLICAS];
 	leveldb_writebatch_t* bat = NULL;
@@ -965,7 +969,7 @@ static int mstor_do_chunkalloc(struct mstor *mstor, struct mreq *mreq)
 	ret = mstor_mode_check(&node, mreq, MSTOR_PERM_WRITE);
 	if (ret)
 		goto done;
-	ret = mstor_chunkfind_impl(mstor, req->nid, &cid, 1,
+	ret = mstor_chunkfind_impl(mstor, req->nid, &cinfo, 1,
 			req->off, req->off);
 	if (ret < 0)
 		goto done;
