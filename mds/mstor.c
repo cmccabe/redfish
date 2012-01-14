@@ -1373,10 +1373,6 @@ static int mstor_do_rmdir(struct mstor *mstor, struct mreq *mreq,
 			MSTOR_PERM_WRITE | MNODE_IS_DIR);
 	if (ret)
 		goto done;
-	ret = mstor_mode_check(cnode, mreq,
-			MSTOR_PERM_WRITE | MNODE_IS_DIR);
-	if (ret)
-		goto done;
 	bat = leveldb_writebatch_create();
 	if (!bat) {
 		ret = -ENOMEM;
