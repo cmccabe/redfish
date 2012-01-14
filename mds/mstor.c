@@ -47,8 +47,8 @@
  *	c[8-byte node-id][child-name] => 8-byte child ID
  * for chunks:
  *      h[8-byte-chunk-id] => <packed-array of 4-byte OSD-IDs>
- * for unlinked chunks:
- *      u[8-byte-unlink-time] => [8-byte-chunk-id]
+ * for zombie chunks:
+ *      z[8-byte-death-time][8-byte-zombie-chunk-id] => []
  */
 /****************************** constants ********************************/
 #define MSTOR_DEFAULT_SEQUESTER_TIME 300
@@ -75,8 +75,10 @@
 #define MCHUNK_KEY_LEN (1 + sizeof(uint64_t))
 #define MFILE_KEY_LEN (1 + sizeof(uint64_t) + sizeof(uint64_t))
 #define MCHILD_KEY_MAX (1 + sizeof(uint64_t) + RF_PCOMP_MAX)
+#define MZOMBIE_KEY_LEN (1 + sizeof(uint64_t) + sizeof(uint64_t))
 
 #define MREQ_FLAG_CHECK_PERMS 0x1
+#define TMP_CINFO_BUF_SZ 64
 
 /****************************** prototypes ********************************/
 static void mstor_leveldb_shutdown(struct mstor *mstor);
@@ -157,8 +159,8 @@ const char *mstor_op_ty_to_str(enum mstor_op_ty op)
 		return "MSTOR_OP_UTIMES";
 	case MSTOR_OP_RMDIR:
 		return "MSTOR_OP_RMDIR";
-	case MSTOR_OP_SEQUESTER_TREE:
-		return "MSTOR_OP_SEQUESTER_TREE";
+	case MSTOR_OP_UNLINK:
+		return "MSTOR_OP_UNLINK";
 	case MSTOR_OP_FIND_SEQUESTERED:
 		return "MSTOR_OP_FIND_SEQUESTERED";
 	case MSTOR_OP_DESTROY_SEQUESTERED:
@@ -1350,6 +1352,43 @@ static void leveldb_delete_node(const char *pcomp, const struct mnode *pnode,
 	leveldb_writebatch_delete(bat, nkey, MNODE_KEY_LEN);
 }
 
+static int leveldb_delete_chunks(struct mstor *mstor,
+		const struct mnode *cnode, leveldb_writebatch_t *bat,
+		uint64_t ztime)
+{
+	int i, ret, ninfo;
+	uint64_t start = 0;
+	struct chunk_info cinfos[TMP_CINFO_BUF_SZ];
+	char fkey[MFILE_KEY_LEN], zkey[MZOMBIE_KEY_LEN];
+
+	while (1) {
+		ret = mstor_chunkfind_impl(mstor, cnode->nid, cinfos,
+			TMP_CINFO_BUF_SZ, start, 0xffffffffffffffffLLU);
+		if (ret < 0)
+			return ret;
+		ninfo = ret;
+		fkey[0] = 'f';
+		pack_to_be64(fkey + 1, cnode->nid);
+		zkey[0] = 'z';
+		pack_to_be64(zkey + 1, ztime);
+		for (i = 0; i < ninfo; ++i) {
+			/* remove file chunk entry, add zombie chunk table
+			 * entry */
+			pack_to_be64(fkey + sizeof(uint64_t) + 1,
+				cinfos[i].start);
+			leveldb_writebatch_delete(bat, fkey, MFILE_KEY_LEN);
+			pack_to_be64(zkey + sizeof(uint64_t) + 1,
+				cinfos[i].cid);
+			leveldb_writebatch_put(bat, zkey, MZOMBIE_KEY_LEN,
+				NULL, 0);
+		}
+		if (ninfo + 1 < TMP_CINFO_BUF_SZ)
+			break;
+		start = cinfos[ninfo - 1].start + 1;
+	}
+	return 0;
+}
+
 static int mstor_do_rmdir(struct mstor *mstor, struct mreq *mreq,
 		const char* pcomp, const struct mnode *pnode,
 		const struct mnode *cnode)
@@ -1363,10 +1402,11 @@ static int mstor_do_rmdir(struct mstor *mstor, struct mreq *mreq,
 	char ckey[1 + sizeof(uint64_t)], pcomp2[RF_PCOMP_MAX];
 	size_t klen, vlen;
 	struct mnode node;
-	uint64_t nid;
+	uint64_t nid, ztime;
 	struct mreq_rmdir *req;
 
 	req = (struct mreq_rmdir*)mreq;
+	ztime = req->ztime;
 	memset(&node, 0, sizeof(struct mnode));
 	if (pnode->val == NULL) {
 		/* You can't delete the root inode. */
@@ -1441,7 +1481,10 @@ static int mstor_do_rmdir(struct mstor *mstor, struct mreq *mreq,
 		ret = mstor_mode_check(&node, mreq, MSTOR_PERM_WRITE);
 		if (ret)
 			goto done;
-		leveldb_delete_node(pcomp2, cnode, &node, bat);
+		ret = leveldb_delete_chunks(mstor, &node, bat, ztime);
+		if (ret)
+			goto done;
+		leveldb_delete_node(pcomp2, pnode, cnode, bat);
 		mnode_free(&node);
 		memset(&node, 0, sizeof(struct mnode));
 		leveldb_iter_next(iter);
@@ -1463,6 +1506,51 @@ done:
 	if (bat)
 		leveldb_writebatch_destroy(bat);
 	mnode_free(&node);
+	return ret;
+}
+
+static int mstor_do_unlink(struct mstor *mstor, struct mreq *mreq,
+		const char *pcomp, const struct mnode *pnode,
+		const struct mnode *cnode)
+{
+	char *err = NULL;
+	struct mreq_unlink *req;
+	int ret;
+	uint16_t mode_and_type;
+	leveldb_writebatch_t *bat = NULL;
+
+	if (pnode->val == NULL) {
+		/* You can't delete the root inode. */
+		ret = -EISDIR;
+		goto done;
+	}
+	req = (struct mreq_unlink*)mreq;
+	mode_and_type = unpack_from_be16(&cnode->val->mode_and_type);
+	if (mode_and_type & MNODE_IS_DIR) {
+		ret = -EISDIR;
+		goto done;
+	}
+	bat = leveldb_writebatch_create();
+	if (!bat) {
+		ret = -ENOMEM;
+		goto done;
+	}
+	ret = leveldb_delete_chunks(mstor, cnode, bat, req->ztime);
+	if (ret)
+		goto done;
+	leveldb_delete_node(pcomp, pnode, cnode, bat);
+	leveldb_write(mstor->ldb, mstor->lwropt, bat, &err);
+	if (err) {
+		glitch_log("mstor_do_unlink(0x%"PRIx64", %s): "
+			"leveldb_write returned error '%s'\n",
+			cnode->nid, pcomp, err);
+		ret = -EIO;
+		goto done;
+	}
+done:
+	free(err);
+	if (bat)
+		leveldb_writebatch_destroy(bat);
 	return ret;
 }
 
@@ -1571,8 +1659,8 @@ static int mstor_do_path_operation(struct mstor *mstor, struct mreq *mreq,
 		return mstor_do_utimes(mstor, mreq, cnode);
 	case MSTOR_OP_RMDIR:
 		return mstor_do_rmdir(mstor, mreq, pcomp, cnode, pnode);
-	case MSTOR_OP_SEQUESTER_TREE:
-		return -ENOTSUP;
+	case MSTOR_OP_UNLINK:
+		return mstor_do_unlink(mstor, mreq, pcomp, pnode, cnode);
 	case MSTOR_OP_FIND_SEQUESTERED:
 		return -ENOTSUP;
 	case MSTOR_OP_DESTROY_SEQUESTERED:
@@ -1704,17 +1792,17 @@ static int mstor_dump_node(FILE *out, const char *k, size_t klen,
 	uint64_t nid, mtime, atime;
 
 	if (klen != MNODE_KEY_LEN) {
-		glitch_log("mstor_dump: unknown key starting "
+		glitch_log("mstor_dump_node: unknown key starting "
 			   "with 'n' of length %Zd\n", klen);
 		return -EINVAL;
 	}
 	if (vlen < sizeof(struct mnode_payload)) {
-		glitch_log("mstor_dump: node entry is too short to contain a "
+		glitch_log("mstor_dump_node: node entry is too short to contain a "
 			   "node header!  Length = %Zd\n", vlen);
 		return -EINVAL;
 	}
 	if (vlen != sizeof(struct mnode_payload)) {
-		glitch_log("mstor_dump: node entry is not equal to expected "
+		glitch_log("mstor_dump_node: node entry is not equal to expected "
 			   "length!  Length = %Zd\n", vlen);
 		return -EINVAL;
 	}
@@ -1733,6 +1821,27 @@ static int mstor_dump_node(FILE *out, const char *k, size_t klen,
 		nid, (is_dir ? "DIR" : "FILE"), mode,
 		mtime, atime, uid,
 		gid);
+}
+
+static int mstor_dump_zombie(FILE *out, const char *k, size_t klen,
+		size_t vlen)
+{
+	uint64_t died, cid;
+
+	if (klen != MZOMBIE_KEY_LEN) {
+		glitch_log("mstor_dump_zombie: unknown key starting "
+			   "with 'z' of length %Zd\n", klen);
+		return -EINVAL;
+	}
+	if (vlen != 0) {
+		glitch_log("mstor_dump_zombie: zombie entry has non-zero "
+			   "payload length!  Length = %Zd\n", vlen);
+		return -EINVAL;
+	}
+	died = unpack_from_be64(k + 1);
+	cid = unpack_from_be64(k + 1 + sizeof(uint64_t));
+	return zfprintf(out, "ZOMBIE(died=0x%"PRIx64", cid=0x%"PRIx64
+			") => { }", died, cid);
 }
 
 int mstor_dump(struct mstor *mstor, FILE *out)
@@ -1799,6 +1908,11 @@ int mstor_dump(struct mstor *mstor, FILE *out)
 				goto done;
 			}
 			ret = zfprintf(out, "MSTOR_VERSION(%"PRId32")\n", vers);
+			if (ret)
+				goto done;
+			break;
+		case 'z':
+			ret = mstor_dump_zombie(out, k, klen, vlen);
 			if (ret)
 				goto done;
 			break;

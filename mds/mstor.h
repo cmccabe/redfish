@@ -40,7 +40,7 @@ enum mstor_op_ty {
 	MSTOR_OP_CHOWN,
 	MSTOR_OP_UTIMES,
 	MSTOR_OP_RMDIR,
-	MSTOR_OP_SEQUESTER_TREE,
+	MSTOR_OP_UNLINK,
 	MSTOR_OP_FIND_SEQUESTERED,
 	MSTOR_OP_DESTROY_SEQUESTERED,
 	MSTOR_OP_RENAME,
@@ -166,6 +166,8 @@ struct mreq_utimes {
 
 struct mreq_rmdir {
 	struct mreq base;
+	/** Time of rmdir */
+	uint64_t ztime;
 	/** If 0 -- POSIX rmdir behavior: succeed if the directory is empty,
 	 * fail otherwise.
 	 * If 1 -- try to delete all the files in this directory.
@@ -175,6 +177,12 @@ struct mreq_rmdir {
 	 * implement Hadoop-style recursive rm.
 	 */
 	int rmr;
+};
+
+struct mreq_unlink {
+	struct mreq base;
+	/** Time of unlink */
+	uint64_t ztime;
 };
 
 /** Initialize the metadata store.
