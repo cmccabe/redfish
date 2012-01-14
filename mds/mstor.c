@@ -256,8 +256,7 @@ static uint32_t mstor_read_version(struct mstor *mstor)
 done:
 	if (val)
 		free(val);
-	if (err)
-		free(err);
+	free(err);
 	return ret;
 }
 
@@ -279,8 +278,7 @@ static int mstor_write_version(struct mstor *mstor, uint32_t vers)
 	}
 	ret = 0;
 done:
-	if (err)
-		free(err);
+	free(err);
 	return ret;
 }
 
@@ -353,8 +351,7 @@ static int mstor_leveldb_create_new(struct mstor *mstor)
 	ret = 0;
 
 done:
-	if (err)
-		free(err);
+	free(err);
 	if (iter)
 		leveldb_iter_destroy(iter);
 	return ret;
@@ -572,8 +569,7 @@ static int mstor_leveldb_init(struct mstor *mstor,
 	return 0;
 
 error:
-	if (err)
-		free(err);
+	free(err);
 	if (ldb)
 		leveldb_close(ldb);
 	if (lreadopt)
@@ -1168,8 +1164,7 @@ next:
 	req->used_len = off;
 	ret = 0;
 done:
-	if (err)
-		free(err);
+	free(err);
 	if (iter)
 		leveldb_iter_destroy(iter);
 	mnode_free(&node);
@@ -1680,8 +1675,7 @@ int mstor_dump(struct mstor *mstor, FILE *out)
 	ret = 0;
 
 done:
-	if (err)
-		free(err);
+	free(err);
 	if (iter)
 		leveldb_iter_destroy(iter);
 	return ret;
