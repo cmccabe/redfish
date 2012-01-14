@@ -367,7 +367,7 @@ done:
  */
 static int mstor_load_next_nid(leveldb_iterator_t *iter, uint64_t *next_nid)
 {
-	const char *key;
+	const char *k;
 	size_t klen;
 	char nkey[MNODE_KEY_LEN];
 
@@ -380,13 +380,13 @@ static int mstor_load_next_nid(leveldb_iterator_t *iter, uint64_t *next_nid)
 			   "node id.\n");
 		return -EINVAL;
 	}
-	key = leveldb_iter_key(iter, &klen);
-	if ((klen != MNODE_KEY_LEN) || (key[0] != 'n')) {
+	k = leveldb_iter_key(iter, &klen);
+	if ((klen != MNODE_KEY_LEN) || (k[0] != 'n')) {
 		glitch_log("mstor_leveldb_setup: failed to find "
 			"highest node ID in use\n");
 		return -EINVAL;
 	}
-	*next_nid = unpack_from_be64(key + 1) + 1;
+	*next_nid = unpack_from_be64(k + 1) + 1;
 	return 0;
 }
 
@@ -400,7 +400,7 @@ static int mstor_load_next_nid(leveldb_iterator_t *iter, uint64_t *next_nid)
  */
 static int mstor_load_next_cid(leveldb_iterator_t *iter, uint64_t *next_cid)
 {
-	const char *key;
+	const char *k;
 	size_t klen;
 	char hkey[MCHUNK_KEY_LEN];
 
@@ -412,12 +412,12 @@ static int mstor_load_next_cid(leveldb_iterator_t *iter, uint64_t *next_cid)
 		*next_cid = 1;
 		return 0;
 	}
-	key = leveldb_iter_key(iter, &klen);
-	if ((klen != MCHUNK_KEY_LEN) || (key[0] != 'h')) {
+	k = leveldb_iter_key(iter, &klen);
+	if ((klen != MCHUNK_KEY_LEN) || (k[0] != 'h')) {
 		*next_cid = 1;
 		return 0;
 	}
-	*next_cid = unpack_from_be64(key + 1) + 1;
+	*next_cid = unpack_from_be64(k + 1) + 1;
 	return 0;
 }
 
@@ -652,11 +652,11 @@ static int mstor_fetch_node(struct mstor *mstor, uint64_t nid,
 {
 	char *val, *err = NULL;
 	size_t vlen;
-	char key[MNODE_KEY_LEN];
+	char nkey[MNODE_KEY_LEN];
 
-	key[0] = 'n';
-	pack_to_be64(key + 1, nid);
-	val = leveldb_get(mstor->ldb, mstor->lreadopt, key, MNODE_KEY_LEN,
+	nkey[0] = 'n';
+	pack_to_be64(nkey + 1, nid);
+	val = leveldb_get(mstor->ldb, mstor->lreadopt, nkey, MNODE_KEY_LEN,
 				&vlen, &err);
 	if (err) {
 		glitch_log("mstor_fetch_node: leveldb_get(%" PRIx64 ") "
@@ -684,7 +684,7 @@ static int mstor_fetch_child(struct mstor *mstor, struct mreq *mreq,
 	const char *pcomp, const struct mnode *pnode, struct mnode *cnode)
 {
 	int ret;
-	char key[MCHILD_KEY_MAX];
+	char ckey[MCHILD_KEY_MAX];
 	char *val, *err = NULL;
 	size_t klen, vlen;
 	uint64_t cnid;
@@ -695,12 +695,12 @@ static int mstor_fetch_child(struct mstor *mstor, struct mreq *mreq,
 	if (ret)
 		return ret;
 	/* Look up the child nid */
-	key[0] = 'c';
-	pack_to_be64(key + 1, pnode->nid);
-	snprintf(key + 1 + sizeof(uint64_t), RF_PCOMP_MAX,
+	ckey[0] = 'c';
+	pack_to_be64(ckey + 1, pnode->nid);
+	snprintf(ckey + 1 + sizeof(uint64_t), RF_PCOMP_MAX,
 		"%s", pcomp);
 	klen = 1 + sizeof(uint64_t) + strlen(pcomp);
-	val = leveldb_get(mstor->ldb, mstor->lreadopt, key,
+	val = leveldb_get(mstor->ldb, mstor->lreadopt, ckey,
 			klen, &vlen, &err);
 	if (err) {
 		glitch_log("leveldb_get(0x%" PRIx64 ", %s) returned error "
@@ -732,7 +732,7 @@ static int mstor_make_node(struct mstor *mstor, uint16_t mode_and_type,
 	int ret;
 	uint64_t cnid;
 	leveldb_writebatch_t* bat = NULL;
-	char pkey[MCHILD_KEY_MAX], nkey[MNODE_KEY_LEN];
+	char ckey[MCHILD_KEY_MAX], nkey[MNODE_KEY_LEN];
 	char *body = NULL, *err = NULL;
 	size_t plen;
 	struct mnode_payload *hdr;
@@ -752,9 +752,9 @@ static int mstor_make_node(struct mstor *mstor, uint16_t mode_and_type,
 		ret = -ENOMEM;
 		goto error;
 	}
-	pkey[0] = 'c';
-	pack_to_be64(pkey + 1, pnode->nid);
-	snprintf(pkey + 1 + sizeof(uint64_t), RF_PCOMP_MAX,
+	ckey[0] = 'c';
+	pack_to_be64(ckey + 1, pnode->nid);
+	snprintf(ckey + 1 + sizeof(uint64_t), RF_PCOMP_MAX,
 		"%s", pcomp);
 	plen = 1 + sizeof(uint64_t) + strlen(pcomp);
 	nkey[0] = 'n';
@@ -765,7 +765,7 @@ static int mstor_make_node(struct mstor *mstor, uint16_t mode_and_type,
 	pack_to_be64(&hdr->atime, atime);
 	pack_to_be32(&hdr->uid, uid);
 	pack_to_be32(&hdr->gid, gid);
-	leveldb_writebatch_put(bat, pkey, plen, nkey + 1, sizeof(uint64_t));
+	leveldb_writebatch_put(bat, ckey, plen, nkey + 1, sizeof(uint64_t));
 	leveldb_writebatch_put(bat, nkey, MNODE_KEY_LEN, body,
 			sizeof(struct mnode_payload));
 	leveldb_write(mstor->ldb, mstor->lwropt, bat, &err);
@@ -1080,7 +1080,7 @@ static int mstor_do_listdir(struct mstor *mstor, struct mreq *mreq,
 	leveldb_iterator_t *iter = NULL;
 	const char *k;
 	const char *v;
-	char ikey[1 + sizeof(uint64_t)], pcomp[RF_PCOMP_MAX];
+	char ckey[1 + sizeof(uint64_t)], pcomp[RF_PCOMP_MAX];
 	size_t klen, vlen;
 	struct mnode node;
 	uint32_t off;
@@ -1100,9 +1100,9 @@ static int mstor_do_listdir(struct mstor *mstor, struct mreq *mreq,
 		ret = -ENOMEM;
 		goto done;
 	}
-	ikey[0] = 'c';
-	pack_to_be64(ikey + 1, dnode->nid);
-	leveldb_iter_seek(iter, ikey, sizeof(ikey));
+	ckey[0] = 'c';
+	pack_to_be64(ckey + 1, dnode->nid);
+	leveldb_iter_seek(iter, ckey, sizeof(ckey));
 	off = 0;
 	while (1) {
 		if (!leveldb_iter_valid(iter)) {
@@ -1201,7 +1201,7 @@ static int mstor_do_chmod(struct mstor *mstor, struct mreq *mreq,
 	int ret;
 	struct mreq_chmod *req;
 	struct mnode_payload *hdr;
-	char k[MNODE_KEY_LEN], *err = NULL;
+	char nkey[MNODE_KEY_LEN], *err = NULL;
 	uint16_t old_mode_and_type, mode_and_type;
 
 	// TODO: take lock here
@@ -1214,9 +1214,9 @@ static int mstor_do_chmod(struct mstor *mstor, struct mreq *mreq,
 	else
 		mode_and_type &= ~MNODE_IS_DIR;
 	pack_to_be16(&hdr->mode_and_type, mode_and_type);
-	k[0] = 'n';
-	pack_to_be64(k + 1, node->nid);
-	leveldb_put(mstor->ldb, mstor->lwropt, k, MNODE_KEY_LEN,
+	nkey[0] = 'n';
+	pack_to_be64(nkey + 1, node->nid);
+	leveldb_put(mstor->ldb, mstor->lwropt, nkey, MNODE_KEY_LEN,
 		(const char*)node->val, sizeof(struct mnode_payload), &err);
 	if (err) {
 		glitch_log("mstor_do_chmod(nid=0x%"PRIx64": leveldb_put "
@@ -1237,7 +1237,7 @@ static int mstor_do_chown(struct mstor *mstor, struct mreq *mreq,
 {
 	int ret;
 	struct mreq_chown *req;
-	char k[MNODE_KEY_LEN], *err = NULL;
+	char nkey[MNODE_KEY_LEN], *err = NULL;
 	struct mnode_payload new_node;
 	struct user *new_user = NULL;
 	struct group *new_group = NULL;
@@ -1276,9 +1276,9 @@ static int mstor_do_chown(struct mstor *mstor, struct mreq *mreq,
 			}
 		}
 	}
-	k[0] = 'n';
-	pack_to_be64(k + 1, node->nid);
-	leveldb_put(mstor->ldb, mstor->lwropt, k, MNODE_KEY_LEN,
+	nkey[0] = 'n';
+	pack_to_be64(nkey + 1, node->nid);
+	leveldb_put(mstor->ldb, mstor->lwropt, nkey, MNODE_KEY_LEN,
 			(const char*)&new_node, sizeof(struct mnode_payload),
 			&err);
 	if (err) {
@@ -1301,7 +1301,7 @@ static int mstor_do_utimes(struct mstor *mstor, struct mreq *mreq,
 	int ret;
 	struct mreq_utimes *req;
 	struct mnode_payload *hdr;
-	char k[MNODE_KEY_LEN], *err = NULL;
+	char nkey[MNODE_KEY_LEN], *err = NULL;
 
 	// TODO: take lock here
 	req = (struct mreq_utimes*)mreq;
@@ -1310,9 +1310,9 @@ static int mstor_do_utimes(struct mstor *mstor, struct mreq *mreq,
 		pack_to_be64(&hdr->atime, req->atime);
 	if (req->mtime != RF_INVAL_TIME)
 		pack_to_be64(&hdr->mtime, req->mtime);
-	k[0] = 'n';
-	pack_to_be64(k + 1, node->nid);
-	leveldb_put(mstor->ldb, mstor->lwropt, k, MNODE_KEY_LEN,
+	nkey[0] = 'n';
+	pack_to_be64(nkey + 1, node->nid);
+	leveldb_put(mstor->ldb, mstor->lwropt, nkey, MNODE_KEY_LEN,
 		(const char*)node->val, sizeof(struct mnode_payload), &err);
 	if (err) {
 		glitch_log("mstor_do_utimes(nid=0x%"PRIx64": leveldb_put "
