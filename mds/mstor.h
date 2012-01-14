@@ -39,7 +39,7 @@ enum mstor_op_ty {
 	MSTOR_OP_CHMOD,
 	MSTOR_OP_CHOWN,
 	MSTOR_OP_UTIMES,
-	MSTOR_OP_SEQUESTER,
+	MSTOR_OP_RMDIR,
 	MSTOR_OP_SEQUESTER_TREE,
 	MSTOR_OP_FIND_SEQUESTERED,
 	MSTOR_OP_DESTROY_SEQUESTERED,
@@ -157,6 +157,19 @@ struct mreq_utimes {
 	/** New access time, or RF_INVAL_TIME if the access time should not
 	 * change.  */
 	uint64_t atime;
+};
+
+struct mreq_rmdir {
+	struct mreq base;
+	/** If 0 -- POSIX rmdir behavior: succeed if the directory is empty,
+	 * fail otherwise.
+	 * If 1 -- try to delete all the files in this directory.
+	 * Fail if we encounter a directory entry or a file we cannot delete.
+	 *
+	 * This is a simple optimization to make it easier for clients to
+	 * implement Hadoop-style recursive rm.
+	 */
+	int rmr;
 };
 
 /** Initialize the metadata store.

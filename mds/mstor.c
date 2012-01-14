@@ -155,8 +155,8 @@ const char *mstor_op_ty_to_str(enum mstor_op_ty op)
 		return "MSTOR_OP_CHOWN";
 	case MSTOR_OP_UTIMES:
 		return "MSTOR_OP_UTIMES";
-	case MSTOR_OP_SEQUESTER:
-		return "MSTOR_OP_SEQUESTER";
+	case MSTOR_OP_RMDIR:
+		return "MSTOR_OP_RMDIR";
 	case MSTOR_OP_SEQUESTER_TREE:
 		return "MSTOR_OP_SEQUESTER_TREE";
 	case MSTOR_OP_FIND_SEQUESTERED:
@@ -1328,6 +1328,144 @@ done:
 	return ret;
 }
 
+static void leveldb_delete_node(const char *pcomp, const struct mnode *pnode,
+		const struct mnode *cnode, leveldb_writebatch_t *bat)
+{
+	char ckey[MCHILD_KEY_MAX], nkey[MNODE_KEY_LEN];
+
+	/* delete directory entry in parent */
+	ckey[0] = 'c';
+	pack_to_be64(ckey + 1, pnode->nid);
+	snprintf(ckey + 1 + sizeof(uint64_t), RF_PCOMP_MAX,
+			"%s", pcomp);
+	leveldb_writebatch_delete(bat, ckey,
+			1 + sizeof(uint64_t) + strlen(pcomp));
+	/* delete node entry */
+	nkey[0] = 'n';
+	pack_to_be64(nkey + 1, cnode->nid);
+	leveldb_writebatch_delete(bat, nkey, MNODE_KEY_LEN);
+}
+
+static int mstor_do_rmdir(struct mstor *mstor, struct mreq *mreq,
+		const char* pcomp, const struct mnode *pnode,
+		const struct mnode *cnode)
+{
+	int ret;
+	char *err = NULL;
+	leveldb_iterator_t *iter = NULL;
+	leveldb_writebatch_t *bat = NULL;
+	const char *k;
+	const char *v;
+	char ckey[1 + sizeof(uint64_t)], pcomp2[RF_PCOMP_MAX];
+	size_t klen, vlen;
+	struct mnode node;
+	uint64_t nid;
+	struct mreq_rmdir *req;
+
+	req = (struct mreq_rmdir*)mreq;
+	memset(&node, 0, sizeof(struct mnode));
+	if (pnode->val == NULL) {
+		/* You can't delete the root inode. */
+		ret = -EPERM;
+		goto done;
+	}
+	ret = mstor_mode_check(pnode, mreq,
+			MSTOR_PERM_WRITE | MNODE_IS_DIR);
+	if (ret)
+		goto done;
+	ret = mstor_mode_check(cnode, mreq,
+			MSTOR_PERM_WRITE | MNODE_IS_DIR);
+	if (ret)
+		goto done;
+	bat = leveldb_writebatch_create();
+	if (!bat) {
+		ret = -ENOMEM;
+		goto done;
+	}
+	iter = leveldb_create_iterator(mstor->ldb, mstor->lreadopt);
+	if (!iter) {
+		ret = -ENOMEM;
+		goto done;
+	}
+	ckey[0] = 'c';
+	pack_to_be64(ckey + 1, cnode->nid);
+	leveldb_iter_seek(iter, ckey, sizeof(ckey));
+	ret = 0;
+	while (1) {
+		if (!leveldb_iter_valid(iter))
+			break;
+		k = leveldb_iter_key(iter, &klen);
+		v = leveldb_iter_value(iter, &vlen);
+		if (klen < 1) {
+			glitch_log("mstor_do_rmdir: leveldb_iter_key "
+				"got illegal 0-length key\n");
+			ret = -EIO;
+			goto done;
+		}
+		if (k[0] != 'c')
+			break;
+		if (klen <= MCHILD_KEY_LEN_PREFIX) {
+			glitch_log("mstor_do_rmdir: leveldb_iter_key "
+				"returned klen = %Zd.  That should not be "
+				"possible.\n", klen);
+			ret = -EIO;
+			goto done;
+		}
+		nid = unpack_from_be64(k + 1);
+		if (nid != cnode->nid)
+			break;
+		if (vlen != sizeof(uint64_t)) {
+			glitch_log("mstor_do_rmdir: leveldb_iter_value "
+				"returned vlen = %Zd.  That should not be "
+				"possible.\n", vlen);
+			ret = -EIO;
+			goto done;
+		}
+		nid = unpack_from_be64(v);
+		if (klen - MCHILD_KEY_LEN_PREFIX >= RF_PCOMP_MAX) {
+			glitch_log("mstor_do_rmdir: illegally long name "
+				"(len = %Zd).\n", klen - MCHILD_KEY_LEN_PREFIX);
+			ret = -EIO;
+			goto done;
+		}
+		if (!req->rmr) {
+			ret = -ENOTEMPTY;
+			goto done;
+		}
+		memcpy(pcomp2, k + MCHILD_KEY_LEN_PREFIX,
+			klen - MCHILD_KEY_LEN_PREFIX);
+		pcomp2[klen - MCHILD_KEY_LEN_PREFIX] = '\0';
+		ret = mstor_fetch_node(mstor, nid, &node);
+		if (ret)
+			goto done;
+		ret = mstor_mode_check(&node, mreq, MSTOR_PERM_WRITE);
+		if (ret)
+			goto done;
+		leveldb_delete_node(pcomp2, cnode, &node, bat);
+		mnode_free(&node);
+		memset(&node, 0, sizeof(struct mnode));
+		leveldb_iter_next(iter);
+	}
+	leveldb_delete_node(pcomp, pnode, cnode, bat);
+	/* apply changes */
+	leveldb_write(mstor->ldb, mstor->lwropt, bat, &err);
+	if (err) {
+		glitch_log("mstor_do_rmdir(0x%"PRIx64", %s): "
+			"leveldb_write returned error '%s'\n",
+			cnode->nid, pcomp, err);
+		ret = -EIO;
+		goto done;
+	}
+done:
+	free(err);
+	if (iter)
+		leveldb_iter_destroy(iter);
+	if (bat)
+		leveldb_writebatch_destroy(bat);
+	mnode_free(&node);
+	return ret;
+}
+
 static int mstor_do_path_operation(struct mstor *mstor, struct mreq *mreq,
 			    struct mnode *pnode, struct mnode *cnode)
 {
@@ -1431,8 +1569,8 @@ static int mstor_do_path_operation(struct mstor *mstor, struct mreq *mreq,
 		return mstor_do_chown(mstor, mreq, cnode);
 	case MSTOR_OP_UTIMES:
 		return mstor_do_utimes(mstor, mreq, cnode);
-	case MSTOR_OP_SEQUESTER:
-		return -ENOTSUP;
+	case MSTOR_OP_RMDIR:
+		return mstor_do_rmdir(mstor, mreq, pcomp, cnode, pnode);
 	case MSTOR_OP_SEQUESTER_TREE:
 		return -ENOTSUP;
 	case MSTOR_OP_FIND_SEQUESTERED:
