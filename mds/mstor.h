@@ -41,8 +41,8 @@ enum mstor_op_ty {
 	MSTOR_OP_UTIMES,
 	MSTOR_OP_RMDIR,
 	MSTOR_OP_UNLINK,
-	MSTOR_OP_FIND_SEQUESTERED,
-	MSTOR_OP_DESTROY_SEQUESTERED,
+	MSTOR_OP_FIND_ZOMBIES,
+	MSTOR_OP_DESTROY_ZOMBIE,
 	MSTOR_OP_RENAME,
 };
 
@@ -183,6 +183,31 @@ struct mreq_unlink {
 	struct mreq base;
 	/** Time of unlink */
 	uint64_t ztime;
+};
+
+struct zombie_info {
+	/** chunk ID */
+	uint64_t cid;
+	/** time of zombification */
+	uint64_t ztime;
+};
+
+struct mreq_find_zombies {
+	struct mreq base;
+	/** The lowest (cid, ztime) zombie to find */
+	struct zombie_info lower_bound;
+	/** Size of result buffer */
+	int max_res;
+	/** (out param) number of results found */
+	int num_res;
+	/** (out param) results */
+	struct zombie_info zinfo[0];
+};
+
+struct mreq_destroy_zombie {
+	struct mreq base;
+	/** zombie to destroy */
+	struct zombie_info zinfo;
 };
 
 /** Initialize the metadata store.

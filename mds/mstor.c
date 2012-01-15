@@ -161,10 +161,10 @@ const char *mstor_op_ty_to_str(enum mstor_op_ty op)
 		return "MSTOR_OP_RMDIR";
 	case MSTOR_OP_UNLINK:
 		return "MSTOR_OP_UNLINK";
-	case MSTOR_OP_FIND_SEQUESTERED:
-		return "MSTOR_OP_FIND_SEQUESTERED";
-	case MSTOR_OP_DESTROY_SEQUESTERED:
-		return "MSTOR_OP_DESTROY_SEQUESTERED";
+	case MSTOR_OP_FIND_ZOMBIES:
+		return "MSTOR_OP_FIND_ZOMBIES";
+	case MSTOR_OP_DESTROY_ZOMBIE:
+		return "MSTOR_OP_DESTROY_ZOMBIE";
 	case MSTOR_OP_RENAME:
 		return "MSTOR_OP_RENAME";
 	default:
@@ -1554,6 +1554,97 @@ done:
 	return ret;
 }
 
+static int mstor_do_find_zombies(struct mstor *mstor, struct mreq *mreq)
+{
+	int ret, num_res, max_res;
+	leveldb_iterator_t *iter = NULL;
+	const char *k;
+	const char *v;
+	char zkey[MZOMBIE_KEY_LEN], *err = NULL;
+	size_t klen, vlen;
+	struct mreq_find_zombies *req;
+
+	req = (struct mreq_find_zombies*)mreq;
+	iter = leveldb_create_iterator(mstor->ldb, mstor->lreadopt);
+	if (!iter) {
+		ret = -ENOMEM;
+		goto done;
+	}
+	zkey[0] = 'z';
+	pack_to_be64(zkey + 1, req->lower_bound.ztime);
+	pack_to_be64(zkey + sizeof(uint64_t) + 1, req->lower_bound.cid);
+	leveldb_iter_seek(iter, zkey, MZOMBIE_KEY_LEN);
+	num_res = 0;
+	max_res = req->max_res;
+	while (1) {
+		if (num_res + 1 >= max_res)
+			break;
+		if (!leveldb_iter_valid(iter))
+			break;
+		k = leveldb_iter_key(iter, &klen);
+		v = leveldb_iter_value(iter, &vlen);
+		if (klen < 1) {
+			glitch_log("mstor_do_find_zombies: leveldb_iter_key "
+				"got illegal 0-length key\n");
+			ret = -EIO;
+			goto done;
+		}
+		if (k[0] != 'z')
+			break;
+		if (klen <= MZOMBIE_KEY_LEN) {
+			glitch_log("mstor_do_find_zombies: leveldb_iter_key "
+				"returned klen = %Zd.  That should not be "
+				"possible.\n", klen);
+			ret = -EIO;
+			goto done;
+		}
+		if (vlen != 0) {
+			glitch_log("mstor_do_find_zombies: leveldb_iter_value "
+				"returned vlen = %Zd.  That should not be "
+				"possible.\n", vlen);
+			ret = -EIO;
+			goto done;
+		}
+		req->zinfo[num_res].ztime = unpack_from_be64(k + 1);
+		req->zinfo[num_res].cid =
+				unpack_from_be64(k + sizeof(uint64_t) + 1);
+		++num_res;
+		leveldb_iter_next(iter);
+	}
+	req->num_res = num_res;
+	ret = num_res;
+done:
+	free(err);
+	if (iter)
+		leveldb_iter_destroy(iter);
+	return ret;
+}
+
+static int mstor_do_destroy_zombie(struct mstor *mstor, struct mreq *mreq)
+{
+	int ret;
+	char zkey[MZOMBIE_KEY_LEN], *err = NULL;
+	struct mreq_destroy_zombie *req;
+
+	req = (struct mreq_destroy_zombie*)mreq;
+	zkey[0] = 'z';
+	pack_to_be64(zkey + 1, req->zinfo.ztime);
+	pack_to_be64(zkey + sizeof(uint64_t) + 1, req->zinfo.cid);
+	leveldb_delete(mstor->ldb, mstor->lwropt, zkey, MZOMBIE_KEY_LEN, &err);
+	if (err) {
+		glitch_log("mstor_do_destroy_zombie(ztime=0x%"PRIx64", "
+			"cid=0x%"PRIx64" got leveldb_delete error '%s'\n",
+			req->zinfo.ztime, req->zinfo.cid, err);
+		ret = -EIO;
+		goto done;
+	}
+	ret = 0;
+
+done:
+	free(err);
+	return ret;
+}
+
 static int mstor_do_path_operation(struct mstor *mstor, struct mreq *mreq,
 			    struct mnode *pnode, struct mnode *cnode)
 {
@@ -1661,10 +1752,6 @@ static int mstor_do_path_operation(struct mstor *mstor, struct mreq *mreq,
 		return mstor_do_rmdir(mstor, mreq, pcomp, cnode, pnode);
 	case MSTOR_OP_UNLINK:
 		return mstor_do_unlink(mstor, mreq, pcomp, pnode, cnode);
-	case MSTOR_OP_FIND_SEQUESTERED:
-		return -ENOTSUP;
-	case MSTOR_OP_DESTROY_SEQUESTERED:
-		return -ENOTSUP;
 	case MSTOR_OP_RENAME:
 		return -ENOTSUP;
 	default:
@@ -1686,6 +1773,12 @@ int mstor_do_operation(struct mstor *mstor, struct mreq *mreq)
 	switch (mreq->op) {
 	case MSTOR_OP_CHUNKALLOC:
 		ret = mstor_do_chunkalloc(mstor, mreq);
+		break;
+	case MSTOR_OP_FIND_ZOMBIES:
+		ret = mstor_do_find_zombies(mstor, mreq);
+		break;
+	case MSTOR_OP_DESTROY_ZOMBIE:
+		ret = mstor_do_destroy_zombie(mstor, mreq);
 		break;
 	default:
 		memset(&pnode, 0, sizeof(pnode));
