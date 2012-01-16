@@ -28,10 +28,11 @@
 #include "util/test.h"
 
 #include <errno.h>
+#include <inttypes.h>
 #include <limits.h>
-#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define MSU_SPOONY_USER "spoony"
@@ -183,23 +184,20 @@ static int mstor_do_chunkfind(struct mstor *mstor, const char *full_path,
 		int max_cinfos, struct chunk_info *cinfos)
 {
 	int ret;
-	char buf[sizeof(struct mreq_chunkfind) +
-			(sizeof(struct chunk_info) * max_cinfos)];
-	struct mreq_chunkfind *mreq = (struct mreq_chunkfind*)buf;
+	struct mreq_chunkfind mreq;
 
-	memset(mreq, 0, sizeof(buf));
-	mreq->base.op = MSTOR_OP_CHUNKFIND;
-	mreq->base.full_path = full_path;
-	mreq->base.user_name = user_name;
-	mreq->start = start;
-	mreq->end = end;
-	mreq->max_cinfos = max_cinfos;
-	ret = mstor_do_operation(mstor, (struct mreq*)mreq);
+	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.op = MSTOR_OP_CHUNKFIND;
+	mreq.base.full_path = full_path;
+	mreq.base.user_name = user_name;
+	mreq.start = start;
+	mreq.end = end;
+	mreq.max_cinfos = max_cinfos;
+	mreq.cinfos = cinfos;
+	ret = mstor_do_operation(mstor, (struct mreq*)&mreq);
 	if (ret)
 		return FORCE_NEGATIVE(ret);
-	memcpy(cinfos, mreq->cinfos,
-			sizeof(struct chunk_info) * mreq->num_cinfos);
-	return mreq->num_cinfos;
+	return mreq.num_cinfos;
 }
 
 static int unpack_stat_hdr(struct mmm_stat_hdr *hdr, char *pcomp)
@@ -378,8 +376,9 @@ static int mstor_test1(const char *tdir)
 {
 	struct mstor *mstor;
 	struct udata *udata;
-	uint64_t nid, cid;
+	uint64_t nid, cid, cid2, cid3;
 	struct chunk_info cinfos[MSU_UNIT_MAX_CINFOS];
+	uint64_t csize = 134217728ULL;
 
 	udata = udata_unit_create_default();
 	EXPECT_NOT_ERRPTR(udata);
@@ -451,7 +450,20 @@ static int mstor_test1(const char *tdir)
 	EXPECT_ZERO(mstor_do_chunkalloc(mstor, nid, 0, &cid));
 	EXPECT_EQUAL(mstor_do_chunkfind(mstor, "/b/c/d/foo", 0, 1,
 		MSU_WOOT_USER, MSU_UNIT_MAX_CINFOS, cinfos), 1);
+//	printf("cid = %"PRIx64", cinfos[0].cid = %"PRIx64", cinfos[0].base = %"PRIx64"\n",
+//	       cid, cinfos[0].cid, cinfos[0].base);
 	EXPECT_EQUAL(cinfos[0].cid, cid);
+	EXPECT_EQUAL(cinfos[0].base, 0);
+	EXPECT_ZERO(mstor_do_chunkalloc(mstor, nid, csize, &cid2));
+	EXPECT_ZERO(mstor_do_chunkalloc(mstor, nid, csize * 2ULL, &cid3));
+	EXPECT_EQUAL(mstor_do_chunkfind(mstor, "/b/c/d/foo", 0, csize * 10ULL,
+		MSU_WOOT_USER, MSU_UNIT_MAX_CINFOS, cinfos), 3);
+	EXPECT_EQUAL(cinfos[0].cid, cid);
+	EXPECT_EQUAL(cinfos[0].base, 0);
+	EXPECT_EQUAL(cinfos[1].cid, cid2);
+	EXPECT_EQUAL(cinfos[1].base, csize);
+	EXPECT_EQUAL(cinfos[2].cid, cid3);
+	EXPECT_EQUAL(cinfos[2].base, csize * 2ULL);
 
 	EXPECT_EQUAL(mstor_do_chmod(mstor, "/", RF_SUPERUSER_NAME,
 		0700), 0);

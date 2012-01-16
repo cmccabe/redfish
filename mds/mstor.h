@@ -83,7 +83,7 @@ struct mreq_open {
 
 struct chunk_info {
 	uint64_t cid;
-	uint64_t start;
+	uint64_t base;
 };
 
 struct mreq_chunkfind {
@@ -96,8 +96,9 @@ struct mreq_chunkfind {
 	int max_cinfos;
 	/** (out param) number of chunk IDs retrieved */
 	int num_cinfos;
-	/** (out param) retrieved chunk information */
-	struct chunk_info cinfos[0];
+	/** (out param) pointer to a buffer where we'll put the retrieved chunk
+	 * information */
+	struct chunk_info *cinfos;
 };
 
 struct mreq_chunkalloc {

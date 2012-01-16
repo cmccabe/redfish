@@ -61,6 +61,9 @@
 #define MSTOR_VERSION_BODY_LEN 8
 #define MSTOR_VERSION_INVAL 0xffffffffU
 
+/** TODO: allocate chunk IDs in a per-delegation fashion */
+#define MSTOR_INIT_CID 1
+
 #define MSTOR_ROOT_NID 0
 #define MSTOR_ROOT_NID_INIT_MODE (0755 | MNODE_IS_DIR)
 
@@ -351,6 +354,7 @@ static int mstor_leveldb_create_new(struct mstor *mstor)
 		goto done;
 	}
 	mstor->next_nid = MSTOR_ROOT_NID + 1;
+	mstor->next_cid = MSTOR_INIT_CID;
 	__sync_synchronize();
 	ret = 0;
 
@@ -413,12 +417,12 @@ static int mstor_load_next_cid(leveldb_iterator_t *iter, uint64_t *next_cid)
 	leveldb_iter_seek(iter, hkey, MCHUNK_KEY_LEN);
 	leveldb_iter_prev(iter);
 	if (!leveldb_iter_valid(iter)) {
-		*next_cid = 1;
+		*next_cid = MSTOR_INIT_CID;
 		return 0;
 	}
 	k = leveldb_iter_key(iter, &klen);
 	if ((klen != MCHUNK_KEY_LEN) || (k[0] != 'h')) {
-		*next_cid = 1;
+		*next_cid = MSTOR_INIT_CID;
 		return 0;
 	}
 	*next_cid = unpack_from_be64(k + 1) + 1;
@@ -910,7 +914,7 @@ static int mstor_chunkfind_impl(struct mstor *mstor, uint64_t nid,
 			goto done;
 		}
 		cinfos[num_cinfos].cid = unpack_from_be64(v);
-		cinfos[num_cinfos].start = base;
+		cinfos[num_cinfos].base = base;
 		num_cinfos++;
 		leveldb_iter_next(iter);
 		if (!leveldb_iter_valid(iter)) {
@@ -968,7 +972,7 @@ static int mstor_do_chunkalloc(struct mstor *mstor, struct mreq *mreq)
 	struct mreq_chunkalloc *req;
 	struct mnode node;
 	struct chunk_info cinfo;
-	uint64_t cid;
+	uint64_t cid, be_cid;
 	uint32_t oids[RF_MAX_REPLICAS];
 	leveldb_writebatch_t* bat = NULL;
 
@@ -1006,8 +1010,9 @@ static int mstor_do_chunkalloc(struct mstor *mstor, struct mreq *mreq)
 		ret = num_oid;
 		goto done;
 	}
+	pack_to_be64(&be_cid, cid);
 	leveldb_writebatch_put(bat, fkey, MFILE_KEY_LEN,
-			(const char*)&cid, sizeof(cid));
+			(const char*)&be_cid, sizeof(be_cid));
 	hkey[0] = 'h';
 	pack_to_be64(hkey + 1, cid);
 	leveldb_writebatch_put(bat, hkey, MCHUNK_KEY_LEN,
@@ -1384,7 +1389,7 @@ static int leveldb_delete_chunks(struct mstor *mstor,
 			/* remove file chunk entry, add zombie chunk table
 			 * entry */
 			pack_to_be64(fkey + sizeof(uint64_t) + 1,
-				cinfos[i].start);
+				cinfos[i].base);
 			leveldb_writebatch_delete(bat, fkey, MFILE_KEY_LEN);
 			pack_to_be64(zkey + sizeof(uint64_t) + 1,
 				cinfos[i].cid);
@@ -1393,7 +1398,7 @@ static int leveldb_delete_chunks(struct mstor *mstor,
 		}
 		if (ninfo + 1 < TMP_CINFO_BUF_SZ)
 			break;
-		start = cinfos[ninfo - 1].start + 1;
+		start = cinfos[ninfo - 1].base + 1;
 	}
 	return 0;
 }
