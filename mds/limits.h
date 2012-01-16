@@ -57,4 +57,7 @@
 /** Invalid group ID */
 #define RF_INVAL_GID 0xffffffffUL
 
+/** Invalid node ID */
+#define RF_INVAL_NID 0xffffffffffffffffULL
+
 #endif
