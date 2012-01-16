@@ -489,12 +489,12 @@ static int mstor_mode_check(const struct mnode *node,
 	mode &= ~MNODE_IS_DIR;
 	want &= ~MNODE_IS_DIR;
 	/* Check whether everyone has the permission we seek */
-	if ((want << 6) & mode)
+	if (want & mode)
 		return 0;
 	uid = unpack_from_be32(&node->val->uid);
 	if (uid == mreq->user->uid) {
 		/* Check whether the owner has the permission we seek */
-		if (want & mode)
+		if ((want << 6) & mode)
 			return 0;
 	}
 	gid = unpack_from_be32(&node->val->gid);

@@ -43,6 +43,9 @@
 #define MSU_UNIT_USERS_GROUP "users"
 #define MSU_UNIT_USERS_GID 2
 
+#define MSU_UNIT_WOOTERS_GROUP "wooters"
+#define MSU_UNIT_WOOTERS_GID 3
+
 typedef int (*stat_check_fn_t)(void *arg, struct mmm_stat_hdr *hdr,
 		const char *pcomp);
 
@@ -60,6 +63,12 @@ static struct udata *udata_unit_create_default(void)
 		udata_free(udata);
 		return (struct udata*)g;
 	}
+	g = udata_add_group(udata, MSU_UNIT_WOOTERS_GROUP,
+			MSU_UNIT_WOOTERS_GID);
+	if (IS_ERR(g)) {
+		udata_free(udata);
+		return (struct udata*)g;
+	}
 	u = udata_add_user(udata, MSU_SPOONY_USER,
 		MSU_SPOONY_UID, MSU_UNIT_USERS_GID);
 	if (IS_ERR(u)) {
@@ -72,7 +81,10 @@ static struct udata *udata_unit_create_default(void)
 		udata_free(udata);
 		return (struct udata*)u;
 	}
-
+	if (user_add_segid(udata, MSU_WOOT_USER, MSU_UNIT_WOOTERS_GID)) {
+		udata_free(udata);
+		return ERR_PTR(-EINVAL);
+	}
 	return udata;
 }
 
@@ -310,6 +322,12 @@ static int mstor_test1(const char *tdir)
 	EXPECT_NOT_ERRPTR(udata);
 	mstor = mstor_init_unit(tdir, "test1", 1024, udata);
 	EXPECT_NOT_ERRPTR(mstor);
+	/* change root node's mode to 0775 and group to 'users' */
+	EXPECT_EQUAL(mstor_do_chown(mstor, "/", RF_SUPERUSER_NAME,
+		NULL, MSU_UNIT_USERS_GROUP), 0);
+	EXPECT_EQUAL(mstor_do_chmod(mstor, "/", RF_SUPERUSER_NAME,
+		0775), 0);
+	mstor_dump(mstor, stdout);
 	EXPECT_ZERO(mstor_do_creat(mstor, "/a", 123));
 	EXPECT_ZERO(mstor_do_mkdirs(mstor, "/b/c", 0644, 123));
 	EXPECT_EQUAL(mstor_do_mkdirs(mstor, "/a/d/e", 0644, 123), -ENOTDIR);
@@ -329,14 +347,26 @@ static int mstor_test1(const char *tdir)
 		NULL, test1_expect_c), 0);
 	EXPECT_EQUAL(mstor_do_chown(mstor, "/", RF_SUPERUSER_NAME,
 		MSU_WOOT_USER, MSU_UNIT_USERS_GROUP), 0);
-//	EXPECT_EQUAL(mstor_do_chown(mstor, "/", MSU_WOOT_UID,
-//		MSU_UNIT_USERS_GID, MSU_WOOT_UID, MSU_GID_WOOT), -EPERM);
+	EXPECT_EQUAL(mstor_do_chown(mstor, "/", MSU_SPOONY_USER,
+		MSU_SPOONY_USER, NULL), -EPERM);
 	EXPECT_EQUAL(mstor_do_stat(mstor, "/", MSU_SPOONY_USER,
-			(void*)(uintptr_t)0755, test1_expect_root), 0);
-	EXPECT_EQUAL(mstor_do_chmod(mstor, "/", MSU_SPOONY_USER,
-			0700), 0);
+		(void*)(uintptr_t)0775, test1_expect_root), 0);
+	EXPECT_EQUAL(mstor_do_chmod(mstor, "/b", RF_SUPERUSER_NAME,
+		0770), 0);
+	EXPECT_EQUAL(mstor_do_listdir(mstor, "/b", MSU_SPOONY_USER,
+		NULL, test1_expect_c), 1);
+	EXPECT_EQUAL(mstor_do_chown(mstor, "/b", RF_SUPERUSER_NAME,
+		RF_SUPERUSER_NAME, MSU_UNIT_WOOTERS_GROUP), 0);
+	EXPECT_EQUAL(mstor_do_listdir(mstor, "/b", MSU_SPOONY_USER,
+		NULL, NULL), -EPERM);
+	EXPECT_EQUAL(mstor_do_listdir(mstor, "/b", MSU_WOOT_USER,
+		NULL, test1_expect_c), 1);
+
+	EXPECT_EQUAL(mstor_do_chmod(mstor, "/", RF_SUPERUSER_NAME,
+		0700), 0);
 	EXPECT_EQUAL(mstor_do_stat(mstor, "/", MSU_SPOONY_USER,
-			(void*)(uintptr_t)0700, test1_expect_root), 0);
+		(void*)(uintptr_t)0700, test1_expect_root), 0);
+
 	mstor_shutdown(mstor);
 	udata_free(udata);
 	return 0;
