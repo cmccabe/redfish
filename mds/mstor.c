@@ -467,27 +467,15 @@ done:
 	return ret;
 }
 
-static int mstor_mode_check(const struct mnode *node,
-			struct mreq *mreq, int want)
+static int mstor_perm_check(const struct mnode *node,
+		struct mreq *mreq, uint16_t mode, int want)
 {
-	uint16_t mode;
 	uint32_t uid, gid;
 
-	mode = unpack_from_be16(&node->val->mode_and_type);
-	if (want & MNODE_IS_DIR) {
-		if ((mode & MNODE_IS_DIR) == 0)
-			return -ENOTDIR;
-	}
-	else {
-		if (mode & MNODE_IS_DIR)
-			return -EISDIR;
-	}
 	if (!(mreq->flags & MREQ_FLAG_CHECK_PERMS)) {
 		/* skip permission check */
 		return 0;
 	}
-	mode &= ~MNODE_IS_DIR;
-	want &= ~MNODE_IS_DIR;
 	/* Check whether everyone has the permission we seek */
 	if (want & mode)
 		return 0;
@@ -503,10 +491,29 @@ static int mstor_mode_check(const struct mnode *node,
 		if ((want << 3) & mode)
 			return 0;
 	}
-	glitch_log("mstor_mode_check(want=%02o, nid=0x%"PRIx64", "
+	glitch_log("mstor_perm_check(want=%02o, nid=0x%"PRIx64", "
 			"mode=%04o): returning -EPERM\n",
 			want, node->nid, mode);
 	return -EPERM;
+}
+
+static int mstor_mode_check(const struct mnode *node,
+			struct mreq *mreq, int want)
+{
+	uint16_t mode;
+
+	mode = unpack_from_be16(&node->val->mode_and_type);
+	if (want & MNODE_IS_DIR) {
+		if ((mode & MNODE_IS_DIR) == 0)
+			return -ENOTDIR;
+	}
+	else {
+		if (mode & MNODE_IS_DIR)
+			return -EISDIR;
+	}
+	mode &= ~MNODE_IS_DIR;
+	want &= ~MNODE_IS_DIR;
+	return mstor_perm_check(node, mreq, mode, want);
 }
 
 static int get_valid_repl(int conf_repl, int def_repl)
@@ -1406,13 +1413,14 @@ static int mstor_do_rmdir(struct mstor *mstor, struct mreq *mreq,
 	struct mnode node;
 	uint64_t nid, ztime;
 	struct mreq_rmdir *req;
+	uint16_t mode_and_type;
 
 	req = (struct mreq_rmdir*)mreq;
 	ztime = req->ztime;
 	memset(&node, 0, sizeof(struct mnode));
 	if (pnode->val == NULL) {
 		/* You can't delete the root inode. */
-		ret = -EPERM;
+		ret = -EINVAL;
 		goto done;
 	}
 	ret = mstor_mode_check(pnode, mreq,
@@ -1432,7 +1440,6 @@ static int mstor_do_rmdir(struct mstor *mstor, struct mreq *mreq,
 	ckey[0] = 'c';
 	pack_to_be64(ckey + 1, cnode->nid);
 	leveldb_iter_seek(iter, ckey, sizeof(ckey));
-	ret = 0;
 	while (1) {
 		if (!leveldb_iter_valid(iter))
 			break;
@@ -1480,12 +1487,16 @@ static int mstor_do_rmdir(struct mstor *mstor, struct mreq *mreq,
 		ret = mstor_fetch_node(mstor, nid, &node);
 		if (ret)
 			goto done;
-		ret = mstor_mode_check(&node, mreq, MSTOR_PERM_WRITE);
+		mode_and_type = unpack_from_be16(&cnode->val->mode_and_type);
+		ret = mstor_perm_check(&node, mreq,
+			mode_and_type & (~MNODE_IS_DIR), MSTOR_PERM_WRITE);
 		if (ret)
 			goto done;
-		ret = leveldb_delete_chunks(mstor, &node, bat, ztime);
-		if (ret)
-			goto done;
+		if (!(mode_and_type & MNODE_IS_DIR)) {
+			ret = leveldb_delete_chunks(mstor, &node, bat, ztime);
+			if (ret)
+				goto done;
+		}
 		leveldb_delete_node(pcomp2, pnode, cnode, bat);
 		mnode_free(&node);
 		memset(&node, 0, sizeof(struct mnode));
@@ -1501,6 +1512,7 @@ static int mstor_do_rmdir(struct mstor *mstor, struct mreq *mreq,
 		ret = -EIO;
 		goto done;
 	}
+	ret = 0;
 done:
 	free(err);
 	if (iter)
@@ -1768,7 +1780,7 @@ static int mstor_do_path_operation(struct mstor *mstor, struct mreq *mreq,
 	case MSTOR_OP_UTIMES:
 		return mstor_do_utimes(mstor, mreq, cnode);
 	case MSTOR_OP_RMDIR:
-		return mstor_do_rmdir(mstor, mreq, pcomp, cnode, pnode);
+		return mstor_do_rmdir(mstor, mreq, pcomp, pnode, cnode);
 	case MSTOR_OP_UNLINK:
 		return mstor_do_unlink(mstor, mreq, pcomp, pnode, cnode);
 	case MSTOR_OP_NODE_SEARCH: {
