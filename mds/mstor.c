@@ -1809,6 +1809,11 @@ static int mstor_do_rename(struct mstor *mstor, struct mreq *mreq)
 	char *err = NULL;
 	leveldb_writebatch_t* bat = NULL;
 
+	mreq->user = udata_lookup_user(mstor->udata, mreq->user_name);
+	if (IS_ERR(mreq->user)) {
+		ret = -EUSERS;
+		goto done;
+	}
 	req = (struct mreq_rename*)mreq;
 	memset(&src_pnode, 0, sizeof(src_pnode));
 	memset(&src_cnode, 0, sizeof(src_cnode));
@@ -1924,9 +1929,6 @@ int mstor_do_operation(struct mstor *mstor, struct mreq *mreq)
 	int ret;
 	struct mnode pnode, cnode;
 
-	mreq->user = udata_lookup_user(mstor->udata, mreq->user_name);
-	if (IS_ERR(mreq->user))
-		return -EUSERS;
 	switch (mreq->op) {
 	case MSTOR_OP_CHUNKALLOC:
 		ret = mstor_do_chunkalloc(mstor, mreq);
@@ -1942,15 +1944,21 @@ int mstor_do_operation(struct mstor *mstor, struct mreq *mreq)
 		ret = mstor_do_rename(mstor, mreq);
 		break;
 	default:
+		mreq->user = udata_lookup_user(mstor->udata, mreq->user_name);
+		if (IS_ERR(mreq->user)) {
+			ret = -EUSERS;
+			goto done;
+		}
 		memset(&pnode, 0, sizeof(pnode));
 		memset(&cnode, 0, sizeof(cnode));
 		ret = mstor_do_path_operation(mstor, mreq, &pnode, &cnode);
-		glitch_log("mreq type %s returning result %d\n",
-			mstor_op_ty_to_str(mreq->op), ret);
 		mnode_free(&pnode);
 		mnode_free(&cnode);
 		break;
 	}
+done:
+	glitch_log("mreq type %s returning result %d\n",
+		mstor_op_ty_to_str(mreq->op), ret);
 	return ret;
 }
 
