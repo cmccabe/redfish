@@ -44,6 +44,8 @@ enum mstor_op_ty {
 	MSTOR_OP_FIND_ZOMBIES,
 	MSTOR_OP_DESTROY_ZOMBIE,
 	MSTOR_OP_RENAME,
+	/** for internal use only */
+	MSTOR_OP_NODE_SEARCH,
 };
 
 struct mreq {
@@ -208,6 +210,27 @@ struct mreq_destroy_zombie {
 	struct mreq base;
 	/** zombie to destroy */
 	struct zombie_info zinfo;
+};
+
+struct mreq_rename {
+	struct mreq base;
+	/** destination path */
+	const char *dst_path;
+};
+
+struct mreq_node_search {
+	struct mreq base;
+	/** A node id which we must not recurse into.
+	 * If this is RF_INVAL_NID, nothing is forbidden. */
+	uint64_t forbidden;
+	/** (out param)  If we successfully resolve the path, this is the path
+	 * component of the child. */
+	char pcomp[RF_PCOMP_MAX];
+	/** (out param)  The number of path components we failed to resolve.
+	 * If we successfully resolved the path, this will be 0; if the last
+	 * path component didn't exist, this will be 1; etc.
+	 * This is only set if ret == 0 or ret == -ENOENT. */
+	int npc_rem;
 };
 
 /** Initialize the metadata store.

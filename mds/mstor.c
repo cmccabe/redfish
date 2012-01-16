@@ -167,6 +167,8 @@ const char *mstor_op_ty_to_str(enum mstor_op_ty op)
 		return "MSTOR_OP_DESTROY_ZOMBIE";
 	case MSTOR_OP_RENAME:
 		return "MSTOR_OP_RENAME";
+	case MSTOR_OP_NODE_SEARCH:
+		return "MSTOR_OP_NODE_SEARCH";
 	default:
 		break;
 	}
@@ -1651,6 +1653,7 @@ static int mstor_do_path_operation(struct mstor *mstor, struct mreq *mreq,
 	char *pcomp;
 	int ret, npc, cpc;
 	char full_path[RF_PATH_MAX];
+	uint64_t forbidden;
 
 	mreq->flags = MREQ_FLAG_CHECK_PERMS;
 	/* The superuser can do anything */
@@ -1686,11 +1689,20 @@ static int mstor_do_path_operation(struct mstor *mstor, struct mreq *mreq,
 			"root node! Error %d\n", ret);
 		return -ENOSYS;
 	}
+	if (mreq->op == MSTOR_OP_NODE_SEARCH) {
+		struct mreq_node_search *req = (struct mreq_node_search*)mreq;
+		forbidden = req->forbidden;
+	}
+	else {
+		forbidden = RF_INVAL_NID;
+	}
 	for (cpc = 0; cpc < npc; ++cpc) {
 		mnode_free(pnode);
 		memcpy(pnode, cnode, sizeof(struct mnode));
 		memset(cnode, 0, sizeof(struct mnode));
 		pcomp = memchr(pcomp, '\0', RF_PATH_MAX) + 1;
+		if (pnode->nid == forbidden)
+			return -EINVAL;
 		// TODO: lock if this is a write operation, and this is the
 		// last path component.  Or if this is a mkdirs operation.
 		ret = mstor_fetch_child(mstor, mreq, pcomp, pnode, cnode);
@@ -1720,6 +1732,13 @@ static int mstor_do_path_operation(struct mstor *mstor, struct mreq *mreq,
 				 */
 				mreq->flags &= ~MREQ_FLAG_CHECK_PERMS;
 				break;
+			case MSTOR_OP_NODE_SEARCH: {
+				struct mreq_node_search *req =
+					(struct mreq_node_search*)mreq;
+				req->pcomp[0] = '\0';
+				req->npc_rem = npc - cpc;
+				return -ENOENT;
+			}
 			default:
 				return ret;
 			}
@@ -1752,14 +1771,140 @@ static int mstor_do_path_operation(struct mstor *mstor, struct mreq *mreq,
 		return mstor_do_rmdir(mstor, mreq, pcomp, cnode, pnode);
 	case MSTOR_OP_UNLINK:
 		return mstor_do_unlink(mstor, mreq, pcomp, pnode, cnode);
-	case MSTOR_OP_RENAME:
-		return -ENOTSUP;
+	case MSTOR_OP_NODE_SEARCH: {
+		struct mreq_node_search *req = (struct mreq_node_search*)mreq;
+		snprintf(req->pcomp, RF_PCOMP_MAX, "%s", pcomp);
+		req->npc_rem = 0;
+		return 0;
+	}
 	default:
 		abort();
 		break;
 	}
 	/* unreachable, but keep compiler happy */
 	return -ENOTSUP;
+}
+
+static int mstor_do_rename(struct mstor *mstor, struct mreq *mreq)
+{
+	int ret;
+	struct mreq_rename *req;
+	struct mnode src_pnode, src_cnode;
+	struct mnode dst_pnode, dst_cnode;
+	struct mreq_node_search src_req, dst_req;
+	uint16_t mode_and_type;
+	char src_ckey[MCHILD_KEY_MAX], dst_ckey[MCHILD_KEY_MAX];
+	char *err = NULL;
+	leveldb_writebatch_t* bat = NULL;
+
+	req = (struct mreq_rename*)mreq;
+	memset(&src_pnode, 0, sizeof(src_pnode));
+	memset(&src_cnode, 0, sizeof(src_cnode));
+	memset(&dst_pnode, 0, sizeof(dst_pnode));
+	memset(&dst_cnode, 0, sizeof(dst_cnode));
+	memset(&src_req, 0, sizeof(src_req));
+	memset(&dst_req, 0, sizeof(dst_req));
+
+	src_req.base.op = MSTOR_OP_NODE_SEARCH;
+	src_req.base.full_path = mreq->full_path;
+	src_req.base.user_name = mreq->user_name;
+	src_req.base.user = mreq->user;
+	src_req.forbidden = RF_INVAL_NID;
+	ret = mstor_do_path_operation(mstor, (struct mreq*)&src_req,
+			&src_pnode, &src_cnode);
+	if (ret)
+		goto done;
+	if (src_pnode.val == NULL) {
+		/* Can't move the root directory to somewhere else */
+		ret = -EINVAL;
+	}
+	dst_req.base.op = MSTOR_OP_NODE_SEARCH;
+	dst_req.base.full_path = req->dst_path;
+	dst_req.base.user_name = mreq->user_name;
+	dst_req.base.user = mreq->user;
+	/* The path resolution of the destination should not cross the source.
+	 * If it does, we are trying to make a directory a subdirectory of
+	 * itself. */
+	dst_req.forbidden = src_cnode.nid;
+	ret = mstor_do_path_operation(mstor, (struct mreq*)&dst_req,
+			&dst_pnode, &dst_cnode);
+	if (ret == 0) {
+		/* the target exists already */
+		if (src_cnode.nid == dst_cnode.nid) {
+			/* We are trying to move something to itself, which is
+			 * stupid, but not actually forbidden. */
+			return 0;
+		}
+		mode_and_type =
+			unpack_from_be16(&dst_cnode.val->mode_and_type);
+		if (!(mode_and_type & MNODE_IS_DIR)) {
+			/* In contrast to POSIX, HDFS-style semantics make it an
+			 * error to rename a file over an existing file.  We
+			 * probably should eventually support a POSIX mode for
+			 * renames. */
+			ret = -EEXIST;
+			goto done;
+		}
+		/* When asked to rename /a/b to /x/y, and y exists as a
+		 * directory, we move the source to /x/y/a.  For HDFS, this
+		 * succeeds whether the source is a file or a directory.  For
+		 * POSIX, we would return -EISDIR here if the source was a
+		 * regular file rather than a directory.  Rename semantics are
+		 * weird. */
+		mnode_free(&dst_pnode);
+		memcpy(&dst_pnode, &dst_cnode, sizeof(struct mnode));
+		memset(&dst_cnode, 0, sizeof(struct mnode));
+	}
+	else if (ret == -ENOENT) {
+		/* We didn't resolve all path components.  But did we get all of
+		 * them except the very last one?  If so, then we're right where
+		 * we want to be.  If not, then we'd better return -ENOENT. */
+		if (dst_req.npc_rem != 1)
+			goto done;
+	}
+	else {
+		/* there was an error when looking up the target */
+		goto done;
+	}
+	bat = leveldb_writebatch_create();
+	if (!bat) {
+		ret = -ENOMEM;
+		goto done;
+	}
+	/* delete directory entry in src parent */
+	src_ckey[0] = 'c';
+	pack_to_be64(src_ckey + 1, src_pnode.nid);
+	snprintf(src_ckey + 1 + sizeof(uint64_t), RF_PCOMP_MAX,
+			"%s", src_req.pcomp);
+	leveldb_writebatch_delete(bat, src_ckey,
+			1 + sizeof(uint64_t) + strlen(src_req.pcomp));
+	/* add directory entry in dst parent */
+	dst_ckey[0] = 'c';
+	pack_to_be64(dst_ckey + 1, dst_pnode.nid);
+	snprintf(dst_ckey + 1 + sizeof(uint64_t), RF_PCOMP_MAX,
+			"%s", dst_req.pcomp);
+	leveldb_writebatch_put(bat, dst_ckey,
+			1 + sizeof(uint64_t) + strlen(dst_req.pcomp),
+			(const char*)&src_cnode.nid, sizeof(uint64_t));
+	leveldb_write(mstor->ldb, mstor->lwropt, bat, &err);
+	if (err) {
+		glitch_log("mstor_do_rename(src='%s',dst='%s'): got "
+			"leveldb_write error '%s'\n",
+			mreq->full_path, req->dst_path, err);
+		ret = -EIO;
+		goto done;
+	}
+	ret = 0;
+
+done:
+	free(err);
+	if (bat)
+		leveldb_writebatch_destroy(bat);
+	mnode_free(&src_pnode);
+	mnode_free(&src_cnode);
+	mnode_free(&dst_pnode);
+	mnode_free(&dst_cnode);
+	return ret;
 }
 
 int mstor_do_operation(struct mstor *mstor, struct mreq *mreq)
@@ -1779,6 +1924,10 @@ int mstor_do_operation(struct mstor *mstor, struct mreq *mreq)
 		break;
 	case MSTOR_OP_DESTROY_ZOMBIE:
 		ret = mstor_do_destroy_zombie(mstor, mreq);
+		break;
+	case MSTOR_OP_RENAME:
+		// TODO: handle cross-delegation renames
+		ret = mstor_do_rename(mstor, mreq);
 		break;
 	default:
 		memset(&pnode, 0, sizeof(pnode));
