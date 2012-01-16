@@ -125,20 +125,6 @@ static int mstor_test_open_close(const char *tdir)
 	return 0;
 }
 
-static int mstor_do_creat(struct mstor *mstor, const char *full_path,
-		uint64_t ctime)
-{
-	struct mreq_creat mreq;
-
-	memset(&mreq, 0, sizeof(mreq));
-	mreq.base.op = MSTOR_OP_CREAT;
-	mreq.base.full_path = full_path;
-	mreq.base.user_name = MSU_SPOONY_USER;
-	mreq.mode = 0644;
-	mreq.ctime = ctime;
-	return mstor_do_operation(mstor, (struct mreq*)&mreq);
-}
-
 static int mstor_do_mkdirs(struct mstor *mstor, const char *full_path,
 		int mode, uint64_t ctime, const char *user_name)
 {
@@ -151,6 +137,25 @@ static int mstor_do_mkdirs(struct mstor *mstor, const char *full_path,
 	mreq.mode = mode;
 	mreq.ctime = ctime;
 	return mstor_do_operation(mstor, (struct mreq*)&mreq);
+}
+
+static int mstor_do_creat(struct mstor *mstor, const char *full_path,
+		int mode, uint64_t ctime, const char *user_name, uint64_t *nid)
+{
+	int ret;
+	struct mreq_creat mreq;
+
+	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.op = MSTOR_OP_CREAT;
+	mreq.base.full_path = full_path;
+	mreq.base.user_name = user_name;
+	mreq.mode = mode;
+	mreq.ctime = ctime;
+	ret = mstor_do_operation(mstor, (struct mreq*)&mreq);
+	if (ret)
+		return ret;
+	*nid = mreq.nid;
+	return 0;
 }
 
 static int unpack_stat_hdr(struct mmm_stat_hdr *hdr, char *pcomp)
@@ -329,6 +334,7 @@ static int mstor_test1(const char *tdir)
 {
 	struct mstor *mstor;
 	struct udata *udata;
+	uint64_t nid;
 
 	udata = udata_unit_create_default();
 	EXPECT_NOT_ERRPTR(udata);
@@ -339,8 +345,8 @@ static int mstor_test1(const char *tdir)
 		NULL, MSU_UNIT_USERS_GROUP), 0);
 	EXPECT_EQUAL(mstor_do_chmod(mstor, "/", RF_SUPERUSER_NAME,
 		0775), 0);
-	mstor_dump(mstor, stdout);
-	EXPECT_ZERO(mstor_do_creat(mstor, "/a", 123));
+	EXPECT_ZERO(mstor_do_creat(mstor, "/a", 0700, 123,
+		MSU_SPOONY_USER, &nid));
 	EXPECT_ZERO(mstor_do_mkdirs(mstor, "/b/c",
 		0644, 123, MSU_SPOONY_USER));
 	EXPECT_EQUAL(mstor_do_mkdirs(mstor, "/a/d/e",
@@ -386,6 +392,16 @@ static int mstor_test1(const char *tdir)
 		456, 0), -ENOTEMPTY);
 	EXPECT_EQUAL(mstor_do_rmdir(mstor, "/b/c", MSU_WOOT_USER,
 		456, 1), 0);
+
+	/* test file operations */
+	EXPECT_ZERO(mstor_do_mkdirs(mstor, "/b/c/d",
+		0755, 123, MSU_WOOT_USER));
+	EXPECT_EQUAL(mstor_do_creat(mstor, "/b/c/d", 0700, 123,
+		MSU_WOOT_USER, &nid), -EEXIST);
+	EXPECT_EQUAL(mstor_do_creat(mstor, "/b/c/d/foo", 0664, 123,
+		MSU_SPOONY_USER, &nid), -EPERM);
+	EXPECT_ZERO(mstor_do_creat(mstor, "/b/c/d/foo", 0664, 123,
+		MSU_WOOT_USER, &nid));
 
 	EXPECT_EQUAL(mstor_do_chmod(mstor, "/", RF_SUPERUSER_NAME,
 		0700), 0);
