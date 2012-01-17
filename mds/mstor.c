@@ -1752,7 +1752,6 @@ static int mstor_do_path_operation(struct mstor *mstor, struct mreq *mreq,
 			case MSTOR_OP_NODE_SEARCH: {
 				struct mreq_node_search *req =
 					(struct mreq_node_search*)mreq;
-				req->pcomp[0] = '\0';
 				req->npc_rem = npc - cpc;
 				return -ENOENT;
 			}
@@ -1790,7 +1789,6 @@ static int mstor_do_path_operation(struct mstor *mstor, struct mreq *mreq,
 		return mstor_do_unlink(mstor, mreq, pcomp, pnode, cnode);
 	case MSTOR_OP_NODE_SEARCH: {
 		struct mreq_node_search *req = (struct mreq_node_search*)mreq;
-		snprintf(req->pcomp, RF_PCOMP_MAX, "%s", pcomp);
 		req->npc_rem = 0;
 		return 0;
 	}
@@ -1802,6 +1800,18 @@ static int mstor_do_path_operation(struct mstor *mstor, struct mreq *mreq,
 	return -ENOTSUP;
 }
 
+static int mstor_copy_last_pcomp(char *pcomp, const char *full_path)
+{
+	char *slash;
+
+	slash = rindex(full_path, '/');
+	if (!slash)
+		return -EINVAL;
+	if (slash[1] == '\0')
+		return -ENOSYS;
+	return zsnprintf(pcomp, RF_PCOMP_MAX, "%s", slash + 1);
+}
+
 static int mstor_do_rename(struct mstor *mstor, struct mreq *mreq)
 {
 	int ret;
@@ -1810,7 +1820,9 @@ static int mstor_do_rename(struct mstor *mstor, struct mreq *mreq)
 	struct mnode dst_pnode, dst_cnode;
 	struct mreq_node_search src_req, dst_req;
 	uint16_t mode_and_type;
+	uint64_t be_src_cnode_nid;
 	char src_ckey[MCHILD_KEY_MAX], dst_ckey[MCHILD_KEY_MAX];
+	char src_pcomp[RF_PCOMP_MAX], dst_pcomp[RF_PCOMP_MAX];
 	char *err = NULL;
 	leveldb_writebatch_t* bat = NULL;
 
@@ -1821,13 +1833,11 @@ static int mstor_do_rename(struct mstor *mstor, struct mreq *mreq)
 	memset(&dst_cnode, 0, sizeof(dst_cnode));
 	memset(&src_req, 0, sizeof(src_req));
 	memset(&dst_req, 0, sizeof(dst_req));
-
 	mreq->user = udata_lookup_user(mstor->udata, mreq->user_name);
 	if (IS_ERR(mreq->user)) {
 		ret = -EUSERS;
 		goto done;
 	}
-
 	src_req.base.op = MSTOR_OP_NODE_SEARCH;
 	src_req.base.full_path = mreq->full_path;
 	src_req.base.user_name = mreq->user_name;
@@ -1841,6 +1851,7 @@ static int mstor_do_rename(struct mstor *mstor, struct mreq *mreq)
 		/* Can't move the root directory to somewhere else */
 		ret = -EINVAL;
 	}
+	mstor_copy_last_pcomp(src_pcomp, mreq->full_path);
 	dst_req.base.op = MSTOR_OP_NODE_SEARCH;
 	dst_req.base.full_path = req->dst_path;
 	dst_req.base.user_name = mreq->user_name;
@@ -1877,13 +1888,18 @@ static int mstor_do_rename(struct mstor *mstor, struct mreq *mreq)
 		mnode_free(&dst_pnode);
 		memcpy(&dst_pnode, &dst_cnode, sizeof(struct mnode));
 		memset(&dst_cnode, 0, sizeof(struct mnode));
+		/* copy the last path component from the source path */
+		mstor_copy_last_pcomp(dst_pcomp, mreq->full_path);
 	}
 	else if (ret == -ENOENT) {
+		glitch_log("partial path components with npc_rem = %d\n", dst_req.npc_rem);
 		/* We didn't resolve all path components.  But did we get all of
 		 * them except the very last one?  If so, then we're right where
 		 * we want to be.  If not, then we'd better return -ENOENT. */
 		if (dst_req.npc_rem != 1)
 			goto done;
+		/* copy the last path component from the destination path */
+		mstor_copy_last_pcomp(dst_pcomp, req->dst_path);
 	}
 	else {
 		/* there was an error when looking up the target */
@@ -1898,17 +1914,18 @@ static int mstor_do_rename(struct mstor *mstor, struct mreq *mreq)
 	src_ckey[0] = 'c';
 	pack_to_be64(src_ckey + 1, src_pnode.nid);
 	snprintf(src_ckey + 1 + sizeof(uint64_t), RF_PCOMP_MAX,
-			"%s", src_req.pcomp);
+			"%s", src_pcomp);
 	leveldb_writebatch_delete(bat, src_ckey,
-			1 + sizeof(uint64_t) + strlen(src_req.pcomp));
+			1 + sizeof(uint64_t) + strlen(src_pcomp));
 	/* add directory entry in dst parent */
 	dst_ckey[0] = 'c';
 	pack_to_be64(dst_ckey + 1, dst_pnode.nid);
 	snprintf(dst_ckey + 1 + sizeof(uint64_t), RF_PCOMP_MAX,
-			"%s", dst_req.pcomp);
+			"%s", dst_pcomp);
+	pack_to_be64(&be_src_cnode_nid, src_cnode.nid);
 	leveldb_writebatch_put(bat, dst_ckey,
-			1 + sizeof(uint64_t) + strlen(dst_req.pcomp),
-			(const char*)&src_cnode.nid, sizeof(uint64_t));
+			1 + sizeof(uint64_t) + strlen(dst_pcomp),
+			(const char*)&be_src_cnode_nid, sizeof(uint64_t));
 	leveldb_write(mstor->ldb, mstor->lwropt, bat, &err);
 	if (err) {
 		glitch_log("mstor_do_rename(src='%s',dst='%s'): got "

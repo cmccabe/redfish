@@ -225,9 +225,6 @@ struct mreq_node_search {
 	/** A node id which we must not recurse into.
 	 * If this is RF_INVAL_NID, nothing is forbidden. */
 	uint64_t forbidden;
-	/** (out param)  If we successfully resolve the path, this is the path
-	 * component of the child. */
-	char pcomp[RF_PCOMP_MAX];
 	/** (out param)  The number of path components we failed to resolve.
 	 * If we successfully resolved the path, this will be 0; if the last
 	 * path component didn't exist, this will be 1; etc.

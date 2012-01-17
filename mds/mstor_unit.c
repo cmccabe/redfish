@@ -541,23 +541,27 @@ static int mstoru_test1(const char *tdir)
 		RF_SUPERUSER_NAME), -EEXIST);
 	EXPECT_EQUAL(mstoru_do_rename(mstor, "/b/c/d/foo", "/b/c/d/foo2",
 		MSTORU_INVALID_USER), -EUSERS);
-//	EXPECT_EQUAL(mstoru_do_rename(mstor, "/b/c/d/foo", "/b/c/d/foo2",
-//		MSTORU_WOOT_USER), 0);
-//	EXPECT_EQUAL(mstoru_do_rename(mstor, "/b/c/d/foo", "/b/c/d/foo2",
-//		MSTORU_WOOT_USER), -ENOENT);
-//	EXPECT_EQUAL(mstoru_do_rename(mstor, "/b/c/d/foo2", "/b/c/d/foo3",
-//		MSTORU_SPOONY_USER), -EPERM);
-//	EXPECT_EQUAL(mstoru_do_rename(mstor, "/b/c/d/foo2", "/b/c",
-//		RF_SUPERUSER_NAME), 0);
-//	EXPECT_EQUAL(mstoru_do_rename(mstor, "/b/c", "/b/c/d",
-//		RF_SUPERUSER_NAME), -EINVAL);
-//	EXPECT_EQUAL(mstoru_do_rename(mstor, "/", "/pizzaland",
-//		RF_SUPERUSER_NAME), -EINVAL);
+	EXPECT_EQUAL(mstoru_do_rename(mstor, "/b/c/d/foo", "/b/c/d/foo",
+		RF_SUPERUSER_NAME), 0);
+	EXPECT_EQUAL(mstoru_do_rename(mstor, "/b/c/d/foo", "/b/c/d/foo2",
+		MSTORU_WOOT_USER), 0);
+	EXPECT_EQUAL(mstoru_do_rename(mstor, "/b/c/d/foo", "/b/c/d/foo2",
+		MSTORU_WOOT_USER), -ENOENT);
+	EXPECT_EQUAL(mstoru_do_rename(mstor, "/b/c/d/foo2", "/b/c/d/foo2",
+		RF_SUPERUSER_NAME), 0);
+	EXPECT_EQUAL(mstoru_do_rename(mstor, "/b/c/d/foo2", "/b/c/d/foo3",
+		MSTORU_SPOONY_USER), -EPERM);
+	EXPECT_EQUAL(mstoru_do_rename(mstor, "/b/c/d/foo2", "/b/c",
+		RF_SUPERUSER_NAME), 0);
+	EXPECT_EQUAL(mstoru_do_rename(mstor, "/b/c", "/b/c/d",
+		RF_SUPERUSER_NAME), -EINVAL);
+	EXPECT_EQUAL(mstoru_do_rename(mstor, "/", "/pizzaland",
+		RF_SUPERUSER_NAME), -EINVAL);
 
 	/* test unlink */
 	EXPECT_EQUAL(mstoru_do_unlink(mstor, "/b/c/d",
 		RF_SUPERUSER_NAME, 123), -EISDIR);
-	EXPECT_EQUAL(mstoru_do_unlink(mstor, "/b/c/d/foo",
+	EXPECT_EQUAL(mstoru_do_unlink(mstor, "/b/c/foo2",
 		MSTORU_WOOT_USER, 124), 0);
 	EXPECT_EQUAL(mstoru_do_unlink(mstor, "/b/c/d/bar",
 		MSTORU_WOOT_USER, 125), 0);
