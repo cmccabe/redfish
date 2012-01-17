@@ -47,6 +47,8 @@
 #define MSTORU_WOOTERS_GROUP "wooters"
 #define MSTORU_WOOTERS_GID 3
 
+#define MSTORU_INVALID_USER "invalid_user"
+
 #define MSTORU_MAX_NID 32
 #define MSTORU_MAX_CINFOS 64
 #define MSTORU_MAX_ZINFOS 64
@@ -179,6 +181,19 @@ static int mstoru_do_chunkalloc(struct mstor *mstor, uint64_t nid,
 	cinfo->cid = mreq.cid;
 	cinfo->base = off;
 	return 0;
+}
+
+static int mstoru_do_rename(struct mstor *mstor, const char *src,
+		const char *dst, const char *user_name)
+{
+	struct mreq_rename mreq;
+
+	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.op = MSTOR_OP_RENAME;
+	mreq.base.full_path = src;
+	mreq.base.user_name = user_name;
+	mreq.dst_path = dst;
+	return mstor_do_operation(mstor, (struct mreq*)&mreq);
 }
 
 static int mstoru_do_unlink(struct mstor *mstor, const char *full_path,
@@ -433,6 +448,8 @@ static int mstoru_test1(const char *tdir)
 	EXPECT_NOT_ERRPTR(udata);
 	mstor = mstoru_init_unit(tdir, "test1", 1024, udata);
 	EXPECT_NOT_ERRPTR(mstor);
+	EXPECT_EQUAL(mstoru_do_mkdirs(mstor, "/inval/user",
+		0644, 123, MSTORU_INVALID_USER), -EUSERS);
 	/* change root node's mode to 0775 and group to 'users' */
 	EXPECT_EQUAL(mstoru_do_chown(mstor, "/", RF_SUPERUSER_NAME,
 		NULL, MSTORU_USERS_GROUP), 0);
@@ -516,6 +533,26 @@ static int mstoru_test1(const char *tdir)
 	EXPECT_ZERO(mstoru_do_creat(mstor, "/b/c/d/bar", 0664, 123,
 		MSTORU_WOOT_USER, &nid));
 	EXPECT_ZERO(mstoru_do_chunkalloc(mstor, nid, 0, &cinfos1[3]));
+
+	/* test rename */
+	EXPECT_EQUAL(mstoru_do_rename(mstor, "/b/c/d/foo", "/b/c/d/bar",
+		MSTORU_WOOT_USER), -EEXIST);
+	EXPECT_EQUAL(mstoru_do_rename(mstor, "/b/c/d/foo", "/b/c/d/bar",
+		RF_SUPERUSER_NAME), -EEXIST);
+	EXPECT_EQUAL(mstoru_do_rename(mstor, "/b/c/d/foo", "/b/c/d/foo2",
+		MSTORU_INVALID_USER), -EUSERS);
+//	EXPECT_EQUAL(mstoru_do_rename(mstor, "/b/c/d/foo", "/b/c/d/foo2",
+//		MSTORU_WOOT_USER), 0);
+//	EXPECT_EQUAL(mstoru_do_rename(mstor, "/b/c/d/foo", "/b/c/d/foo2",
+//		MSTORU_WOOT_USER), -ENOENT);
+//	EXPECT_EQUAL(mstoru_do_rename(mstor, "/b/c/d/foo2", "/b/c/d/foo3",
+//		MSTORU_SPOONY_USER), -EPERM);
+//	EXPECT_EQUAL(mstoru_do_rename(mstor, "/b/c/d/foo2", "/b/c",
+//		RF_SUPERUSER_NAME), 0);
+//	EXPECT_EQUAL(mstoru_do_rename(mstor, "/b/c", "/b/c/d",
+//		RF_SUPERUSER_NAME), -EINVAL);
+//	EXPECT_EQUAL(mstoru_do_rename(mstor, "/", "/pizzaland",
+//		RF_SUPERUSER_NAME), -EINVAL);
 
 	/* test unlink */
 	EXPECT_EQUAL(mstoru_do_unlink(mstor, "/b/c/d",

@@ -1814,11 +1814,6 @@ static int mstor_do_rename(struct mstor *mstor, struct mreq *mreq)
 	char *err = NULL;
 	leveldb_writebatch_t* bat = NULL;
 
-	mreq->user = udata_lookup_user(mstor->udata, mreq->user_name);
-	if (IS_ERR(mreq->user)) {
-		ret = -EUSERS;
-		goto done;
-	}
 	req = (struct mreq_rename*)mreq;
 	memset(&src_pnode, 0, sizeof(src_pnode));
 	memset(&src_cnode, 0, sizeof(src_cnode));
@@ -1826,6 +1821,12 @@ static int mstor_do_rename(struct mstor *mstor, struct mreq *mreq)
 	memset(&dst_cnode, 0, sizeof(dst_cnode));
 	memset(&src_req, 0, sizeof(src_req));
 	memset(&dst_req, 0, sizeof(dst_req));
+
+	mreq->user = udata_lookup_user(mstor->udata, mreq->user_name);
+	if (IS_ERR(mreq->user)) {
+		ret = -EUSERS;
+		goto done;
+	}
 
 	src_req.base.op = MSTOR_OP_NODE_SEARCH;
 	src_req.base.full_path = mreq->full_path;
