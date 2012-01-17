@@ -47,7 +47,9 @@
 #define MSU_UNIT_WOOTERS_GROUP "wooters"
 #define MSU_UNIT_WOOTERS_GID 3
 
+#define MSU_UNIT_MAX_NID 32
 #define MSU_UNIT_MAX_CINFOS 64
+#define MSU_UNIT_MAX_ZINFOS 64
 
 typedef int (*stat_check_fn_t)(void *arg, struct mmm_stat_hdr *hdr,
 		const char *pcomp);
@@ -162,7 +164,7 @@ static int mstor_do_creat(struct mstor *mstor, const char *full_path,
 }
 
 static int mstor_do_chunkalloc(struct mstor *mstor, uint64_t nid,
-		uint64_t off, uint64_t *cid)
+		uint64_t off, struct chunk_info *cinfo)
 {
 	int ret;
 	struct mreq_chunkalloc mreq;
@@ -174,9 +176,53 @@ static int mstor_do_chunkalloc(struct mstor *mstor, uint64_t nid,
 	ret = mstor_do_operation(mstor, (struct mreq*)&mreq);
 	if (ret)
 		return ret;
-	if (cid)
-		*cid = mreq.cid;
+	cinfo->cid = mreq.cid;
+	cinfo->base = off;
 	return 0;
+}
+
+static int mstor_do_unlink(struct mstor *mstor, const char *full_path,
+		const char *user_name, uint64_t ztime)
+{
+	struct mreq_unlink mreq;
+
+	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.op = MSTOR_OP_UNLINK;
+	mreq.base.full_path = full_path;
+	mreq.base.user_name = user_name;
+	mreq.ztime = ztime;
+	return mstor_do_operation(mstor, (struct mreq*)&mreq);
+}
+
+static int mstor_do_find_zombies(struct mstor *mstor,
+		const struct zombie_info *lower_bound, int max_res,
+		struct zombie_info *zinfos)
+{
+	int ret;
+	struct mreq_find_zombies mreq;
+
+	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.op = MSTOR_OP_FIND_ZOMBIES;
+	mreq.lower_bound.cid = lower_bound->cid;
+	mreq.lower_bound.ztime = lower_bound->ztime;
+	mreq.max_res = max_res;
+	mreq.zinfos = zinfos;
+	ret = mstor_do_operation(mstor, (struct mreq*)&mreq);
+	if (ret < 0)
+		return ret;
+	return mreq.num_res;
+}
+
+static int mstor_do_destroy_zombie(struct mstor *mstor,
+		const struct zombie_info *zinfo)
+{
+	struct mreq_destroy_zombie mreq;
+
+	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.op = MSTOR_OP_DESTROY_ZOMBIE;
+	mreq.zinfo.cid = zinfo->cid;
+	mreq.zinfo.ztime = zinfo->ztime;
+	return mstor_do_operation(mstor, (struct mreq*)&mreq);
 }
 
 static int mstor_do_chunkfind(struct mstor *mstor, const char *full_path,
@@ -376,8 +422,11 @@ static int mstor_test1(const char *tdir)
 {
 	struct mstor *mstor;
 	struct udata *udata;
-	uint64_t nid, cid, cid2, cid3;
-	struct chunk_info cinfos[MSU_UNIT_MAX_CINFOS];
+	uint64_t nid;
+	struct chunk_info cinfos1[MSU_UNIT_MAX_CINFOS];
+	struct chunk_info cinfos2[MSU_UNIT_MAX_CINFOS];
+	struct zombie_info lower_bound;
+	struct zombie_info zinfos[MSU_UNIT_MAX_ZINFOS];
 	uint64_t csize = 134217728ULL;
 
 	udata = udata_unit_create_default();
@@ -447,24 +496,59 @@ static int mstor_test1(const char *tdir)
 	EXPECT_ZERO(mstor_do_creat(mstor, "/b/c/d/foo", 0664, 123,
 		MSU_WOOT_USER, &nid));
 
-	EXPECT_ZERO(mstor_do_chunkalloc(mstor, nid, 0, &cid));
+	EXPECT_ZERO(mstor_do_chunkalloc(mstor, nid, 0, &cinfos1[0]));
 	EXPECT_EQUAL(mstor_do_chunkfind(mstor, "/b/c/d/foo", 0, 1,
-		MSU_WOOT_USER, MSU_UNIT_MAX_CINFOS, cinfos), 1);
-//	printf("cid = %"PRIx64", cinfos[0].cid = %"PRIx64", cinfos[0].base = %"PRIx64"\n",
-//	       cid, cinfos[0].cid, cinfos[0].base);
-	EXPECT_EQUAL(cinfos[0].cid, cid);
-	EXPECT_EQUAL(cinfos[0].base, 0);
-	EXPECT_ZERO(mstor_do_chunkalloc(mstor, nid, csize, &cid2));
-	EXPECT_ZERO(mstor_do_chunkalloc(mstor, nid, csize * 2ULL, &cid3));
+		MSU_WOOT_USER, MSU_UNIT_MAX_CINFOS, cinfos2), 1);
+//	printf("cinfos1[0].cid = %"PRIx64", cinfos1[0].base = %"PRIx64"\n",
+//	       cinfos[0].cid, cinfos[0].base);
+	EXPECT_EQUAL(cinfos1[0].cid, cinfos2[0].cid);
+	EXPECT_EQUAL(cinfos1[0].base, cinfos2[0].base);
+	EXPECT_ZERO(mstor_do_chunkalloc(mstor, nid, csize, &cinfos1[1]));
+	EXPECT_ZERO(mstor_do_chunkalloc(mstor, nid, csize * 2ULL, &cinfos1[2]));
 	EXPECT_EQUAL(mstor_do_chunkfind(mstor, "/b/c/d/foo", 0, csize * 10ULL,
-		MSU_WOOT_USER, MSU_UNIT_MAX_CINFOS, cinfos), 3);
-	EXPECT_EQUAL(cinfos[0].cid, cid);
-	EXPECT_EQUAL(cinfos[0].base, 0);
-	EXPECT_EQUAL(cinfos[1].cid, cid2);
-	EXPECT_EQUAL(cinfos[1].base, csize);
-	EXPECT_EQUAL(cinfos[2].cid, cid3);
-	EXPECT_EQUAL(cinfos[2].base, csize * 2ULL);
+		MSU_WOOT_USER, MSU_UNIT_MAX_CINFOS, cinfos2), 3);
+	EXPECT_EQUAL(cinfos1[1].cid, cinfos2[1].cid);
+	EXPECT_EQUAL(cinfos1[1].base, cinfos2[1].base);
+	EXPECT_EQUAL(cinfos1[2].cid, cinfos2[2].cid);
+	EXPECT_EQUAL(cinfos1[2].base, cinfos2[2].base);
+	EXPECT_ZERO(mstor_do_creat(mstor, "/b/c/d/bar", 0664, 123,
+		MSU_WOOT_USER, &nid));
+	EXPECT_ZERO(mstor_do_chunkalloc(mstor, nid, 0, &cinfos1[3]));
 
+	/* test unlink */
+	EXPECT_EQUAL(mstor_do_unlink(mstor, "/b/c/d",
+		RF_SUPERUSER_NAME, 123), -EISDIR);
+	EXPECT_EQUAL(mstor_do_unlink(mstor, "/b/c/d/foo",
+		MSU_WOOT_USER, 124), 0);
+	EXPECT_EQUAL(mstor_do_unlink(mstor, "/b/c/d/bar",
+		MSU_WOOT_USER, 125), 0);
+	lower_bound.ztime = 123;
+	lower_bound.cid = 0;
+	EXPECT_EQUAL(mstor_do_find_zombies(mstor, &lower_bound,
+			MSU_UNIT_MAX_ZINFOS, zinfos), 4);
+	EXPECT_EQUAL(zinfos[0].cid, cinfos1[0].cid);
+	EXPECT_EQUAL(zinfos[0].ztime, 124);
+	EXPECT_EQUAL(zinfos[1].cid, cinfos1[1].cid);
+	EXPECT_EQUAL(zinfos[1].ztime, 124);
+	EXPECT_EQUAL(zinfos[2].cid, cinfos1[2].cid);
+	EXPECT_EQUAL(zinfos[2].ztime, 124);
+	EXPECT_EQUAL(zinfos[3].cid, cinfos1[3].cid);
+	EXPECT_EQUAL(zinfos[3].ztime, 125);
+	lower_bound.ztime = 127;
+	lower_bound.cid = 0;
+	EXPECT_EQUAL(mstor_do_find_zombies(mstor, &lower_bound,
+			MSU_UNIT_MAX_ZINFOS, zinfos), 0);
+	lower_bound.ztime = 125;
+	lower_bound.cid = 0;
+	EXPECT_EQUAL(mstor_do_find_zombies(mstor, &lower_bound,
+			MSU_UNIT_MAX_ZINFOS, zinfos), 1);
+	EXPECT_EQUAL(zinfos[0].cid, cinfos1[3].cid);
+	EXPECT_EQUAL(zinfos[0].ztime, 125);
+	EXPECT_ZERO(mstor_do_destroy_zombie(mstor, &zinfos[0]));
+	EXPECT_EQUAL(mstor_do_find_zombies(mstor, &lower_bound,
+			MSU_UNIT_MAX_ZINFOS, zinfos), 0);
+
+	/* test stat again */
 	EXPECT_EQUAL(mstor_do_chmod(mstor, "/", RF_SUPERUSER_NAME,
 		0700), 0);
 	EXPECT_EQUAL(mstor_do_stat(mstor, "/", MSU_SPOONY_USER,

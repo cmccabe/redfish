@@ -1610,7 +1610,7 @@ static int mstor_do_find_zombies(struct mstor *mstor, struct mreq *mreq)
 		}
 		if (k[0] != 'z')
 			break;
-		if (klen <= MZOMBIE_KEY_LEN) {
+		if (klen != MZOMBIE_KEY_LEN) {
 			glitch_log("mstor_do_find_zombies: leveldb_iter_key "
 				"returned klen = %Zd.  That should not be "
 				"possible.\n", klen);
@@ -1624,8 +1624,8 @@ static int mstor_do_find_zombies(struct mstor *mstor, struct mreq *mreq)
 			ret = -EIO;
 			goto done;
 		}
-		req->zinfo[num_res].ztime = unpack_from_be64(k + 1);
-		req->zinfo[num_res].cid =
+		req->zinfos[num_res].ztime = unpack_from_be64(k + 1);
+		req->zinfos[num_res].cid =
 				unpack_from_be64(k + sizeof(uint64_t) + 1);
 		++num_res;
 		leveldb_iter_next(iter);

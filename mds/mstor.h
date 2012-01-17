@@ -203,8 +203,9 @@ struct mreq_find_zombies {
 	int max_res;
 	/** (out param) number of results found */
 	int num_res;
-	/** (out param) results */
-	struct zombie_info zinfo[0];
+	/** (out param) an array of size max_res where we'll store zombie
+	 * information. */
+	struct zombie_info *zinfos;
 };
 
 struct mreq_destroy_zombie {
