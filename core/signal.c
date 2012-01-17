@@ -22,6 +22,7 @@
 #include "util/error.h"
 #include "util/fast_log_mgr.h"
 #include "util/fast_log_types.h"
+#include "util/platform/signal.h"
 #include "util/safe_io.h"
 
 #include <errno.h>
@@ -77,6 +78,9 @@ static void handle_fatal_signal(int sig, siginfo_t *siginfo, void *ctx)
 	snprintf(buf, sizeof(bentries), "HANDLE_FATAL_SIGNAL(sig=%d, "
 			"name=%s)\n", sig, sys_siglist[sig]);
 	res = write(g_crash_log_fd, buf, strlen(buf));
+	signal_analyze_plat_data(ctx, buf, sizeof(bentries));
+	res = write(g_crash_log_fd, buf, strlen(buf));
+
 	bsize = backtrace(bentries, sizeof(bentries)/sizeof(bentries[0]));
 	backtrace_symbols_fd(bentries, bsize, g_crash_log_fd);
 	snprintf(buf, sizeof(bentries), "END_HANDLE_FATAL_SIGNAL\n");

@@ -4,6 +4,7 @@
 add_library(platform
     pipe2.c
     readdir.c
+    signal.c
     socket.c
     thread_id.c
 )
