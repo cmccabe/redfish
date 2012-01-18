@@ -24,6 +24,8 @@
 
 const char *terror(int err)
 {
+	if (err < 0)
+		err = -err;
 	switch (err) {
 	case EPERM:
 		return "Operation not permitted";

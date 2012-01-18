@@ -57,6 +57,8 @@ print """/*
 
 const char *terror(int err)
 {
+	if (err < 0)
+		err = -err;
 	switch (err) {"""
 
 for n in range(1, len(sys.argv)):
