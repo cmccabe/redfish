@@ -28,12 +28,19 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
 
+
 class RedfishClient {
   private long m_cli;
 
   static {
     try {
+      boolean ret;
+
       System.loadLibrary("hadoopfishc");
+      ret = redfish_cache_field_ids();
+      if (!ret) {
+          throw new RuntimeException("redfish_cache_field_ids failed!");
+      }
     }
     catch (UnsatisfiedLinkError e) {
       e.printStackTrace();
@@ -49,7 +56,7 @@ class RedfishClient {
 
   protected void finalize() throws Throwable {} {
     try {
-      redfishDisconnect();
+      this.redfishDisconnect();
     }
     catch (Exception e) {
       e.printStackTrace();
@@ -57,45 +64,60 @@ class RedfishClient {
     }
   }
 
-  private final native
-  void redfishConnect(String host, int port, String user);
+  private final native //
+    String redfishConnect(String host, int port, String user)
+      throws IoException;
 
   public final native
-  RedfishDataOutputStream redfishCreate(String path, short mode, int bufsz, short repl, int blocksz);
+    RedfishDataOutputStream redfishCreate(String jpath, short mode,
+      int bufsz, short repl, int blocksz);
+        throws IoException;
 
   public final native
-  RedfishDataInputStream redfishOpen(String path);
+    RedfishDataInputStream redfishOpen(String jpath);
+      throws IoException;
+
+  public final native //
+    boolean redfishMkdirs(String jpath, short mode);
+      throws IoException;
 
   public final native
-  int redfishMkdirs(String path, short mode);
+    String[][] redfishGetBlockLocations(String jpath, long start, long len);
+      throws IoException;
+
+  public final native //
+    FileStatus redfishGetPathStatus(String jpath);
+      throws IoException, FileNotFound;
 
   public final native
-  String[][] redfishGetBlockLocations(String path, long start, long len);
+    FileStatus[] redfishListDirectory(String dir);
+      throws IoException;
 
-  public final native
-  FileStatus redfishGetPathStatus(String path);
+  private final native //
+    void redfishChmod(String jpath, short mode);
+      throws IoException;
 
-  public final native
-  FileStatus[] redfishListDirectory(String dir);
+  private final native //
+    void redfishChown(String jpath, String owner, String group);
+      throws IoException;
 
-  private final native
-  void redfishChmod(String path, short mode);
+  private final native //
+    void redfishUtimes(String jpath, long mtime, long atime);
+      throws IoException;
 
-  private final native
-  void redfishChown(String path, String owner, String group);
+  public final native //
+    void redfishDisconnect(void);
+      throws IoException;
 
-  private final native
-  void redfishUtimes(String path, long mtime, long atime);
+  public final native //
+    boolean redfishUnlink(String jpath);
+      throws IoException;
 
-  public final native
-  void redfishDisconnect(void);
+  public final native //
+    boolean redfishUnlinkTree(String jpath);
+      throws IoException;
 
-  public final native
-  int redfishUnlink(String fname);
-
-  public final native
-  int redfishUnlinkTree(String tree);
-
-  public final native
-  void redfishRename(String src, String dst);
+  public final native //
+    void redfishRename(String src, String dst);
+      throws IoException;
 };
