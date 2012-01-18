@@ -56,7 +56,7 @@ struct redfish_stat
 	int block_sz;
 	int64_t mtime;
 	int64_t atime;
-	int mode;
+	short mode;
 	char *owner;
 	char *group;
 };
@@ -254,6 +254,12 @@ void redfish_free_block_locs(struct redfish_block_loc **blc);
 int redfish_get_path_status(struct redfish_client *cli, const char *path,
 				struct redfish_stat* osa);
 
+/** Frees the status data returned by redfish_get_path_status
+ *
+ * @param osa		The file status
+ */
+void redfish_free_path_status(struct redfish_stat* osa);
+
 /** Given a directory name, return a list of status objects corresponding
  * to the objects in that directory.
  *
@@ -266,13 +272,12 @@ int redfish_get_path_status(struct redfish_client *cli, const char *path,
 int redfish_list_directory(struct redfish_client *cli, const char *dir,
 			      struct redfish_stat** osa);
 
-/** Frees the status data returned by redfish_list_directory or
- * redfish_get_path_status
+/** Frees the array of status data returned by redfish_list_directory
  *
  * @param osa		array of file statuses
  * @param nosa		Length of osa
  */
-void redfish_free_path_statuses(struct redfish_stat* osa, int nosa);
+void redfish_free_path_statuses(struct redfish_stat* osa);
 
 /** Changes the permission bits for a file or directory.
  *

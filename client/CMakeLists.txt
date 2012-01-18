@@ -15,6 +15,7 @@
 
 add_library(fishc_stub SHARED
     mloc.c
+    stat.c
     stub/stub.c
     stub/xattrs.c
     version.c
@@ -33,8 +34,9 @@ target_link_libraries(version_unit common util utest)
 add_test(version_unit ${CMAKE_CURRENT_BINARY_DIR}/version_unit xattrs_unit)
 
 #add_library(fishc_hdfs SHARED
-#    mloc.c
 #    hdfs/...
+#    mloc.c
+#    stat.c
 #    version.c
 #)
 #target_link_libraries(fishc_hdfs common util pthread)
@@ -44,6 +46,7 @@ add_test(version_unit ${CMAKE_CURRENT_BINARY_DIR}/version_unit xattrs_unit)
 #
 #add_library(fishc_real SHARED
 #    mloc.c
+#    stat.c
 #    true/...
 #    version.c
 #)

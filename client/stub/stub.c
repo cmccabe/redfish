@@ -551,17 +551,6 @@ free_zosa:
 	return ret;
 }
 
-void redfish_free_path_statuses(struct redfish_stat* osa, int nosa)
-{
-	int i;
-	for (i = 0; i < nosa; ++i) {
-		free(osa[i].path);
-		free(osa[i].owner);
-		free(osa[i].group);
-	}
-	free(osa);
-}
-
 static int redfish_openwr_internal(struct redfish_client *cli, const char *path)
 {
 	int ret, fd = -1;
