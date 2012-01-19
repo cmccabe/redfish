@@ -28,7 +28,7 @@ die() {
 }
 
 export STUB_BASE=`mktemp -d -t local_test.XXXXXXXXXX`
-trap "[ -n $SKIP_CLEANUP ] && rm -rf ${STUB_BASE}; exit" INT TERM EXIT
+trap "[ -n "${SKIP_CLEANUP}" ] || rm -rf ${STUB_BASE}; exit" INT TERM EXIT
 echo "Tests running with STUB_BASE=${STUB_BASE}"
 
 ./stest/st_startup -f || die "line ${LINENO}"
