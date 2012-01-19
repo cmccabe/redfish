@@ -30,7 +30,10 @@
 #define RF_PCOMP_MAX 256
 
 /** maximum number of MDSes in a cluster */
-#define MAX_MDS 64
+#define RF_MAX_MDS 254
+
+/** invalid MDS ID */
+#define RF_INVAL_MID 255
 
 /** Maximum length of a user name */
 #define RF_USER_MAX 64
@@ -59,5 +62,8 @@
 
 /** Invalid node ID */
 #define RF_INVAL_NID 0xffffffffffffffffULL
+
+/** Invalid filesystem ID */
+#define RF_INVAL_FSID 0
 
 #endif
