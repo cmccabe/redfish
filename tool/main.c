@@ -217,13 +217,11 @@ int main(int argc, char **argv)
 	int ret;
 	struct fishtool_params* params;
 
-	if (utility_ctx_init(argv[0])) {
-		ret = EXIT_FAILURE;
-		goto done;
-	}
+	if (utility_ctx_init(argv[0]))
+		return EXIT_FAILURE;
 	params = fishtool_parse_argv(argc, argv);
 	ret = params->act->fn(params);
 	free_fishtool_params(params);
-done:
+	process_ctx_shutdown();
 	return ret;
 }
