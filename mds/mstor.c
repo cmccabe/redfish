@@ -17,6 +17,7 @@
 #include "common/config/mstorc.h"
 #include "core/glitch_log.h"
 #include "jorm/jorm_const.h"
+#include "mds/defaults.h"
 #include "mds/limits.h"
 #include "mds/mstor.h"
 #include "mds/user.h"
@@ -51,9 +52,6 @@
  *      z[8-byte-death-time][8-byte-zombie-chunk-id] => []
  */
 /****************************** constants ********************************/
-#define MSTOR_DEFAULT_SEQUESTER_TIME 300
-#define MSTOR_DEFAULT_MIN_REPL 2
-#define MSTOR_DEFAULT_MAN_REPL 3
 
 #define MSTOR_CUR_VERSION 0x000000001U
 #define MSTOR_VERSION_MAGIC "Fish"
@@ -65,7 +63,6 @@
 #define MSTOR_INIT_CID 1
 
 #define MSTOR_ROOT_NID 0
-#define MSTOR_ROOT_NID_INIT_MODE (0755 | MNODE_IS_DIR)
 
 #define MSTOR_PERM_EXEC 01
 #define MSTOR_PERM_WRITE 02
@@ -338,7 +335,7 @@ static int mstor_leveldb_create_new(struct mstor *mstor)
 	nkey[0] = 'n';
 	pack_to_be64(nkey + 1, MSTOR_ROOT_NID);
 	hdr = (struct mnode_payload*)nbody;
-	pack_to_be16(&hdr->mode_and_type, MSTOR_ROOT_NID_INIT_MODE);
+	pack_to_be16(&hdr->mode_and_type, MSTOR_ROOT_NID_INIT_MODE | MNODE_IS_DIR);
 	t = time(NULL);
 	pack_to_be64(&hdr->mtime, t);
 	pack_to_be64(&hdr->atime, t);
