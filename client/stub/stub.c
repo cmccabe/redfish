@@ -18,6 +18,7 @@
 #include "client/fishc_internal.h"
 #include "client/stub/xattrs.h"
 #include "util/compiler.h"
+#include "util/dir.h"
 #include "util/error.h"
 #include "util/macro.h"
 #include "util/path.h"
@@ -132,6 +133,23 @@ static void redfish_free_ofclient(struct redfish_client *cli)
 	free(cli->base);
 	pthread_mutex_destroy(&cli->lock);
 	free(cli);
+}
+
+void redfish_mkfs(POSSIBLY_UNUSED(const char *uconf),
+	POSSIBLY_UNUSED(uint16_t mid), POSSIBLY_UNUSED(uint64_t fsid),
+	char *err, size_t err_len)
+{
+	int ret;
+	const char *base;
+
+	base = get_stub_base_dir();
+	ret = do_mkdir_p(base, 0755);
+	if (ret) {
+		snprintf(err, err_len, "do_mkdir_p failed with error "
+			"%d", ret);
+		return;
+	}
+	// TODO: set up users and groups data
 }
 
 int redfish_connect(POSSIBLY_UNUSED(struct redfish_mds_locator **mlocs),
