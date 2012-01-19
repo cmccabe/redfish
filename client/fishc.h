@@ -87,6 +87,21 @@ struct redfish_version redfish_get_version(void);
  */
 const char* redfish_get_version_str(void);
 
+/** Create a new RedFish filesystem
+ *
+ * We will begin by querying the supplied list of hosts, asking each one for a
+ * current shard map to get us started.
+ *
+ * @param uconf		Local path to a RedFish configuration file
+ * @param mid		The current metadata server ID
+ * @param fsid		The filesystem ID of the new filesystem to create
+ * @param err		(out param) error buffer.  If this is set, there was an
+ *			error and mkfs failed.
+ * @param err_len	Length of the error buffer
+ */
+void redfish_mkfs(const char *uconf, uint16_t mid, uint64_t fsid,
+			char *err, size_t err_len);
+
 /** Initialize a RedFish client instance.
  *
  * We will begin by querying the supplied list of hosts, asking each one for a
