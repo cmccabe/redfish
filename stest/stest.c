@@ -284,7 +284,7 @@ void stest_set_status(int pdone)
 		pdone = 0;
 	snprintf(buf, sizeof(buf), "%03d", pdone);
 	res = safe_pwrite(g_percent_fd, buf, NUM_PERCENT_DIGITS, 0);
-	if (!g_daemonize) {
+	if ((!g_daemonize) && (pdone > 0)) {
 		fprintf(stderr, "percent done: %s\n", buf);
 	}
 }
