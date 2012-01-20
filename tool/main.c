@@ -16,6 +16,7 @@
 
 #include "client/fishc.h"
 #include "core/process_ctx.h"
+#include "mds/limits.h"
 #include "tool/main.h"
 #include "util/string.h"
 
@@ -26,8 +27,6 @@
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
-
-#define FISHTOOL_DEFAULT_USER "super"
 
 struct fishtool_act g_fishtool_chmod;
 struct fishtool_act g_fishtool_chown;
@@ -201,7 +200,7 @@ static struct fishtool_params* fishtool_parse_argv(int argc, char **argv)
 		params->non_option_args[i] = *a;
 	}
 	if (params->user_name == NULL) {
-		params->user_name = FISHTOOL_DEFAULT_USER;
+		params->user_name = RF_SUPERUSER_NAME;
 	}
 	return params;
 }
