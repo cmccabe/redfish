@@ -937,9 +937,21 @@ int redfish_rename(struct redfish_client *cli, const char *src, const char *dst)
 			return ret;
 	}
 	else {
-		/* Tried to rename over a file; HDFS semantics don't allow
-		 * this */
-		ret = -EEXIST;
+		if (stat(esrc, &st_buf) < 0)
+			ret = -EIO;
+		else if (S_ISDIR(st_buf.st_mode)) {
+			/* Tried to rename a directory over a file; neither HDFS
+			 * nor POSIX semantics allow this */
+			ret = -ENOTDIR;
+		}
+		else if (S_ISREG(st_buf.st_mode)) {
+			/* Tried to rename a file over a file; HDFS doesn't
+			 * allow this (though POSIX does) */
+			ret = -EEXIST;
+		}
+		else {
+			ret = -EIO;
+		}
 		goto done;
 	}
 	if (rename(esrc, edst) < 0) {
