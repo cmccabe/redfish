@@ -139,6 +139,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "fishmkfs: mkfs failed with error: %s\n", err);
 		ret = EXIT_FAILURE;
 	}
+	ret = 0;
 	process_ctx_shutdown();
 	return ret;
 }
