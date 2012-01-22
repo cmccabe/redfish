@@ -19,6 +19,7 @@
 
 #include "util/compiler.h"
 
+struct redfish_client;
 struct redfish_mds_locator;
 
 struct stest_custom_opt
@@ -91,6 +92,24 @@ extern void stest_add_error(const char *fmt, ...) PRINTF_FORMAT(1, 2);
  *			function of a system test.
  */
 extern int stest_finish(void);
+
+/** result from stest_stat */
+enum stest_stat_res {
+	STEST_STAT_RES_ERR = 1,
+	STEST_STAT_RES_ENOENT = 2,
+	STEST_STAT_RES_FILE = 100,
+	STEST_STAT_RES_DIR = 101,
+};
+
+/** Simple wrapper function for redfish_stat
+ *
+ * @param cli		RedFish client
+ * @param path		path to stat
+ *
+ * @return		the result
+ */
+extern enum stest_stat_res stest_stat(struct redfish_client *cli,
+				      const char *path);
 
 #define ST_EXPECT_ZERO(expr) \
 	do { \

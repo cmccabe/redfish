@@ -316,3 +316,18 @@ int stest_finish(void)
 	g_err_fp = NULL;
 	return (g_saw_err) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
+
+enum stest_stat_res stest_stat(struct redfish_client *cli, const char *path)
+{
+	int ret, is_dir;
+	struct redfish_stat osa;
+
+	ret = redfish_get_path_status(cli, path, &osa);
+	if (ret == -ENOENT)
+		return STEST_STAT_RES_ENOENT;
+	else if (ret)
+		return STEST_STAT_RES_ERR;
+	is_dir = osa.is_dir;
+	redfish_free_path_status(&osa);
+	return is_dir ? STEST_STAT_RES_DIR : STEST_STAT_RES_FILE;
+}
