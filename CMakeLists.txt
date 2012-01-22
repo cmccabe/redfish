@@ -32,7 +32,12 @@ set(CMAKE_CURRENT_BINARY_DIR, builds)
 SET(CMAKE_INSTALL_PREFIX /usr)
 
 set(REDFISH_CLIENT_LIB "fishc_real" CACHE STRING "For developers only. Which client library implementation to use (fishc_stub, fishc_hdfs, or fishc_real)")
+set(REDFISH_BUILD_JNI 1 CACHE BOOL "Build Hadoop JNI bindings for RedFish")
 set(REDFISH_SO_REUSEADDR_HACK 0 CACHE BOOL "For developers only. Set to TRUE to use a hack which makes running unit tests easier.")
+
+if (REDFISH_BUILD_JNI)
+    find_package(JNI REQUIRED)
+endif (REDFISH_BUILD_JNI)
 if (REDFISH_SO_REUSEADDR_HACK)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DREDFISH_SO_REUSEADDR_HACK=1")
 endif (REDFISH_SO_REUSEADDR_HACK)
