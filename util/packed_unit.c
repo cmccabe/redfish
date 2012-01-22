@@ -41,33 +41,33 @@ static int test_fixed_field_functions(void)
 	} u;
 	struct pack_fun s;
 	memset(&s, 0, sizeof(s));
-	EXPECT_EQUAL(unpack_from_8(&s.a), 0);
-	EXPECT_EQUAL(unpack_from_be16(&s.b), 0);
-	EXPECT_EQUAL(unpack_from_be32(&s.c), 0);
-	EXPECT_EQUAL(unpack_from_be64(&s.d), 0);
+	EXPECT_EQ(unpack_from_8(&s.a), 0);
+	EXPECT_EQ(unpack_from_be16(&s.b), 0);
+	EXPECT_EQ(unpack_from_be32(&s.c), 0);
+	EXPECT_EQ(unpack_from_be64(&s.d), 0);
 
 	pack_to_8(&s.a, 123);
-	EXPECT_EQUAL(unpack_from_8(&s.a), 123);
+	EXPECT_EQ(unpack_from_8(&s.a), 123);
 
 	/* test big-endian packing functions */
 	pack_to_be16(&s.b, 456);
-	EXPECT_EQUAL(unpack_from_be16(&s.b), 456);
+	EXPECT_EQ(unpack_from_be16(&s.b), 456);
 	pack_to_be32(&s.c, 0xdeadbeef);
-	EXPECT_EQUAL(unpack_from_be32(&s.c), 0xdeadbeef);
+	EXPECT_EQ(unpack_from_be32(&s.c), 0xdeadbeef);
 	pack_to_be64(&s.d, 0xdeadbeefbaddcafell);
-	EXPECT_EQUAL(unpack_from_be64(&s.d), 0xdeadbeefbaddcafell);
+	EXPECT_EQ(unpack_from_be64(&s.d), 0xdeadbeefbaddcafell);
 
 	/* test host packing functions */
 	pack_to_h16(&s.b, 456);
-	EXPECT_EQUAL(unpack_from_h16(&s.b), 456);
+	EXPECT_EQ(unpack_from_h16(&s.b), 456);
 	pack_to_h32(&s.c, 0xdeadbeef);
-	EXPECT_EQUAL(unpack_from_h32(&s.c), 0xdeadbeef);
+	EXPECT_EQ(unpack_from_h32(&s.c), 0xdeadbeef);
 	pack_to_h64(&s.d, 0xdeadbeefbaddcafell);
-	EXPECT_EQUAL(unpack_from_h64(&s.d), 0xdeadbeefbaddcafell);
+	EXPECT_EQ(unpack_from_h64(&s.d), 0xdeadbeefbaddcafell);
 	u.ptr = 0;
 	u.u64 = 0x123456789abcd123llu;
 	pack_to_hptr(&s.e, u.ptr);
-	EXPECT_EQUAL(unpack_from_hptr(&s.e), u.ptr);
+	EXPECT_EQ(unpack_from_hptr(&s.e), u.ptr);
 
 	return 0;
 }
@@ -98,11 +98,11 @@ static int test_packed_string_functions(void)
 	EXPECT_ZERO(strcmp("glor-duk", buf2));
 	EXPECT_ZERO(unpack_str(buf, &off2, off, buf2, sizeof(buf2)));
 	EXPECT_ZERO(strcmp("loktar", buf2));
-	EXPECT_EQUAL(-EINVAL, unpack_str(buf, &off2, off, buf2, sizeof(buf2)));
+	EXPECT_EQ(-EINVAL, unpack_str(buf, &off2, off, buf2, sizeof(buf2)));
 
 	off = 0;
 	memset(buf, 0, sizeof(buf));
-	EXPECT_EQUAL(-ENAMETOOLONG, pack_str(buf, &off, 4, "toolongstring"));
+	EXPECT_EQ(-ENAMETOOLONG, pack_str(buf, &off, 4, "toolongstring"));
 
 	return 0;
 }
@@ -121,7 +121,7 @@ static int test_repack_str(void)
 				b1, &o1, sizeof(b1)));
 	EXPECT_ZERO(repack_str(b2, &o2, sizeof(b2),
 				b1, &o1, sizeof(b1)));
-	EXPECT_EQUAL(o1, o2);
+	EXPECT_EQ(o1, o2);
 	EXPECT_ZERO(memcmp(b1, b2, o1));
 	return 0;
 }

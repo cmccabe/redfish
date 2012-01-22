@@ -29,7 +29,7 @@ int main(void)
 	char buf[512], buf2[512], *newline;
 	const char *cvec[] = { "whoami", NULL };
 
-	EXPECT_EQUAL(get_current_username(buf, 0), -ENAMETOOLONG);
+	EXPECT_EQ(get_current_username(buf, 0), -ENAMETOOLONG);
 	EXPECT_ZERO(get_current_username(buf, sizeof(buf)));
 	EXPECT_ZERO(run_cmd_get_output(buf2, sizeof(buf2), cvec));
 	newline = index(buf2, '\n');

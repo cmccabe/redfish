@@ -83,7 +83,7 @@ static int test3(struct rsem_client *rcli)
 	EXPECT_ZERO(pthread_create(&thread, NULL, test3a, rcli));
 	sem_post(&g_test3a_local_sem);
 	EXPECT_ZERO(rsem_wait(rcli, "baz"));
-	EXPECT_EQUAL(g_test3a_mcguffin, 1);
+	EXPECT_EQ(g_test3a_mcguffin, 1);
 	EXPECT_ZERO(pthread_join(thread, NULL));
 	EXPECT_ZERO(sem_destroy(&g_test3a_local_sem));
 	return 0;

@@ -80,7 +80,7 @@ extern int do_touch2(const char *dir, const char *fname);
 		} \
 	} while (0);
 
-#define EXPECT_EQUAL(x, y) \
+#define EXPECT_EQ(x, y) \
 	do { \
 		if ((x) != (y)) { \
 			fprintf(stderr, "failed on line %d: %s\n",\
@@ -89,7 +89,7 @@ extern int do_touch2(const char *dir, const char *fname);
 		} \
 	} while (0);
 
-#define EXPECT_NOT_EQUAL(x, y) \
+#define EXPECT_NOT_EQ(x, y) \
 	do { \
 		if ((x) == (y)) { \
 			fprintf(stderr, "failed on line %d: %s\n",\

@@ -44,7 +44,7 @@ static int run_leveldb_test(const char *tdir, leveldb_test_fn_t fn)
 
 	EXPECT_ZERO(zsnprintf(lname, PATH_MAX, "%s/db", tdir));
 	lopt = leveldb_options_create();
-	EXPECT_NOT_EQUAL(lopt, NULL);
+	EXPECT_NOT_EQ(lopt, NULL);
 	leveldb_options_set_create_if_missing(lopt, 1);
 	leveldb_options_set_compression(lopt, leveldb_no_compression);
 	ldb = leveldb_open(lopt, lname, &err);
@@ -76,18 +76,18 @@ static int reads_and_writes1(leveldb_t *ldb)
 	leveldb_readoptions_t *lropt;
 
 	lwopt = leveldb_writeoptions_create();
-	EXPECT_NOT_EQUAL(lwopt, NULL);
+	EXPECT_NOT_EQ(lwopt, NULL);
 	leveldb_writeoptions_set_sync(lwopt, 1);
 	leveldb_put(ldb, lwopt, "foo", strlen("foo"), "bar",
 		strlen("bar"), &err);
 	if (err)
 		goto ldb_error;
 	lropt = leveldb_readoptions_create();
-	EXPECT_NOT_EQUAL(lropt, NULL);
+	EXPECT_NOT_EQ(lropt, NULL);
 	val = leveldb_get(ldb, lropt, "foo", strlen("foo"), &val_len, &err);
 	if (err)
 		goto ldb_error;
-	EXPECT_EQUAL(val_len, strlen("bar"));
+	EXPECT_EQ(val_len, strlen("bar"));
 	EXPECT_ZERO(strncmp(val, "bar", strlen("bar")));
 	free(val);
 

@@ -64,7 +64,7 @@ static int test_do_readdir_impl(const char *dir, const char **expected)
 			return -EIO;
 		}
 	}
-	EXPECT_EQUAL(num_found, num_expected);
+	EXPECT_EQ(num_found, num_expected);
 	do_closedir(dp);
 	return 0;
 }

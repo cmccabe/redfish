@@ -106,7 +106,7 @@ static int dump_empty_buf(const char *tdir)
 	fd = open(fname, O_CREAT | O_TRUNC | O_RDWR, 0644);
 	EXPECT_GE(fd, 0);
 	empty = fast_log_create(mgr, "empty");
-	EXPECT_NOT_EQUAL(empty, NULL);
+	EXPECT_NOT_EQ(empty, NULL);
 	EXPECT_ZERO(fast_log_dump(empty, g_test_dumpers, fd));
 	RETRY_ON_EINTR(res, close(fd));
 
@@ -160,7 +160,7 @@ blah blah\n";
 	fd = open(fname, O_CREAT | O_TRUNC | O_RDWR, 0644);
 	EXPECT_GE(fd, 0);
 	small = fast_log_create(mgr, "small");
-	EXPECT_NOT_EQUAL(small, NULL);
+	EXPECT_NOT_EQ(small, NULL);
 	create_some_logs(small, 1);
 	EXPECT_ZERO(fast_log_dump(small, g_test_dumpers, fd));
 	RETRY_ON_EINTR(res, close(fd));
@@ -200,7 +200,7 @@ foo=0x1, bar=0x2, bar=0x3\n";
 	fd = open(fname, O_CREAT | O_TRUNC | O_RDWR, 0644);
 	EXPECT_GE(fd, 0);
 	full = fast_log_create(mgr, "full");
-	EXPECT_NOT_EQUAL(full, NULL);
+	EXPECT_NOT_EQ(full, NULL);
 	for (i = 0; i < 200000; ++i) {
 		fast_log(full, &fe1);
 	}
@@ -239,11 +239,11 @@ static int test_dump_all(const char *tdir)
 	mgr = fast_log_mgr_init(g_test_dumpers);
 	EXPECT_NOT_ERRPTR(mgr);
 	three = fast_log_create(mgr, "three");
-	EXPECT_NOT_EQUAL(three, NULL);
+	EXPECT_NOT_EQ(three, NULL);
 	two = fast_log_create(mgr, "two");
-	EXPECT_NOT_EQUAL(two, NULL);
+	EXPECT_NOT_EQ(two, NULL);
 	one = fast_log_create(mgr, "one");
-	EXPECT_NOT_EQUAL(one, NULL);
+	EXPECT_NOT_EQ(one, NULL);
 
 	create_some_logs(one, 1);
 	create_some_logs(two, 1);

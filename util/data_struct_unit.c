@@ -65,8 +65,8 @@ static int test_queue(void)
 	}
 
 	f = STAILQ_LAST(&head, foo, queue_entry);
-	EXPECT_EQUAL(f->x, 1);
-	EXPECT_EQUAL(f->y, 1);
+	EXPECT_EQ(f->x, 1);
+	EXPECT_EQ(f->y, 1);
 
 	num_elem = 0;
 	while (!STAILQ_EMPTY(&head)) {
@@ -76,7 +76,7 @@ static int test_queue(void)
 		free(f);
 	}
 
-	EXPECT_EQUAL(num_elem, NUM_FOO);
+	EXPECT_EQ(num_elem, NUM_FOO);
 
 	return 0;
 }
@@ -103,21 +103,21 @@ static int test_tree(void)
 
 	/* test max */
 	f = RB_MAX(test_tree, &head);
-	EXPECT_EQUAL(f->x, 16);
-	EXPECT_EQUAL(f->y, 15);
+	EXPECT_EQ(f->x, 16);
+	EXPECT_EQ(f->y, 15);
 
 	/* (try to) insert duplicate */
 	f2.x = 16;
 	f2.y = 15;
 	f3 = RB_INSERT(test_tree, &head, &f2);
-	EXPECT_EQUAL(f, f3);
+	EXPECT_EQ(f, f3);
 	f4 = RB_MAX(test_tree, &head);
-	EXPECT_EQUAL(f, f4);
+	EXPECT_EQ(f, f4);
 
 	/* test min */
 	f = RB_MIN(test_tree, &head);
-	EXPECT_EQUAL(f->x, 0);
-	EXPECT_EQUAL(f->y, 0);
+	EXPECT_EQ(f->x, 0);
+	EXPECT_EQ(f->y, 0);
 
 	num_elem = 0;
 	RB_FOREACH_SAFE(f, test_tree, &head, f_tmp) {
@@ -126,7 +126,7 @@ static int test_tree(void)
 		++num_elem;
 	}
 
-	EXPECT_EQUAL(num_elem, NUM_FOO);
+	EXPECT_EQ(num_elem, NUM_FOO);
 	return 0;
 }
 

@@ -74,12 +74,12 @@ int main(void)
 	/* test rename /src/b -> /dst/n, b as file, n as dir */
 	EXPECT_ZERO(do_touch2(dir_src, "b"));
 	EXPECT_ZERO(do_test_mkdir(dir_dst, "n"));
-	EXPECT_EQUAL(do_rename(dir_src, "b", dir_dst, "n"), -EISDIR);
+	EXPECT_EQ(do_rename(dir_src, "b", dir_dst, "n"), -EISDIR);
 
 	/* test rename /src/c -> /dst/o, c as dir, o as file */
 	EXPECT_ZERO(do_test_mkdir(dir_src, "c"));
 	EXPECT_ZERO(do_touch2(dir_dst, "o"));
-	EXPECT_EQUAL(do_rename(dir_src, "c", dir_dst, "o"), -ENOTDIR);
+	EXPECT_EQ(do_rename(dir_src, "c", dir_dst, "o"), -ENOTDIR);
 
 	/* test rename /src/d -> /dst/p, d as dir, p as dir */
 	EXPECT_ZERO(do_test_mkdir(dir_src, "d"));

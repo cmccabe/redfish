@@ -29,35 +29,35 @@ static int mkdirs_test(struct redfish_client *cli)
 	/* Very simple case-- only creating one directory in the root */
 	ST_EXPECT_ZERO(redfish_mkdirs(cli, 0644, "/solo"));
 	ST_EXPECT_ZERO(redfish_get_path_status(cli, "/solo", &osa));
-	ST_EXPECT_EQUAL(osa.is_dir, 1);
+	ST_EXPECT_EQ(osa.is_dir, 1);
 	redfish_free_path_status(&osa);
 	stest_set_status(20);
 	/* Create a lot of nested directories */
 	ST_EXPECT_ZERO(redfish_mkdirs(cli, 0644, "/a/b/c/d/e"));
 	ST_EXPECT_ZERO(redfish_get_path_status(cli, "/a/b/c/d/e", &osa));
-	ST_EXPECT_EQUAL(osa.is_dir, 1);
+	ST_EXPECT_EQ(osa.is_dir, 1);
 	redfish_free_path_status(&osa);
 	ST_EXPECT_ZERO(redfish_get_path_status(cli, "/a/b/c/d", &osa));
-	ST_EXPECT_EQUAL(osa.is_dir, 1);
+	ST_EXPECT_EQ(osa.is_dir, 1);
 	redfish_free_path_status(&osa);
 	ST_EXPECT_ZERO(redfish_get_path_status(cli, "/a/b/c", &osa));
-	ST_EXPECT_EQUAL(osa.is_dir, 1);
+	ST_EXPECT_EQ(osa.is_dir, 1);
 	redfish_free_path_status(&osa);
 	ST_EXPECT_ZERO(redfish_get_path_status(cli, "/a/b", &osa));
-	ST_EXPECT_EQUAL(osa.is_dir, 1);
+	ST_EXPECT_EQ(osa.is_dir, 1);
 	redfish_free_path_status(&osa);
 	ST_EXPECT_ZERO(redfish_get_path_status(cli, "/a", &osa));
-	ST_EXPECT_EQUAL(osa.is_dir, 1);
+	ST_EXPECT_EQ(osa.is_dir, 1);
 	redfish_free_path_status(&osa);
 	stest_set_status(50);
 	/** We should be able to create directories when some of the path
 	 * components already exist. */ 
 	ST_EXPECT_ZERO(redfish_mkdirs(cli, 0644, "/a/b/foo/bar"));
 	ST_EXPECT_ZERO(redfish_get_path_status(cli, "/a/b/foo/bar", &osa));
-	ST_EXPECT_EQUAL(osa.is_dir, 1);
+	ST_EXPECT_EQ(osa.is_dir, 1);
 	redfish_free_path_status(&osa);
 	ST_EXPECT_ZERO(redfish_get_path_status(cli, "/a/b/foo", &osa));
-	ST_EXPECT_EQUAL(osa.is_dir, 1);
+	ST_EXPECT_EQ(osa.is_dir, 1);
 	redfish_free_path_status(&osa);
 	stest_set_status(70);
 	/** There is no error if all of the directories already exist */

@@ -39,7 +39,7 @@ static int write_then_read(struct redfish_client *cli)
 	ST_EXPECT_ZERO(redfish_close(ofe));
 	ofe = NULL;
 	ST_EXPECT_ZERO(redfish_open(cli, STEST_FNAME, &ofe));
-	ST_EXPECT_EQUAL(redfish_read(ofe, obuf, SAMPLE_DATA_LEN),
+	ST_EXPECT_EQ(redfish_read(ofe, obuf, SAMPLE_DATA_LEN),
 			SAMPLE_DATA_LEN);
 	ST_EXPECT_ZERO(strcmp(ibuf, obuf));
 	ST_EXPECT_ZERO(redfish_close(ofe));

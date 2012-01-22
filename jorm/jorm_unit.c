@@ -31,12 +31,12 @@
 static int test_jorm_init(void)
 {
 	struct bob *b1 = JORM_INIT_bob();
-	EXPECT_NOT_EQUAL(b1, NULL);
-	EXPECT_EQUAL(b1->a, JORM_INVAL_INT);
-	EXPECT_EQUAL(b1->b, JORM_INVAL_DOUBLE);
-	EXPECT_EQUAL(b1->c, JORM_INVAL_STR);
-	EXPECT_EQUAL(b1->d, JORM_INVAL_NESTED);
-	EXPECT_EQUAL(b1->e, JORM_INVAL_BOOL);
+	EXPECT_NOT_EQ(b1, NULL);
+	EXPECT_EQ(b1->a, JORM_INVAL_INT);
+	EXPECT_EQ(b1->b, JORM_INVAL_DOUBLE);
+	EXPECT_EQ(b1->c, JORM_INVAL_STR);
+	EXPECT_EQ(b1->d, JORM_INVAL_NESTED);
+	EXPECT_EQ(b1->e, JORM_INVAL_BOOL);
 	JORM_FREE_bob(b1);
 	return 0;
 }
@@ -103,7 +103,7 @@ static int test2(void)
 	my_bob->f[2] = NULL;
 	my_bob->extra_data = 404;
 	my_bob->g = JORM_INIT_carrie();
-	EXPECT_NOT_EQUAL(my_bob->g, NULL);
+	EXPECT_NOT_EQ(my_bob->g, NULL);
 	my_bob->g->x = 101;
 	my_bob->g->y = 5.0;
 	jo = JORM_TOJSON_bob(my_bob);
@@ -179,14 +179,14 @@ static int test3(void)
 	EXPECT_NONZERO(my_bob->b == 2.5);
 	EXPECT_ZERO(my_bob->extra_data);
 	final_abbie = JORM_ARRAY_APPEND_abbie(&my_bob->f);
-	EXPECT_NOT_EQUAL(final_abbie, NULL);
+	EXPECT_NOT_EQ(final_abbie, NULL);
 	final_abbie->a = 6;
 	for (i = 0; i < sizeof(expected_array_val) /
 			sizeof(expected_array_val[0]); ++i) {
-		EXPECT_EQUAL(my_bob->f[i]->a, expected_array_val[i]);
+		EXPECT_EQ(my_bob->f[i]->a, expected_array_val[i]);
 	}
-	EXPECT_EQUAL(my_bob->g->x, 5);
-	EXPECT_EQUAL(my_bob->g->y, 1.5);
+	EXPECT_EQ(my_bob->g->x, 5);
+	EXPECT_EQ(my_bob->g->y, 1.5);
 done:
 	if (jo) {
 		json_object_put(jo);
@@ -206,49 +206,49 @@ static int test4(void)
 	struct bob *b3 = JORM_INIT_bob();
 	struct abbie **abbie_arr = NULL;
 
-	EXPECT_NOT_EQUAL(b1, NULL);
-	EXPECT_NOT_EQUAL(b2, NULL);
-	EXPECT_NOT_EQUAL(b3, NULL);
+	EXPECT_NOT_EQ(b1, NULL);
+	EXPECT_NOT_EQ(b2, NULL);
+	EXPECT_NOT_EQ(b3, NULL);
 
-	EXPECT_EQUAL(b3->a, JORM_INVAL_INT);
+	EXPECT_EQ(b3->a, JORM_INVAL_INT);
 	b1->a = 101;
 	EXPECT_ZERO(JORM_COPY_bob(b1, b3));
-	EXPECT_EQUAL(b3->a, 101);
+	EXPECT_EQ(b3->a, 101);
 
 	b2->a = JORM_INVAL_INT;
 	b2->b = 50;
 	b2->d = JORM_INIT_abbie();
 	b2->d->a = 9000;
 	EXPECT_ZERO(JORM_COPY_bob(b2, b3));
-	EXPECT_EQUAL(b3->b, 50);
-	EXPECT_NOT_EQUAL(b3->d, NULL);
-	EXPECT_EQUAL(b3->d->a, 9000);
-	EXPECT_EQUAL(b3->a, 101);
+	EXPECT_EQ(b3->b, 50);
+	EXPECT_NOT_EQ(b3->d, NULL);
+	EXPECT_EQ(b3->d->a, 9000);
+	EXPECT_EQ(b3->a, 101);
 
 	b1->f = calloc(3, sizeof(struct abbie*));
-	EXPECT_NOT_EQUAL(b1->f, NULL);
+	EXPECT_NOT_EQ(b1->f, NULL);
 	b1->f[0] = JORM_INIT_abbie();
-	EXPECT_NOT_EQUAL(b1->f[0], NULL);
+	EXPECT_NOT_EQ(b1->f[0], NULL);
 	b1->f[1] = JORM_INIT_abbie();
-	EXPECT_NOT_EQUAL(b1->f[1], NULL);
+	EXPECT_NOT_EQ(b1->f[1], NULL);
 	b1->f[2] = NULL;
 	b1->f[0]->a = 100;
 	b1->f[1]->a = 200;
 	EXPECT_ZERO(JORM_COPY_bob(b1, b3));
-	EXPECT_NOT_EQUAL(b3->f, NULL);
-	EXPECT_NOT_EQUAL(b3->f[0], NULL);
-	EXPECT_EQUAL(b3->f[0]->a, 100);
-	EXPECT_NOT_EQUAL(b3->f[1], NULL);
-	EXPECT_EQUAL(b3->f[1]->a, 200);
-	EXPECT_EQUAL(b3->f[2], NULL);
+	EXPECT_NOT_EQ(b3->f, NULL);
+	EXPECT_NOT_EQ(b3->f[0], NULL);
+	EXPECT_EQ(b3->f[0]->a, 100);
+	EXPECT_NOT_EQ(b3->f[1], NULL);
+	EXPECT_EQ(b3->f[1]->a, 200);
+	EXPECT_EQ(b3->f[2], NULL);
 
 	abbie_arr = JORM_ARRAY_COPY_abbie(b3->f);
-	EXPECT_NOT_EQUAL(abbie_arr, NULL);
-	EXPECT_NOT_EQUAL(abbie_arr[0], NULL);
-	EXPECT_EQUAL(abbie_arr[0]->a, 100);
-	EXPECT_NOT_EQUAL(abbie_arr[1], NULL);
-	EXPECT_EQUAL(abbie_arr[1]->a, 200);
-	EXPECT_EQUAL(abbie_arr[2], NULL);
+	EXPECT_NOT_EQ(abbie_arr, NULL);
+	EXPECT_NOT_EQ(abbie_arr[0], NULL);
+	EXPECT_EQ(abbie_arr[0]->a, 100);
+	EXPECT_NOT_EQ(abbie_arr[1], NULL);
+	EXPECT_EQ(abbie_arr[1]->a, 200);
+	EXPECT_EQ(abbie_arr[2], NULL);
 
 	JORM_ARRAY_FREE_abbie(&abbie_arr);
 	JORM_FREE_bob(b1);
@@ -327,11 +327,11 @@ static int test_jorm_array_manipulations(void)
 	struct bob *b, *b2, *b3;
 
 	b = JORM_ARRAY_APPEND_bob(&a1);
-	EXPECT_NOT_EQUAL(b, NULL);
-	EXPECT_EQUAL(b->a, JORM_INVAL_INT);
-	EXPECT_NOT_EQUAL(a1[0], NULL);
+	EXPECT_NOT_EQ(b, NULL);
+	EXPECT_EQ(b->a, JORM_INVAL_INT);
+	EXPECT_NOT_EQ(a1[0], NULL);
 	JORM_ARRAY_REMOVE_bob(&a1, b);
-	EXPECT_EQUAL(a1[0], NULL);
+	EXPECT_EQ(a1[0], NULL);
 	b = JORM_ARRAY_APPEND_bob(&a2);
 	b->a = 1;
 	b2 = JORM_ARRAY_APPEND_bob(&a2);
@@ -339,9 +339,9 @@ static int test_jorm_array_manipulations(void)
 	b3 = JORM_ARRAY_APPEND_bob(&a2);
 	b3->a = 3;
 	JORM_ARRAY_REMOVE_bob(&a2, b2);
-	EXPECT_EQUAL(a2[0], b);
-	EXPECT_EQUAL(a2[1], b3);
-	EXPECT_EQUAL(a2[2], NULL);
+	EXPECT_EQ(a2[0], b);
+	EXPECT_EQ(a2[1], b3);
+	EXPECT_EQ(a2[2], NULL);
 	JORM_ARRAY_FREE_bob(&a1);
 	JORM_ARRAY_FREE_bob(&a2);
 	return 0;

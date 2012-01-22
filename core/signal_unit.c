@@ -93,7 +93,7 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 	srand(time(NULL));
 
 	g_fast_log_mgr = fast_log_mgr_init(g_fast_log_dumpers);
-	EXPECT_NOT_EQUAL(g_fast_log_mgr, NULL);
+	EXPECT_NOT_EQ(g_fast_log_mgr, NULL);
 	EXPECT_ZERO(get_tempdir(tempdir, sizeof(tempdir), 0770));
 	EXPECT_ZERO(register_tempdir_for_cleanup(tempdir));
 	EXPECT_ZERO(test_signal_handler(argv[0], tempdir, SIGSEGV));

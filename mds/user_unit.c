@@ -50,7 +50,7 @@ static int do_test_lookups(struct udata *udata)
 	u = udata_lookup_user(udata, RF_SUPERUSER_NAME);
 	EXPECT_NOT_ERRPTR(u);
 	EXPECT_ZERO(strcmp(u->name, RF_SUPERUSER_NAME));
-	EXPECT_EQUAL(user_in_gid(u, RF_SUPERUSER_GID), 1);
+	EXPECT_EQ(user_in_gid(u, RF_SUPERUSER_GID), 1);
 	return 0;
 }
 
@@ -65,12 +65,12 @@ static int test_lookups(void)
 	u = udata_lookup_user(udata, RF_NOBODY_NAME);
 	if (IS_ERR(u))
 		return PTR_ERR(u);
-	EXPECT_EQUAL(user_in_gid(u, RF_SUPERUSER_GID), 0);
+	EXPECT_EQ(user_in_gid(u, RF_SUPERUSER_GID), 0);
 	EXPECT_ZERO(user_add_segid(udata, RF_NOBODY_NAME, 0));
 	u = udata_lookup_user(udata, RF_NOBODY_NAME);
 	if (IS_ERR(u))
 		return PTR_ERR(u);
-	EXPECT_EQUAL(user_in_gid(u, RF_SUPERUSER_GID), 1);
+	EXPECT_EQ(user_in_gid(u, RF_SUPERUSER_GID), 1);
 	udata_free(udata);
 	return 0;
 }
@@ -86,7 +86,7 @@ static int test_pack(void)
 	EXPECT_ZERO(do_test_lookups(udata));
 	memset(buf, 0, sizeof(buf));
 	off = 0;
-	EXPECT_EQUAL(pack_udata(udata, buf, &off, 1), -ENAMETOOLONG);
+	EXPECT_EQ(pack_udata(udata, buf, &off, 1), -ENAMETOOLONG);
 	EXPECT_ZERO(pack_udata(udata, buf, &off, sizeof(buf)));
 	off2 = 0;
 	udata2 = unpack_udata(buf, &off2, off / 2);

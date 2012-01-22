@@ -44,7 +44,7 @@ static int unlink_test(struct redfish_client *cli, const char *dirs, int ndirs)
 			ST_EXPECT_ZERO(redfish_create(cli, path,
 				0644, 0, 0, 0, &ofe));
 			ST_EXPECT_ZERO(redfish_close(ofe));
-			ST_EXPECT_EQUAL(redfish_get_path_status(cli,
+			ST_EXPECT_EQ(redfish_get_path_status(cli,
 				path, &osa), 0);
 			redfish_free_path_status(&osa);
 		}

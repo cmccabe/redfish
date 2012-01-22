@@ -62,14 +62,14 @@ static int test_cmap_from_conf(const char *tdir)
 	EXPECT_ZERO(err[0]);
 	cmap  = cmap_from_conf(conf, err, err_len);
 	EXPECT_ZERO(err[0]);
-	EXPECT_EQUAL(cmap->num_osd, 1);
+	EXPECT_EQ(cmap->num_osd, 1);
 	localhost = inet_addr("127.0.0.1");
-	EXPECT_EQUAL(cmap->epoch, 1);
-	EXPECT_EQUAL(cmap->oinfo[0].ip, localhost);
-	EXPECT_EQUAL(cmap->oinfo[0].port, 9001);
-	EXPECT_EQUAL(cmap->num_mds, 1);
-	EXPECT_EQUAL(cmap->minfo[0].ip, localhost);
-	EXPECT_EQUAL(cmap->minfo[0].port, 9000);
+	EXPECT_EQ(cmap->epoch, 1);
+	EXPECT_EQ(cmap->oinfo[0].ip, localhost);
+	EXPECT_EQ(cmap->oinfo[0].port, 9001);
+	EXPECT_EQ(cmap->num_mds, 1);
+	EXPECT_EQ(cmap->minfo[0].ip, localhost);
+	EXPECT_EQ(cmap->minfo[0].port, 9000);
 	cmap_free(cmap);
 	free_unitary_conf_file(conf);
 	return 0;
@@ -85,20 +85,20 @@ static int test_cmap_round_trip(struct cmap *cmap)
 	char *buf;
 
 	buf = cmap_to_buffer(cmap, &buf_len);
-	EXPECT_NOT_EQUAL(buf, NULL);
+	EXPECT_NOT_EQ(buf, NULL);
 	cmap2 = cmap_from_buffer(buf, buf_len, err, err_len);
 	EXPECT_ZERO(err[0]);
-	EXPECT_EQUAL(cmap->epoch, cmap2->epoch);
-	EXPECT_EQUAL(cmap->num_osd, cmap2->num_osd);
-	EXPECT_EQUAL(cmap->num_mds, cmap2->num_mds);
+	EXPECT_EQ(cmap->epoch, cmap2->epoch);
+	EXPECT_EQ(cmap->num_osd, cmap2->num_osd);
+	EXPECT_EQ(cmap->num_mds, cmap2->num_mds);
 	for (i = 0; i < cmap->num_osd; ++i) {
-		EXPECT_EQUAL(cmap->oinfo[i].ip, cmap2->oinfo[i].ip);
-		EXPECT_EQUAL(cmap->oinfo[i].port, cmap2->oinfo[i].port);
-		EXPECT_EQUAL(cmap->oinfo[i].port, cmap2->oinfo[i].port);
+		EXPECT_EQ(cmap->oinfo[i].ip, cmap2->oinfo[i].ip);
+		EXPECT_EQ(cmap->oinfo[i].port, cmap2->oinfo[i].port);
+		EXPECT_EQ(cmap->oinfo[i].port, cmap2->oinfo[i].port);
 	}
 	for (i = 0; i < cmap->num_mds; ++i) {
-		EXPECT_EQUAL(cmap->minfo[i].ip, cmap2->minfo[i].ip);
-		EXPECT_EQUAL(cmap->minfo[i].port, cmap2->minfo[i].port);
+		EXPECT_EQ(cmap->minfo[i].ip, cmap2->minfo[i].ip);
+		EXPECT_EQ(cmap->minfo[i].port, cmap2->minfo[i].port);
 	}
 	free(buf);
 	cmap_free(cmap2);
@@ -111,14 +111,14 @@ static int test_cmap_round_trip_1(void)
 	uint32_t localhost;
 
 	cmap = calloc(1, sizeof(struct cmap));
-	EXPECT_NOT_EQUAL(cmap, NULL);
+	EXPECT_NOT_EQ(cmap, NULL);
 	cmap->epoch = 123;
 	cmap->num_osd = 2;
 	cmap->num_mds = 2;
 	cmap->oinfo = calloc(2, sizeof(struct daemon_info));
-	EXPECT_NOT_EQUAL(cmap->oinfo, NULL);
+	EXPECT_NOT_EQ(cmap->oinfo, NULL);
 	cmap->minfo = calloc(2, sizeof(struct daemon_info));
-	EXPECT_NOT_EQUAL(cmap->minfo, NULL);
+	EXPECT_NOT_EQ(cmap->minfo, NULL);
 	localhost = inet_addr("127.0.0.1");
 	cmap->oinfo[0].ip = localhost;
 	cmap->oinfo[0].port = 8080;
@@ -141,14 +141,14 @@ static int test_cmap_round_trip_2(void)
 	uint32_t localhost;
 
 	cmap = calloc(1, sizeof(struct cmap));
-	EXPECT_NOT_EQUAL(cmap, NULL);
+	EXPECT_NOT_EQ(cmap, NULL);
 	cmap->epoch = 456;
 	cmap->num_osd = 1;
 	cmap->num_mds = 2;
 	cmap->oinfo = calloc(1, sizeof(struct daemon_info));
-	EXPECT_NOT_EQUAL(cmap->oinfo, NULL);
+	EXPECT_NOT_EQ(cmap->oinfo, NULL);
 	cmap->minfo = calloc(2, sizeof(struct daemon_info));
-	EXPECT_NOT_EQUAL(cmap->minfo, NULL);
+	EXPECT_NOT_EQ(cmap->minfo, NULL);
 	localhost = inet_addr("127.0.0.1");
 	cmap->oinfo[0].ip = localhost;
 	cmap->oinfo[0].port = 8080;

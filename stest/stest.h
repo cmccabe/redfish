@@ -113,7 +113,7 @@ extern int stest_finish(void);
 		} \
 	} while(0);
 
-#define ST_EXPECT_EQUAL(expr1,  expr2) \
+#define ST_EXPECT_EQ(expr1,  expr2) \
 	do { \
 		if ((expr1) != (expr2)) { \
 			stest_add_error("failed on file %s, line %d\n", \
@@ -122,7 +122,7 @@ extern int stest_finish(void);
 		} \
 	} while(0);
 
-#define ST_EXPECT_NOT_EQUAL(expr1, expr2) \
+#define ST_EXPECT_NOT_EQ(expr1, expr2) \
 	do { \
 		if ((expr1) == (expr2)) { \
 			stest_add_error("failed on file %s, line %d\n", \

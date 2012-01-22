@@ -92,7 +92,7 @@ static int test_copy_fd_to_fd(const char *tempdir, int *next_id,
 		ret = errno;
 		return ret;
 	}
-	EXPECT_EQUAL(fwrite(buf, 1, buf_len, ifp), buf_len);
+	EXPECT_EQ(fwrite(buf, 1, buf_len, ifp), buf_len);
 	ifp = freopen(src_file, "r", ifp);
 	if (!ifp) {
 		ret = errno;
@@ -110,7 +110,7 @@ static int test_copy_fd_to_fd(const char *tempdir, int *next_id,
 	fclose(ifp);
 
 	nbuf = calloc(1, buf_len + 1);
-	EXPECT_NOT_EQUAL(nbuf, NULL);
+	EXPECT_NOT_EQ(nbuf, NULL);
 	res = simple_io_read_whole_file_zt(dst_file, nbuf, buf_len + 1);
 	if (res < 0) {
 		free(nbuf);
@@ -146,7 +146,7 @@ static int test_zfprintf(const char *tdir)
 	EXPECT_ZERO(fclose(fp));
 	expected_len = strlen(expected);
 	res = simple_io_read_whole_file_zt(fname, buf, sizeof(buf) - 1);
-	EXPECT_EQUAL(res, (ssize_t)expected_len);
+	EXPECT_EQ(res, (ssize_t)expected_len);
 	EXPECT_ZERO(memcmp(expected, buf, res));
 	fp = fopen(fname, "r");
 	if (!fp) {
@@ -178,7 +178,7 @@ int main(void)
 	bigbuf = malloc(BIGBUF_SZ);
 	memset(bigbuf, 'm', BIGBUF_SZ - 1);
 	bigbuf[BIGBUF_SZ - 1] = '\0';
-	EXPECT_NOT_EQUAL(bigbuf, NULL);
+	EXPECT_NOT_EQ(bigbuf, NULL);
 	EXPECT_ZERO(test_copy_fd_to_fd(tempdir, &next_id, bigbuf));
 	free(bigbuf);
 	EXPECT_ZERO(test_zfprintf(tempdir));
