@@ -227,10 +227,13 @@ static int validate_perm(const struct redfish_client *cli, const char *fname,
 			 int want)
 {
 	int mode;
+
+	/** The superuser can skip permission checks */
+	if (!strcmp(cli->user, RF_SUPERUSER_NAME))
+		return 0;
 	if (xgeti(fname, XATTR_FISH_MODE, 8, &mode)) {
 		return -EIO;
 	}
-	printf("mode = %o\n", mode);
 	/* everyone */
 	if (mode & want)
 		return 0;
@@ -243,7 +246,6 @@ static int validate_perm(const struct redfish_client *cli, const char *fname,
 				&user)) {
 			return -EIO;
 		}
-		printf("checking user name-- cli->user=%s, user=%s\n", cli->user, user);
 		ret = strcmp(cli->user, user);
 		free(user);
 		if (ret == 0)
