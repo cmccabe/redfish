@@ -17,6 +17,8 @@
 #include "client/fishc.h"
 #include "client/fishc_internal.h"
 #include "client/stub/xattrs.h"
+#include "mds/defaults.h"
+#include "mds/limits.h"
 #include "util/compiler.h"
 #include "util/dir.h"
 #include "util/error.h"
@@ -46,8 +48,11 @@ enum fish_open_ty {
 	FISH_OPEN_TY_WR,
 };
 
-#define WRITE_SHIFT 2
-#define READ_SHIFT 4
+enum stub_perm {
+	STUB_VPERM_EXE = 0x1,
+	STUB_VPERM_WRITE = 0x2,
+	STUB_VPERM_READ = 0x4,
+};
 
 #define XATTR_FISH_USER "user.fish_user"
 #define XATTR_FISH_GROUP "user.fish_group"
@@ -143,13 +148,31 @@ void redfish_mkfs(POSSIBLY_UNUSED(const char *uconf),
 	const char *base;
 
 	base = get_stub_base_dir();
-	ret = do_mkdir_p(base, 0755);
+	ret = do_mkdir_p(base, MSTOR_ROOT_NID_INIT_MODE);
 	if (ret) {
 		snprintf(err, err_len, "do_mkdir_p failed with error "
 			"%d", ret);
 		return;
 	}
-	// TODO: set up users and groups data
+	/* set up owner/group/mode on the root */
+	ret = xseti(base, XATTR_FISH_MODE, 8, MSTOR_ROOT_NID_INIT_MODE);
+	if (ret) {
+		snprintf(err, err_len, "failed to set mode "
+			"on '%s': error %d", base, ret);
+		return;
+	}
+	ret = xsets(base, XATTR_FISH_USER, RF_SUPERUSER_NAME);
+	if (ret) {
+		snprintf(err, err_len, "failed to set user "
+			"on '%s': error %d", base, ret);
+		return;
+	}
+	ret = xsets(base, XATTR_FISH_GROUP, RF_SUPERUSER_NAME);
+	if (ret) {
+		snprintf(err, err_len, "failed to set group "
+			"on '%s': error %d", base, ret);
+		return;
+	}
 }
 
 int redfish_connect(POSSIBLY_UNUSED(struct redfish_mds_locator **mlocs),
@@ -201,17 +224,17 @@ static int cli_is_group_member(const struct redfish_client *cli, const char *gro
 }
 
 static int validate_perm(const struct redfish_client *cli, const char *fname,
-			 int shift)
+			 int need)
 {
 	int mode;
 	if (xgeti(fname, XATTR_FISH_MODE, 8, &mode)) {
 		return -EIO;
 	}
 	/* everyone */
-	if (mode & (1 << shift))
+	if (mode & need)
 		return 0;
 	/* user */
-	if (mode & (1 << (shift + 6))) {
+	if (mode & (need << 6)) {
 		int ret;
 		char *user;
 		if (xgets(fname, XATTR_FISH_USER, REDFISH_USERNAME_MAX,
@@ -224,7 +247,7 @@ static int validate_perm(const struct redfish_client *cli, const char *fname,
 			return 0;
 	}
 	/* group */
-	if (mode & (1 << (shift + 3))) {
+	if (mode & (need << 3)) {
 		int ret;
 		char *group;
 		if (xgets(fname, XATTR_FISH_GROUP, REDFISH_GROUPNAME_MAX,
@@ -240,28 +263,102 @@ static int validate_perm(const struct redfish_client *cli, const char *fname,
 	return -EPERM;
 }
 
-static int recursive_validate_perm(const struct redfish_client *cli,
-				const char *fname, int shift)
+static int client_stub_get_npc(const char *path)
 {
-	int ret;
+	int i, npc = 0;
+
+	/* special case: / has 0 path components */
+	if ((path[0] == '/') && (path[1] == '\0'))
+		return 0;
+	for (i = 0; path[i]; ++i) {
+		if (path[i] == '/')
+			npc++;
+	}
+	return npc;
+}
+
+static int stub_check_perm(struct redfish_client *cli, const char *epath,
+		enum stub_perm want)
+{
+	struct stat st_buf;
+	int ret, cpc = 0, npc;
 	char *str, full[PATH_MAX], tbuf[PATH_MAX];
+	size_t base_len;
 
 	full[0] = '\0';
-	strcpy(tbuf, fname);
+	strcpy(tbuf, epath);
 	str = tbuf;
+	base_len = strlen(cli->base);
+	npc = client_stub_get_npc(epath);
 	while (1) {
 		char *tmp, *seg;
+
+		++cpc;
 		seg = strtok_r(str, "/", &tmp);
 		if (!seg)
 			break;
 		str = NULL;
 		strcat(full, "/");
 		strcat(full, seg);
-		ret = validate_perm(cli, full, shift);
-		if (ret)
-			return ret;
+		if (strlen(full) < base_len) {
+			printf("full = '%s', skipping\n", full);
+			continue;
+		}
+		printf("full = '%s', testing\n", full);
+		if (cpc == npc - 1) {
+			ret = validate_perm(cli, full, want);
+			if (ret)
+				return ret;
+		}
+		else {
+			if (stat(full, &st_buf) < 0) {
+				return -errno;
+			}
+			if (!S_ISDIR(st_buf.st_mode)) {
+				return -ENOTDIR;
+			}
+			ret = validate_perm(cli, full, STUB_VPERM_EXE);
+			if (ret)
+				return ret;
+		}
 	}
 	return 0;
+}
+
+static int stub_check_file_perm(struct redfish_client *cli,
+		const char *epath, enum stub_perm perm)
+{
+	struct stat st_buf;
+
+	if (stat(epath, &st_buf) < 0) {
+		return -errno;
+	}
+	/* Technically, could be other non-file, but not if all is well. */
+	if (!S_ISREG(st_buf.st_mode))
+		return -EISDIR;
+	return stub_check_perm(cli, epath, perm);
+}
+
+static int stub_check_dir_perm(struct redfish_client *cli,
+		const char *epath, enum stub_perm perm)
+{
+	struct stat st_buf;
+
+	if (stat(epath, &st_buf) < 0) {
+		return -errno;
+	}
+	if (!S_ISDIR(st_buf.st_mode))
+		return -ENOTDIR;
+	return stub_check_perm(cli, epath, perm);
+}
+
+static int stub_check_enc_dir_perm(struct redfish_client *cli,
+		const char *epath, enum stub_perm perm)
+{
+	char edir[PATH_MAX];
+
+	do_dirname(epath, edir, PATH_MAX);
+	return stub_check_dir_perm(cli, edir, perm);
 }
 
 static int set_mode(int fd, int mode)
@@ -284,18 +381,19 @@ int redfish_create(struct redfish_client *cli, const char *path,
 	POSSIBLY_UNUSED(int blocksz), struct redfish_file **ofe)
 {
 	int ret, fd = -1;
-	char epath[PATH_MAX], edir[PATH_MAX];
+	char epath[PATH_MAX];
 	struct redfish_file *zofe = NULL;
 
 	ret = get_stub_path(cli, path, epath, PATH_MAX);
 	if (ret)
 		return ret;
-	do_dirname(epath, edir, PATH_MAX);
 	pthread_mutex_lock(&cli->lock);
-	ret = recursive_validate_perm(cli, edir, WRITE_SHIFT);
+	fprintf(stderr, "redfish_create: validating permissions\n");
+	ret = stub_check_enc_dir_perm(cli, epath, STUB_VPERM_WRITE);
 	if (ret)
 		goto error;
-	fd = open(epath, O_WRONLY, 0644);
+	fprintf(stderr, "redfish_create: opening file\n");
+	fd = open(epath, O_WRONLY | O_CREAT, 0644);
 	if (fd < 0) {
 		ret = -errno;
 		if (ret == -EEXIST)
@@ -305,6 +403,7 @@ int redfish_create(struct redfish_client *cli, const char *path,
 	}
 	if (mode == REDFISH_INVAL_MODE)
 		mode = REDFISH_DEFAULT_FILE_MODE;
+	fprintf(stderr, "redfish_create: setting mode, user, group\n");
 	ret = set_mode(fd, mode);
 	if (ret)
 		goto error;
@@ -345,7 +444,7 @@ int redfish_open(struct redfish_client *cli, const char *path, struct redfish_fi
 	ret = get_stub_path(cli, path, epath, PATH_MAX);
 	if (ret)
 		return ret;
-	ret = recursive_validate_perm(cli, epath, READ_SHIFT);
+	ret = stub_check_file_perm(cli, epath, STUB_VPERM_READ);
 	if (ret)
 		return ret;
 	pthread_mutex_lock(&cli->lock);
@@ -394,36 +493,50 @@ int redfish_mkdirs(struct redfish_client *cli, int mode, const char *path)
 	while (1) {
 		DIR *dp;
 		char *tmp, *seg;
+		struct stat st_buf;
+
 		seg = strtok_r(str, "/", &tmp);
 		if (!seg)
 			break;
 		str = NULL;
 		strcat(full, "/");
 		strcat(full, seg);
-		if (mkdir(full, 0755) < 0) {
+		if (stat(full, &st_buf) < 0) {
 			ret = -errno;
-			if (ret == -EEXIST)
-				continue;
-			goto done;
-		}
-		dp = opendir(full);
-		fd = dirfd(dp);
-		ret = set_mode(fd, mode);
-		if (ret) {
+			if (ret != -ENOENT)
+				goto done;
+			if (mkdir(full, 0755) < 0) {
+				ret = -errno;
+				goto done;
+			}
+			dp = opendir(full);
+			fd = dirfd(dp);
+			ret = set_mode(fd, mode);
+			if (ret) {
+				closedir(dp);
+				goto done;
+			}
+			ret = set_user(fd, cli->user);
+			if (ret) {
+				closedir(dp);
+				goto done;
+			}
+			ret = set_group(fd, cli->group[0]);
+			if (ret) {
+				closedir(dp);
+				goto done;
+			}
 			closedir(dp);
+		}
+		else if (S_ISDIR(st_buf.st_mode)) {
+			ret = stub_check_dir_perm(cli, full, STUB_VPERM_EXE);
+			if (ret)
+				goto done;
+		}
+		else {
+			ret = -ENOTDIR;
 			goto done;
 		}
-		ret = set_user(fd, cli->user);
-		if (ret) {
-			closedir(dp);
-			goto done;
-		}
-		ret = set_group(fd, cli->group[0]);
-		if (ret) {
-			closedir(dp);
-			goto done;
-		}
-		closedir(dp);
 	}
 	ret = 0;
 
@@ -501,7 +614,11 @@ int redfish_get_path_status(struct redfish_client *cli, const char *path,
 
 	pthread_mutex_lock(&cli->lock);
 	get_stub_path(cli, path, epath, PATH_MAX);
+	ret = stub_check_enc_dir_perm(cli, epath, STUB_VPERM_READ);
+	if (ret)
+		goto done;
 	ret = get_path_status(epath, osa);
+done:
 	pthread_mutex_unlock(&cli->lock);
 	return ret;
 }
@@ -520,11 +637,12 @@ int redfish_list_directory(struct redfish_client *cli, const char *dir,
 		return -ENAMETOOLONG;
 	canonicalize_path(epath);
 	pthread_mutex_lock(&cli->lock);
+	ret = stub_check_enc_dir_perm(cli, epath, STUB_VPERM_READ);
+	if (ret)
+		goto error;
 	ret = do_opendir(epath, &dp);
-	if (ret) {
-		pthread_mutex_unlock(&cli->lock);
-		return ret;
-	}
+	if (ret)
+		goto error;
 	while (1) {
 		char fname[PATH_MAX];
 		struct redfish_stat *xosa;
@@ -540,12 +658,12 @@ int redfish_list_directory(struct redfish_client *cli, const char *dir,
 		xosa = realloc(zosa, nosa * sizeof(struct redfish_stat));
 		if (!xosa) {
 			ret = -ENOMEM;
-			goto free_zosa;
+			goto error;
 		}
 		zosa = xosa;
 		if (zsnprintf(fname, PATH_MAX, "%s/%s", epath, de->d_name)) {
 			ret = -ENAMETOOLONG;
-			goto free_zosa;
+			goto error;
 		}
 		ret = get_path_status(fname, &zosa[nosa - 1]);
 		if (ret) {
@@ -556,7 +674,7 @@ int redfish_list_directory(struct redfish_client *cli, const char *dir,
 	pthread_mutex_unlock(&cli->lock);
 	*osa = zosa;
 	return nosa;
-free_zosa:
+error:
 	if (dp != NULL)
 		do_closedir(dp);
 	pthread_mutex_unlock(&cli->lock);
@@ -577,7 +695,7 @@ static int redfish_openwr_internal(struct redfish_client *cli, const char *path)
 	ret = get_stub_path(cli, path, epath, PATH_MAX);
 	if (ret)
 		return FORCE_NEGATIVE(ret);
-	ret = recursive_validate_perm(cli, epath, WRITE_SHIFT);
+	ret = stub_check_file_perm(cli, epath, STUB_VPERM_WRITE);
 	if (ret)
 		return FORCE_NEGATIVE(ret);
 	fd = open(epath, O_WRONLY);
@@ -653,6 +771,9 @@ int redfish_utimes(struct redfish_client *cli, const char *path,
 	if (ret)
 		return ret;
 	pthread_mutex_lock(&cli->lock);
+	ret = stub_check_file_perm(cli, epath, STUB_VPERM_WRITE);
+	if (ret)
+		return ret;
 	ret = utime(epath, &tbuf);
 	pthread_mutex_unlock(&cli->lock);
 	return ret;
@@ -742,7 +863,11 @@ int redfish_unlink(struct redfish_client *cli, const char *path)
 	if (ret)
 		return ret;
 	pthread_mutex_lock(&cli->lock);
+	ret = stub_check_enc_dir_perm(cli, epath, STUB_VPERM_WRITE);
+	if (ret)
+		goto done;
 	ret = unlink(epath);
+done:
 	pthread_mutex_unlock(&cli->lock);
 	return ret;
 }
@@ -756,8 +881,13 @@ int redfish_unlink_tree(struct redfish_client *cli, const char *path)
 	if (ret)
 		return ret;
 	pthread_mutex_lock(&cli->lock);
-	/* FIXME: replace this with something less fugly */
+	/* FIXME: this is not the right permission check.  It only checks the
+	 * permission of the root of the subtree we're deleting. */
+	ret = stub_check_enc_dir_perm(cli, epath, STUB_VPERM_WRITE);
+	if (ret)
+		goto done;
 	ret = run_cmd("rm", "-rf", path, (char*)NULL);
+done:
 	pthread_mutex_unlock(&cli->lock);
 	return ret;
 }
@@ -765,28 +895,55 @@ int redfish_unlink_tree(struct redfish_client *cli, const char *path)
 int redfish_rename(struct redfish_client *cli, const char *src, const char *dst)
 {
 	int ret;
-	char esrc[PATH_MAX], edst[PATH_MAX], eddir[PATH_MAX];
+	char esrc[PATH_MAX], edst[PATH_MAX];
 
 	pthread_mutex_lock(&cli->lock);
 	ret = get_stub_path(cli, src, esrc, PATH_MAX);
 	if (ret)
 		goto done;
+	if (strlen(esrc) == strlen(cli->base)) {
+		/* can't move root directory */
+		ret = -EINVAL;
+		goto done;
+	}
 	ret = get_stub_path(cli, dst, edst, PATH_MAX);
 	if (ret)
 		goto done;
-	ret = recursive_validate_perm(cli, esrc, WRITE_SHIFT);
+	/* We need to be able to remove the src file from where it is now */
+	ret = stub_check_enc_dir_perm(cli, esrc, STUB_VPERM_WRITE);
 	if (ret)
 		goto done;
-	do_dirname(edst, eddir, PATH_MAX);
-	ret = recursive_validate_perm(cli, eddir, WRITE_SHIFT);
-	if (ret)
+
+	struct stat st_buf;
+	if (stat(edst, &st_buf) < 0) {
+		ret = -errno;
+		if (ret != -ENOENT)
+			goto done;
+		ret = stub_check_enc_dir_perm(cli, edst, STUB_VPERM_WRITE);
+		if (ret)
+			goto done;
+	}
+	else if (S_ISDIR(st_buf.st_mode)) {
+		/* Tried to rename into a directory, which is allowed */
+		ret = stub_check_dir_perm(cli, edst, STUB_VPERM_WRITE);
+		if (ret)
+			return ret;
+	}
+	else {
+		/* Tried to rename over a file; HDFS semantics don't allow
+		 * this */
+		ret = -EEXIST;
 		goto done;
-	ret = rename(esrc, edst);
+	}
+	if (rename(esrc, edst) < 0) {
+		ret = -errno;
+	}
+	else {
+		ret = 0;
+	}
 done:
 	pthread_mutex_unlock(&cli->lock);
-	if (ret == 0)
-		return ret;
-	return FORCE_NEGATIVE(ret);
+	return ret;
 }
 
 int redfish_close(struct redfish_file *ofe)
