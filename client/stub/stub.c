@@ -592,7 +592,7 @@ static int get_path_status(const char *path, struct redfish_stat *zosa)
 {
 	struct stat sbuf;
 	if (stat(path, &sbuf) < 0) {
-		return -EIO;
+		return -errno;
 	}
 	zosa->path = strdup(path);
 	zosa->length = sbuf.st_size;
