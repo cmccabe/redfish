@@ -16,6 +16,9 @@ target_link_libraries(st_mkdirs ${REDFISH_CLIENT_LIB} stest)
 add_executable(st_unlink unlink_test.c)
 target_link_libraries(st_unlink ${REDFISH_CLIENT_LIB} stest)
 
+add_executable(st_rename1 rename_test1.c)
+target_link_libraries(st_rename1 ${REDFISH_CLIENT_LIB} stest)
+
 add_executable(trivial_unit trivial_unit.c)
 target_link_libraries(trivial_unit util utest)
 add_test(trivial_unit ${CMAKE_CURRENT_BINARY_DIR}/trivial_unit trivial_unit)

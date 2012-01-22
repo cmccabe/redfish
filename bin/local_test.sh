@@ -37,6 +37,7 @@ echo "Tests running with STUB_BASE=${STUB_BASE}"
 ./stest/st_write_then_read -f || die "line ${LINENO}"
 ./stest/st_mkdirs -f || die "line ${LINENO}"
 ./stest/st_unlink -f || die "line ${LINENO}"
+./stest/st_rename1 -f || die "line ${LINENO}"
 
 echo "*** SUCCESS ***"
 exit 0
