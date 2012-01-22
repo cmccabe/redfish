@@ -66,12 +66,8 @@ ELSE(LEVELDB_INCLUDE_DIR AND LEVELDB_LIBRARIES)
     MESSAGE(FATAL_ERROR "Failed to find levelDB. Try reading INSTALL.txt, or install leveldb manually from http://code.google.com/p/leveldb/")
 ENDIF(LEVELDB_INCLUDE_DIR AND LEVELDB_LIBRARIES)
 
-# Find curses
-find_package(Curses REQUIRED)
-
 # Set up include paths
 include_directories(
-    ${CURSES_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${JSON_C_INCLUDE_DIR}
     ${LIBEV_INCLUDE_DIR}
