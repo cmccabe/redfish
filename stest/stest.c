@@ -18,6 +18,7 @@
 #include "client/fishc_internal.h"
 #include "common/config/logc.h"
 #include "core/signal.h"
+#include "mds/limits.h"
 #include "stest/stest.h"
 #include "util/compiler.h"
 #include "util/error.h"
@@ -39,7 +40,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define STEST_DEFAULT_USER "redfish"
+#define STEST_DEFAULT_USER RF_SUPERUSER_NAME
 #define NUM_PERCENT_DIGITS 3
 
 static char g_tempdir[PATH_MAX];
