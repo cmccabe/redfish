@@ -42,7 +42,7 @@ static void fishmkfs_usage(int exitstatus)
 "Command-line options:",
 "-c <file-name>",
 "    Set the RedFish configuration file name",
-"-f <filesystem-id>",
+"-F <filesystem-id>",
 "    Set the filesystem ID as a 64-bit hexadecimal number",
 "-h",
 "    Show this help message",
@@ -69,12 +69,12 @@ static void fishmkfs_parse_argv(int argc, char **argv, const char **uconf,
 	*mid = RF_INVAL_MID;
 	*fsid = RF_INVAL_FSID;
 
-	while ((c = getopt(argc, argv, "c:f:hm:")) != -1) {
+	while ((c = getopt(argc, argv, "c:F:hm:")) != -1) {
 		switch (c) {
 		case 'c':
 			*uconf = optarg;
 			break;
-		case 'f':
+		case 'F':
 			str_to_long_long(optarg, 16, &ll, err, err_len);
 			if (err[0]) {
 				fprintf(stderr, "Failed to parse the argument "

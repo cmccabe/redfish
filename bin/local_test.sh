@@ -31,7 +31,7 @@ export STUB_BASE=`mktemp -d -t local_test.XXXXXXXXXX`
 trap "[ -n "${SKIP_CLEANUP}" ] || rm -rf ${STUB_BASE}; exit" INT TERM EXIT
 echo "Tests running with STUB_BASE=${STUB_BASE}"
 
-./mkfs/fishmkfs -c /tmp/conf -m 0 -f 1 || die "line ${LINENO}"
+./mkfs/fishmkfs -c /tmp/conf -m 0 -F 1 || die "line ${LINENO}"
 ./stest/st_startup -f || die "line ${LINENO}"
 ./stest/st_trivial -f || die "line ${LINENO}"
 ./stest/st_write_then_read -f || die "line ${LINENO}"
