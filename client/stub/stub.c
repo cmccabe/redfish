@@ -224,30 +224,33 @@ static int cli_is_group_member(const struct redfish_client *cli, const char *gro
 }
 
 static int validate_perm(const struct redfish_client *cli, const char *fname,
-			 int need)
+			 int want)
 {
 	int mode;
 	if (xgeti(fname, XATTR_FISH_MODE, 8, &mode)) {
 		return -EIO;
 	}
+	printf("mode = %o\n", mode);
 	/* everyone */
-	if (mode & need)
+	if (mode & want)
 		return 0;
 	/* user */
-	if (mode & (need << 6)) {
+	if (mode & (want << 6)) {
 		int ret;
 		char *user;
+
 		if (xgets(fname, XATTR_FISH_USER, REDFISH_USERNAME_MAX,
 				&user)) {
 			return -EIO;
 		}
+		printf("checking user name-- cli->user=%s, user=%s\n", cli->user, user);
 		ret = strcmp(cli->user, user);
 		free(user);
 		if (ret == 0)
 			return 0;
 	}
 	/* group */
-	if (mode & (need << 3)) {
+	if (mode & (want << 3)) {
 		int ret;
 		char *group;
 		if (xgets(fname, XATTR_FISH_GROUP, REDFISH_GROUPNAME_MAX,
@@ -290,6 +293,7 @@ static int stub_check_perm(struct redfish_client *cli, const char *epath,
 	str = tbuf;
 	base_len = strlen(cli->base);
 	npc = client_stub_get_npc(epath);
+	printf("epath='%s', npc = %d\n", epath, npc);
 	while (1) {
 		char *tmp, *seg;
 
@@ -304,8 +308,8 @@ static int stub_check_perm(struct redfish_client *cli, const char *epath,
 			printf("full = '%s', skipping\n", full);
 			continue;
 		}
-		printf("full = '%s', testing\n", full);
-		if (cpc == npc - 1) {
+		printf("full = '%s', cpc = %d, testing\n", full, cpc);
+		if (cpc == npc) {
 			ret = validate_perm(cli, full, want);
 			if (ret)
 				return ret;
@@ -363,7 +367,7 @@ static int stub_check_enc_dir_perm(struct redfish_client *cli,
 
 static int set_mode(int fd, int mode)
 {
-	return fxseti(fd, XATTR_FISH_USER, 8, mode);
+	return fxseti(fd, XATTR_FISH_MODE, 8, mode);
 }
 
 static int set_user(int fd, const char *user)
@@ -373,7 +377,7 @@ static int set_user(int fd, const char *user)
 
 static int set_group(int fd, const char *group)
 {
-	return fxsets(fd, XATTR_FISH_USER, group);
+	return fxsets(fd, XATTR_FISH_GROUP, group);
 }
 
 int redfish_create(struct redfish_client *cli, const char *path,
@@ -392,7 +396,7 @@ int redfish_create(struct redfish_client *cli, const char *path,
 	ret = stub_check_enc_dir_perm(cli, epath, STUB_VPERM_WRITE);
 	if (ret)
 		goto error;
-	fprintf(stderr, "redfish_create: opening file\n");
+	fprintf(stderr, "redfish_create: creating file\n");
 	fd = open(epath, O_WRONLY | O_CREAT, 0644);
 	if (fd < 0) {
 		ret = -errno;
@@ -421,6 +425,7 @@ int redfish_create(struct redfish_client *cli, const char *path,
 	zofe->ty = FISH_OPEN_TY_WR;
 	zofe->fd = fd;
 	*ofe = zofe;
+	fprintf(stderr, "redfish_create: created as '%s'\n", epath);
 	pthread_mutex_unlock(&cli->lock);
 	return 0;
 
