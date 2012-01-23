@@ -74,6 +74,10 @@ include_directories(
     ${LEVELDB_INCLUDE_DIR}
 )
 
+if (REDFISH_BUILD_JNI)
+    include_directories(${JNI_INCLUDE_DIRS})
+endif (REDFISH_BUILD_JNI)
+
 add_subdirectory(client)
 add_subdirectory(common)
 add_subdirectory(core)
