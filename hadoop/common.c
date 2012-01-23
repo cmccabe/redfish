@@ -14,9 +14,11 @@
  * permissions and limitations under the License.
  */
 
+#include <errno.h>
 #include <jni.h>
 
-#include "common.h"
+#include "hadoop/common.h"
+#include "util/compiler.h"
 
 jfieldID g_fid_m_cli;
 
@@ -24,7 +26,7 @@ jclass g_cls_file_status;
 jmethodID g_mid_file_status_ctor;
 
 jclass g_cls_file_perm;
-jmethodID g_mid_file_permission_ctor;
+jmethodID g_mid_file_perm_ctor;
 
 jclass g_cls_path;
 jmethodID g_mid_path_ctor;
@@ -38,24 +40,21 @@ static int cache_class_and_ctor(JNIEnv *jenv, const char *name,
 	cls = (*jenv)->FindClass(jenv, name);
 	if (!cls)
 		return -ENOENT;
-	*out_cls = (*jenv)->NewWeakGlobalRef(cls);
-	if (!(*out_cls))
-		return -ENOENT;
-	ctor = (*jenv)->GetMethodID(jenv, *out_cls, "<init>", sig);
+	ctor = (*jenv)->GetMethodID(jenv, cls, "<init>", sig);
 	if (!ctor)
 		return -ENOENT;
-	*out_ctor = (*jenv)->NewWeakGlobalRef(ctor);
-	if (!(*out_ctor))
+	*out_cls = (*jenv)->NewWeakGlobalRef(jenv, cls);
+	if (!(*out_cls))
 		return -ENOENT;
+	*out_ctor = ctor;
 	return 0;
 }
 
 static void uncache_class_and_ctor(JNIEnv *jenv,
 		jclass *out_cls, jmethodID *out_ctor)
 {
-	(*jenv)->DeleteGlobalRef(*out_cls);
+	(*jenv)->DeleteGlobalRef(jenv, *out_cls);
 	*out_cls = NULL;
-	(*jenv)->DeleteGlobalRef(*out_ctor);
 	*out_ctor = NULL;
 }
 
@@ -66,19 +65,19 @@ static int cache_redfish_client_fields(JNIEnv *jenv)
 	cls = (*jenv)->FindClass(jenv, "RedfishClient");
 	if (!cls)
 		return JNI_FALSE;
-	g_fid_m_cli = (*jenv)->GetLongFieldID(jenv, jcls,
+	g_fid_m_cli = (*jenv)->GetFieldID(jenv, cls,
 			"m_cli", "Ljava/lang/Long;");
 	if (!g_fid_m_cli)
 		return JNI_FALSE;
 	return 0;
 }
 
-jint JNI_OnLoad(JavaVM *jvm, void *reserved)
+jint JNI_OnLoad(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
 {
 	int ret;
-	JNIEnv *jenv;
+	JNIEnv *jenv = NULL;
 
-	if ((*jvm)->GetEnv(jvm, (void **)&env, JNI_VERSION_1_2)) {
+	if ((*jvm)->GetEnv(jvm, (void **)&jenv, JNI_VERSION_1_2)) {
 		return JNI_ERR; /* JNI version not supported */
 	}
 	ret = cache_redfish_client_fields(jenv);
@@ -91,7 +90,7 @@ jint JNI_OnLoad(JavaVM *jvm, void *reserved)
 	if (ret)
 		return JNI_ERR;
 	ret = cache_class_and_ctor(jenv, "FilePermission", &g_cls_file_perm,
-			&g_mid_file_perm, "(S)V");
+			&g_mid_file_perm_ctor, "(S)V");
 	if (ret)
 		return JNI_ERR;
 	ret = cache_class_and_ctor(jenv, "Path", &g_cls_path,
@@ -101,7 +100,7 @@ jint JNI_OnLoad(JavaVM *jvm, void *reserved)
 	return JNI_VERSION_1_2;
 }
 
-void JNI_OnUnload(JavaVM *jvm, void *reserved)
+void JNI_OnUnload(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
 {
 	JNIEnv *jenv;
 
@@ -112,7 +111,7 @@ void JNI_OnUnload(JavaVM *jvm, void *reserved)
 	uncache_class_and_ctor(jenv, &g_cls_file_status,
 			&g_mid_file_status_ctor);
 	uncache_class_and_ctor(jenv, &g_cls_file_perm,
-			&g_mid_file_perm);
+			&g_mid_file_perm_ctor);
 	uncache_class_and_ctor(jenv, &g_cls_path,
 			&g_mid_path_ctor);
 }

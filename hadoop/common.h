@@ -25,7 +25,7 @@ extern jclass g_cls_file_status;
 extern jmethodID g_mid_file_status_ctor;
 
 extern jclass g_cls_file_perm;
-extern jmethodID g_mid_file_permission_ctor;
+extern jmethodID g_mid_file_perm_ctor;
 
 extern jclass g_cls_path;
 extern jmethodID g_mid_path_ctor;
