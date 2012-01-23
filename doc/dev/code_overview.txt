@@ -1,0 +1,74 @@
+Here is an overview of what is in the various RedFish source directories.
+
+bin/
+        Assorted helper scripts that didn't fit anywhere else.  These are
+        mostly written in python or bash shell.
+
+client/stub/
+        The stub version of the Redfish client.  This is mostly used for
+        testing the JNI bindings.
+
+common/
+        Redfish-specific code which is common across multiple subsystems.  This
+        is similar to util/ in that it can be used from either process or
+        library context.  However, the routines in util/ are fairly generic,
+        whereas common/ contains code specific Redfish and unlikely to be
+        useful anywhere else.
+
+conf/
+        Example configuration files.  You don't have to use these; they are
+        only provided as examples.
+
+core/
+        Code which is shared across multiple Redfish daemons or utilities.
+        Unlike util/, the code in this directory must run in process context.
+        The code here tends to deal with issues like signal handling and pid
+        files.
+
+deploy/
+        Python scripts for deploying a Redfish cluster.  These scripts are part
+        of a test harness that I use for running regression tests on the
+        daemons.  System administrators will probably find their own ways to
+        deploy Redfish using tools like Chef, cfengine, Puppet, or other tools.
+
+doc/admin/
+        Documentation for system administators
+
+doc/dev/
+        Documentation for developers
+
+hadoop/
+        Hadoop JNI bindings for RedFish.
+
+jorm/
+        A system for serializing and deserializing JSON objects into C
+        structures.
+
+mds/
+        The Redfish metadata server code
+
+mkfs/
+        The Redfish mkfs tool
+
+msg/
+        The Redfish messenger code.  The messenger handles multiplexing
+        multiple transactors over a single TCP connection per endpoint.
+
+osd/
+        The Redfish object storage daemon code
+
+rsem/
+        The Redfish remote sempahore daemon code.  This is intended to be used
+        by system tests from the stest/ directory.  It is purely for testing.
+
+stest/
+        System tests for Redfish.  Unlike the various unit tests, these are
+        tests which are intended to be run on an active Redfish cluster.
+
+tool/
+        The Redfish tool.  This tool allows system administrators to manually
+        interact with the filesystem.
+
+util/
+        A library of utility functions.  These are safe to run from either
+        process or library context, and not overly specific to Redfish.
