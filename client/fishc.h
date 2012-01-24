@@ -23,9 +23,11 @@
 
 #define REDFISH_INVAL_MODE 01000
 
-/** Represents a redfish client. Generally you will have one of these for each
+/** Represents a Redfish client. Generally you will have one of these for each
  * process that is accessing the filesystem.
- * It can be shared among multiple threads.
+ *
+ * All operations on a Redfish Client are thread-safe, except for
+ * redfish_free_client and redfish_disconnect_and_free.
  */
 struct redfish_client;
 
@@ -43,7 +45,11 @@ struct redfish_mds_locator
 	int port;
 };
 
-/** Represents an open redfish file. */
+/** Represents an open redfish file.
+ *
+ * All operations on a Redfish File are thread-safe, except for
+ * redfish_free_file and redfish_close_and_free.
+ */
 struct redfish_file;
 
 /** Represents the status of a RedFish file. */
@@ -328,11 +334,35 @@ int redfish_chown(struct redfish_client *cli, const char *path,
 int redfish_utimes(struct redfish_client *cli, const char *path,
 		int64_t mtime, int64_t atime);
 
-/** Destroy a RedFish client instance and free the memory associated with it.
+/** Disconnect a Redfish client instance
  *
- * @param cli		the RedFish client to destroy
+ * Once a client instance is disconnected, no further operations can be
+ * attempted on it.  This function is thread-safe.
+ *
+ * There isn't anything you can do with a disconnected client except free it
+ * using redfish_free_client.
+ *
+ * @param cli		the Redfish client to disconnect
  */
 void redfish_disconnect(struct redfish_client *cli);
+
+/** Destroy a RedFish client instance and free the memory associated with it.
+ *
+ * This function is NOT thread-safe.  You must ensure that no other thread is
+ * using the Redfish client while it is being freed.  After the client is freed,
+ * the pointer becomes invalid and must never be used again.
+ *
+ * @param cli		the RedFish client to free
+ */
+void redfish_free_client(struct redfish_client *cli);
+
+/** Disconnect and free a Redfish client.
+ *
+ * This function is NOT thread-safe.
+ *
+ * @param cli		the RedFish client to disconnect and free.
+ */
+void redfish_disconnect_and_free(struct redfish_client *cli);
 
 /** Reads data from a redfish file
  *
@@ -432,15 +462,6 @@ int redfish_hflush(struct redfish_file *ofe);
  */
 int redfish_hsync(struct redfish_file *ofe);
 
-/** Freed the memory and internal state associated with a redfish file.
- *
- * You usually do not want to call this function directly, except when handling
- * errors. It is usually easier to call redfish_close.
- *
- * @param ofe		the RedFish file
- */
-void redfish_free_file(struct redfish_file *ofe);
-
 /** Delete a file
  *
  * @param cli		the redfish client
@@ -468,20 +489,43 @@ int redfish_unlink_tree(struct redfish_client *cli, const char *path);
  */
 int redfish_rename(struct redfish_client *cli, const char *src, const char *dst);
 
-/** Closes a RedFish file.
- * For files opened for writing or appending, this triggers any locally
- * buffered data to be written out to the metadata servers. Basically, this
- * call is equivalent to redfish_flush followed by redfish_free_file.
+/** Close a RedFish file.
  *
- * For files opened for reading, this call is identical to
- * redfish_free_file.
+ * For files opened for writing or appending, this triggers any locally
+ * buffered data to be written out to the metadata servers.
+ *
+ * This operation is thread-safe.
  *
  * @param ofe		the RedFish file
  *
- * @return		0 on success; error code if redfish_flush failed.
- *			Either way, the redfish_file is freed.
+ * @return		0 on success; error code if the buffered data could not
+ *			be written out as expected.
  */
 int redfish_close(struct redfish_file *ofe);
+
+/** Freed the memory and internal state associated with a Redfish file.
+ *
+ * This operation does NOT properly close the file.  You may lose data if you
+ * free a file opened for write before closing it.
+ *
+ * This operation is NOT thread-safe!  You must ensure that no other thread is
+ * using the Redfish file while it is being freed.  After the file is freed, the
+ * pointer becomes invalid and must never be used again.
+ *
+ * @param ofe		the RedFish file
+ */
+void redfish_free_file(struct redfish_file *ofe);
+
+/** Close and free a RedFish file.
+ *
+ * This is a convenience method.  It is equivalent to redfish_close followed by
+ * redfish_free_file.  Like redfish_free_file, it is NOT thread-safe.
+ *
+ * @param ofe		the RedFish file
+ *
+ * @return		the return code of redfish_close
+ */
+int redfish_close_and_free(struct redfish_file *ofe);
 
 /* TODO: add copy_from_local_file
  * TODO: add move_from_local_file
