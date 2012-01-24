@@ -39,16 +39,6 @@ static void* redfish_get_m_cli(JNIEnv *jenv, jobject jobj)
 	return (void*)(uintptr_t)(*jenv)->GetLongField(jenv, jobj, g_fid_m_cli);
 }
 
-void redfish_throw_io_except(JNIEnv *jenv, const char *name, const char *msg)
-{
-	jclass jcls = (*jenv)->FindClass(jenv, name);
-	/* If !jcls, we just raised a NoClassDefFound exception, or similar */
-	if (jcls) {
-		(*jenv)->ThrowNew(jenv, jcls, msg);
-		(*jenv)->DeleteLocalRef(jenv, jcls);
-	}
-}
-
 void Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishConnect(
 		JNIEnv *jenv, jobject jobj, POSSIBLY_UNUSED(jstring jhost),
 		POSSIBLY_UNUSED(jint jport), jstring juser)
@@ -83,7 +73,7 @@ done:
 	if (mlocs)
 		redfish_mlocs_free(mlocs);
 	if (err[0])
-		redfish_throw_io_except(jenv, "java/io/IOException", err);
+		redfish_throw(jenv, "java/io/IOException", err);
 }
 
 jboolean Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishMkdirs(
@@ -108,7 +98,7 @@ jboolean Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishMkdirs(
 		goto done;
 done:
 	if (err[0])
-		redfish_throw_io_except(jenv, "java/io/IOException", err);
+		redfish_throw(jenv, "java/io/IOException", err);
 	return (ret == 0);
 }
 
@@ -189,8 +179,8 @@ jobject Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishGetPathStatus(
 		goto done;
 	ret = redfish_get_path_status(cli, cpath, &osa);
 	if (ret == -ENOENT) {
-		redfish_throw_io_except(jenv, "java/io/FileNotFound",
-			"No such file");
+		snprintf(err, err_len, "No such file as '%s'", cpath);
+		redfish_throw(jenv, "java/io/FileNotFound", err);
 		goto done;
 	}
 	else if (ret) {
@@ -205,7 +195,7 @@ jobject Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishGetPathStatus(
 done:
 	redfish_free_path_status(&osa);
 	if (err[0])
-		redfish_throw_io_except(jenv, "java/io/IOException", err);
+		redfish_throw(jenv, "java/io/IOException", err);
 	return res;
 }
 
@@ -233,7 +223,7 @@ void Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishChmod(
 	}
 done:
 	if (err[0])
-		redfish_throw_io_except(jenv, "java/io/IOException", err);
+		redfish_throw(jenv, "java/io/IOException", err);
 }
 
 void Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishChown(
@@ -274,7 +264,7 @@ void Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishChown(
 	}
 done:
 	if (err[0])
-		redfish_throw_io_except(jenv, "java/io/IOException", err);
+		redfish_throw(jenv, "java/io/IOException", err);
 }
 
 void Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishUtimes(
@@ -301,7 +291,7 @@ void Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishUtimes(
 	}
 done:
 	if (err[0])
-		redfish_throw_io_except(jenv, "java/io/IOException", err);
+		redfish_throw(jenv, "java/io/IOException", err);
 }
 
 jboolean Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishUnlink(
@@ -327,7 +317,7 @@ jboolean Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishUnlink(
 	}
 done:
 	if (err[0])
-		redfish_throw_io_except(jenv, "java/io/IOException", err);
+		redfish_throw(jenv, "java/io/IOException", err);
 	return (ret == 0);
 }
 
@@ -354,7 +344,7 @@ jboolean Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishUnlinkTree(
 	}
 done:
 	if (err[0])
-		redfish_throw_io_except(jenv, "java/io/IOException", err);
+		redfish_throw(jenv, "java/io/IOException", err);
 	return (ret == 0);
 }
 
@@ -384,7 +374,7 @@ jboolean Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishRename(
 	}
 done:
 	if (err[0])
-		redfish_throw_io_except(jenv, "java/io/IOException", err);
+		redfish_throw(jenv, "java/io/IOException", err);
 	return (ret == 0);
 }
 
@@ -399,7 +389,7 @@ void Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishDisconnect(
 	if (!cli) {
 		/* already disconnected */
 		strerror_r(EINVAL, err, err_len);
-		redfish_throw_io_except(jenv, "java/io/IOException", err);
+		redfish_throw(jenv, "java/io/IOException", err);
 		return;
 	}
 	redfish_disconnect(cli);

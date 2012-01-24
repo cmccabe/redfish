@@ -30,4 +30,12 @@ extern jmethodID g_mid_file_perm_ctor;
 extern jclass g_cls_path;
 extern jmethodID g_mid_path_ctor;
 
+/** Raise a Java exception from a JNI method
+ *
+ * @param jenv		The JNI environment
+ * @param name		The name of the exception to raise
+ * @param msg		The message to use when constructing the exception
+ */
+extern void redfish_throw(JNIEnv *jenv, const char *name, const char *msg);
+
 #endif

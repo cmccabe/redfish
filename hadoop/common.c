@@ -72,6 +72,18 @@ static int cache_redfish_client_fields(JNIEnv *jenv)
 	return 0;
 }
 
+void redfish_throw(JNIEnv *jenv, const char *name, const char *msg)
+{
+	jclass cls = (*jenv)->FindClass(jenv, name);
+	if (!cls) {
+		/* If !cls, we just raised a NoClassDefFound exception, or
+		 * similar. */
+		return;
+	}
+	(*jenv)->ThrowNew(jenv, cls, msg);
+	(*jenv)->DeleteLocalRef(jenv, cls);
+}
+
 jint JNI_OnLoad(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
 {
 	int ret;
