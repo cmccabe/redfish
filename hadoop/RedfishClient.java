@@ -34,13 +34,7 @@ class RedfishClient {
 
   static {
     try {
-      boolean ret;
-
       System.loadLibrary("hadoopfishc");
-      ret = redfish_cache_field_ids();
-      if (!ret) {
-          throw new RuntimeException("redfish_cache_field_ids failed!");
-      }
     }
     catch (UnsatisfiedLinkError e) {
       e.printStackTrace();
