@@ -21,6 +21,7 @@
 #include "util/compiler.h"
 
 jfieldID g_fid_m_cli;
+jfieldID g_fid_m_ofe;
 
 jclass g_cls_file_status;
 jmethodID g_mid_file_status_ctor;
@@ -84,6 +85,20 @@ void redfish_throw(JNIEnv *jenv, const char *name, const char *msg)
 	(*jenv)->DeleteLocalRef(jenv, cls);
 }
 
+static int cache_redfish_input_stream_fields(JNIEnv *jenv)
+{
+	jclass cls;
+
+	cls = (*jenv)->FindClass(jenv, "RedfishInputStream");
+	if (!cls)
+		return -ENOENT;
+	g_fid_m_ofe = (*jenv)->GetFieldID(jenv, cls,
+			"m_ofe", "Ljava/lang/Long;");
+	if (!g_fid_m_ofe)
+		return -ENOENT;
+	return 0;
+}
+
 jint JNI_OnLoad(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
 {
 	int ret;
@@ -93,6 +108,9 @@ jint JNI_OnLoad(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
 		return JNI_ERR; /* JNI version not supported */
 	}
 	ret = cache_redfish_client_fields(jenv);
+	if (ret)
+		return JNI_ERR;
+	ret = cache_redfish_input_stream_fields(jenv);
 	if (ret)
 		return JNI_ERR;
 	// org.apache.hadoop.fs.FileStatus FileStatus

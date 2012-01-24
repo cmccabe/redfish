@@ -49,8 +49,9 @@ class RedfishClient {
   }
 
   /* This finalizer is intended to free the (small!) amount of memory used by
-   * the redfish_client data structure of a closed file.  It also destroys the
-   * pthread mutex used to make the rest of the functions thread-safe.
+   * the redfish_client data structure of a disconnected client.  It also
+   * destroys the pthread mutex used to make the rest of the functions
+   * thread-safe.
    *
    * Please call redfishDisconnect explicitly to tear down connections.  This
    * it NOT intended as a replacement for that function.

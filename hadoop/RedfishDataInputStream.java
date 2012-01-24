@@ -43,18 +43,19 @@ class RedfishDataInputStream extends FSInputStream {
     }
   }
 
-  public RedfishDataInputStream(long ofe) {
+  private RedfishDataInputStream(long ofe) {
       m_ofe = ofe;
   }
 
+  /* This finalizer is intended to free the (small!) amount of memory used by
+   * the redfish_file data structure of a closed file.  It also destroys the
+   * pthread mutex used to make the rest of the functions thread-safe.
+   *
+   * Please call close() explicitly to close files.  This it NOT intended as a
+   * replacement for that function.
+   * */
   protected void finalize() throws Throwable {} {
-    try {
-      redfishClose();
-    }
-    catch (Exception e) {
-      e.printStackTrace();
-      System.out.println("Error closing RedfishDataInputStream");
-    }
+    this.redfishFree();
   }
 
   public boolean markSupported() {

@@ -5,6 +5,7 @@ include_directories(${JNI_INCLUDE_DIRS})
 
 add_library(fishc_jni
     RedfishClient.c
+    RedfishDataInputStream.c
     common.c
 )
 target_link_libraries(fishc_jni ${JAVA_JVM_LIBRARY} pthread)
