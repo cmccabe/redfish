@@ -64,11 +64,11 @@ static int cache_redfish_client_fields(JNIEnv *jenv)
 
 	cls = (*jenv)->FindClass(jenv, "RedfishClient");
 	if (!cls)
-		return JNI_FALSE;
+		return -ENOENT;
 	g_fid_m_cli = (*jenv)->GetFieldID(jenv, cls,
 			"m_cli", "Ljava/lang/Long;");
 	if (!g_fid_m_cli)
-		return JNI_FALSE;
+		return -ENOENT;
 	return 0;
 }
 
