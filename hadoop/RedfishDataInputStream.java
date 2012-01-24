@@ -80,9 +80,9 @@ class RedfishDataInputStream extends FSInputStream {
     return redfishRead(buf, off, len);
   }
 
-  public int read(long position, byte[] buf, int off, int len)
+  public int read(long pos, byte[] buf, int off, int len)
               throws IOException {
-    return redfishPread(position, buf, off, len);
+    return redfishPread(pos, buf, off, len);
   }
 
   public long skip(long n) throws IOException {

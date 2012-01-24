@@ -107,8 +107,8 @@ static jint validate_read_params(JNIEnv *jenv, jbyteArray jarr,
 	return 0;
 }
 
-jint Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_redfishRead(
-		JNIEnv *jenv, jobject jobj, jbyteArray jarr, jint boff, jint blen)
+jint redfishDoRead(JNIEnv *jenv, jobject jobj, jlong jpos, jbyteArray jarr,
+		jint boff, jint blen)
 {
 	jint ret = -1;
 	int8_t *cbuf = NULL;
@@ -136,7 +136,12 @@ jint Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_redfishRead(
 	else {
 		cbuf = stack_buf;
 	}
-	ret = redfish_read(ofe, cbuf, blen);
+	if (jpos < 0) {
+		ret = redfish_read(ofe, cbuf, blen);
+	}
+	else {
+		ret = redfish_pread(ofe, cbuf, blen, jpos);
+	}
 	if (ret < 0) {
 		strerror_r(FORCE_POSITIVE(ret), err, err_len);
 		goto done;
@@ -147,6 +152,23 @@ done:
 	if (blen >= RF_DINSTREAM_MALLOC_THRESH)
 		free(cbuf);
 	return ret;
+}
+
+jint Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_redfishRead(
+		JNIEnv *jenv, jobject jobj, jbyteArray jarr, jint boff, jint blen)
+{
+	return redfishDoRead(jenv, jobj, -1, jarr, boff, blen);
+}
+
+jint Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_redfishPread(
+		JNIEnv *jenv, jobject jobj, jlong jpos, jbyteArray jarr,
+		jint boff, jint blen)
+{
+	if (jpos < 0) {
+		redfish_throw(jenv, "java/io/IOException", "jpos < 0");
+		return -1;
+	}
+	return redfishDoRead(jenv, jobj, jpos, jarr, boff, blen);
 }
 
 void Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_redfishFlush(
