@@ -382,16 +382,23 @@ void Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishDisconnect(
 		JNIEnv *jenv, jobject jobj)
 {
 	struct redfish_client *cli;
-	char err[512] = { 0 };
-	size_t err_len = sizeof(err);
 
 	cli = redfish_get_m_cli(jenv, jobj);
 	if (!cli) {
-		/* already disconnected */
-		strerror_r(EINVAL, err, err_len);
-		redfish_throw(jenv, "java/io/IOException", err);
+		/* client was already freed */
 		return;
 	}
 	redfish_disconnect(cli);
+}
+
+void Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishFree(
+		JNIEnv *jenv, jobject jobj)
+{
+	struct redfish_client *cli;
+
+	cli = redfish_get_m_cli(jenv, jobj);
+	if (!cli)
+		return;
+	redfish_free_client(cli);
 	redfish_set_m_cli(jenv, jobj, NULL);
 }

@@ -48,14 +48,15 @@ class RedfishClient {
     this.redfishConnect(host, port, user);
   }
 
+  /* This finalizer is intended to free the (small!) amount of memory used by
+   * the redfish_client data structure of a closed file.  It also destroys the
+   * pthread mutex used to make the rest of the functions thread-safe.
+   *
+   * Please call redfishDisconnect explicitly to tear down connections.  This
+   * it NOT intended as a replacement for that function.
+   * */
   protected void finalize() throws Throwable {} {
-    try {
-      this.redfishDisconnect();
-    }
-    catch (Exception e) {
-      e.printStackTrace();
-      System.out.println("Error disconnecting RedfishClient");
-    }
+    this.redfishFreeClient();
   }
 
   private final native //
