@@ -115,9 +115,9 @@ done:
 		RETRY_ON_EINTR(res, close(fd));
 	}
 	if (ofe)
-		redfish_close(ofe);
+		redfish_free_file(ofe);
 	if (cli)
-		redfish_disconnect(cli);
+		redfish_disconnect_and_free(cli);
 	return ret;
 }
 

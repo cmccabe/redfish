@@ -43,7 +43,7 @@ static int unlink_test(struct redfish_client *cli, const char *dirs, int ndirs)
 				"%s/%d", d, j));
 			ST_EXPECT_ZERO(redfish_create(cli, path,
 				0644, 0, 0, 0, &ofe));
-			ST_EXPECT_ZERO(redfish_close(ofe));
+			ST_EXPECT_ZERO(redfish_close_and_free(ofe));
 			ST_EXPECT_EQ(redfish_get_path_status(cli,
 				path, &osa), 0);
 			redfish_free_path_status(&osa);
@@ -134,6 +134,6 @@ int main(int argc, char **argv)
 	ndirs = process_dirs(dirs);
 	unlink_test(cli, dirs, ndirs);
 	free(dirs);
-	redfish_disconnect(cli);
+	redfish_disconnect_and_free(cli);
 	return stest_finish();
 }

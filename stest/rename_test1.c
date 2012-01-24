@@ -55,7 +55,7 @@ static int rename_test1(struct redfish_client *cli)
 
 	ret = redfish_create(cli, RENAME1_SRCF, 0644, 0, 0, 0, &ofe);
 	ST_EXPECT_EQ(ret, 0);
-	ST_EXPECT_ZERO(redfish_close(ofe));
+	ST_EXPECT_ZERO(redfish_close_and_free(ofe));
 	ST_EXPECT_EQ(stest_stat(cli, RENAME1_SRCF),
 		STEST_STAT_RES_FILE);
 
@@ -89,6 +89,6 @@ int main(int argc, char **argv)
 	stest_mlocs_free(mlocs);
 
 	rename_test1(cli);
-	redfish_disconnect(cli);
+	redfish_disconnect_and_free(cli);
 	return stest_finish();
 }

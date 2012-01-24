@@ -14,6 +14,7 @@
 #
 
 add_library(fishc_stub SHARED
+    conven.c
     mloc.c
     stat.c
     stub/stub.c
@@ -34,6 +35,7 @@ target_link_libraries(version_unit common util utest)
 add_test(version_unit ${CMAKE_CURRENT_BINARY_DIR}/version_unit xattrs_unit)
 
 #add_library(fishc_hdfs SHARED
+#    conven.c
 #    hdfs/...
 #    mloc.c
 #    stat.c
@@ -45,6 +47,7 @@ add_test(version_unit ${CMAKE_CURRENT_BINARY_DIR}/version_unit xattrs_unit)
 #ENDIF(${REDFISH_CLIENT_LIB} STREQUAL fishc_hdfs)
 #
 #add_library(fishc_real SHARED
+#    conven.c
 #    mloc.c
 #    stat.c
 #    true/...

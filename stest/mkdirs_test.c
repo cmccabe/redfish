@@ -69,6 +69,6 @@ int main(int argc, char **argv)
 
 	mkdirs_test(cli);
 
-	redfish_disconnect(cli);
+	redfish_disconnect_and_free(cli);
 	return stest_finish();
 }

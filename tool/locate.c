@@ -110,7 +110,7 @@ done:
 	if (blc)
 		redfish_free_block_locs(blc);
 	if (cli)
-		redfish_disconnect(cli);
+		redfish_disconnect_and_free(cli);
 	return ret;
 }
 

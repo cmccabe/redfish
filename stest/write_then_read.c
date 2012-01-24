@@ -36,13 +36,13 @@ static int write_then_read(struct redfish_client *cli)
 	ofe = NULL;
 	ST_EXPECT_ZERO(redfish_create(cli, STEST_FNAME, 0644, 0, 0, 0, &ofe));
 	ST_EXPECT_ZERO(redfish_write(ofe, ibuf, SAMPLE_DATA_LEN));
-	ST_EXPECT_ZERO(redfish_close(ofe));
+	ST_EXPECT_ZERO(redfish_close_and_free(ofe));
 	ofe = NULL;
 	ST_EXPECT_ZERO(redfish_open(cli, STEST_FNAME, &ofe));
 	ST_EXPECT_EQ(redfish_read(ofe, obuf, SAMPLE_DATA_LEN),
 			SAMPLE_DATA_LEN);
 	ST_EXPECT_ZERO(strcmp(ibuf, obuf));
-	ST_EXPECT_ZERO(redfish_close(ofe));
+	ST_EXPECT_ZERO(redfish_close_and_free(ofe));
 
 	return 0;
 }
@@ -80,6 +80,6 @@ int main(int argc, char **argv)
 	if (error && strcmp(error, "0")) {
 		_exit(1);
 	}
-	redfish_disconnect(cli);
+	redfish_disconnect_and_free(cli);
 	return stest_finish();
 }

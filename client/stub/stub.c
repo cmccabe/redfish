@@ -58,6 +58,8 @@ enum stub_perm {
 #define XATTR_FISH_GROUP "user.fish_group"
 #define XATTR_FISH_MODE "user.fish_mode"
 
+void redfish_free_client(struct redfish_client *cli);
+
 /** Represents a RedFish client.
  *
  * You can treat the data fields in this structure as constant between
@@ -128,18 +130,6 @@ static const char* get_stub_base_dir(void)
 		return sb;
 }
 
-static void redfish_free_ofclient(struct redfish_client *cli)
-{
-	char **g;
-	free(cli->user);
-	for (g = cli->group; *g; ++g)
-		free(*g);
-	free(cli->group);
-	free(cli->base);
-	pthread_mutex_destroy(&cli->lock);
-	free(cli);
-}
-
 void redfish_mkfs(POSSIBLY_UNUSED(const char *uconf),
 	POSSIBLY_UNUSED(uint16_t mid), POSSIBLY_UNUSED(uint64_t fsid),
 	char *err, size_t err_len)
@@ -197,19 +187,19 @@ int redfish_connect(POSSIBLY_UNUSED(struct redfish_mds_locator **mlocs),
 	if (!zcli->base)
 		goto oom_error;
 	if (access(zcli->base, R_OK | W_OK | X_OK)) {
-		redfish_free_ofclient(zcli);
+		redfish_free_client(zcli);
 		return -ENOTDIR;
 	}
 	ret = check_xattr_support(zcli->base);
 	if (ret) {
-		redfish_free_ofclient(zcli);
+		redfish_free_client(zcli);
 		return ret;
 	}
 	*cli = zcli;
 	return 0;
 
 oom_error:
-	redfish_free_ofclient(zcli);
+	redfish_free_client(zcli);
 	return -ENOMEM;
 }
 
@@ -786,9 +776,22 @@ int redfish_utimes(struct redfish_client *cli, const char *path,
 	return ret;
 }
 
-void redfish_disconnect(struct redfish_client *cli)
+void redfish_disconnect(POSSIBLY_UNUSED(struct redfish_client *cli))
 {
-	redfish_free_ofclient(cli);
+	/* This doesn't actually do anything, since we're not really connected
+	 * to anything when using the stub client. */
+}
+
+void redfish_free_client(struct redfish_client *cli)
+{
+	char **g;
+	free(cli->user);
+	for (g = cli->group; *g; ++g)
+		free(*g);
+	free(cli->group);
+	free(cli->base);
+	pthread_mutex_destroy(&cli->lock);
+	free(cli);
 }
 
 int redfish_read(struct redfish_file *ofe, void *data, int len)
@@ -854,11 +857,6 @@ int redfish_hflush(POSSIBLY_UNUSED(struct redfish_file *ofe))
 int redfish_hsync(POSSIBLY_UNUSED(struct redfish_file *ofe))
 {
 	return 0;
-}
-
-void redfish_free_file(struct redfish_file *ofe)
-{
-	free(ofe);
 }
 
 int redfish_unlink(struct redfish_client *cli, const char *path)
@@ -969,6 +967,15 @@ int redfish_close(struct redfish_file *ofe)
 {
 	int ret;
 	RETRY_ON_EINTR(ret, close(ofe->fd));
-	redfish_free_file(ofe);
+	ofe->fd = -1;
 	return ret;
+}
+
+void redfish_free_file(struct redfish_file *ofe)
+{
+	int ret;
+
+	if (ofe->fd >= 0)
+		RETRY_ON_EINTR(ret, close(ofe->fd));
+	free(ofe);
 }

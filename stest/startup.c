@@ -52,7 +52,7 @@ int main(int argc, char **argv)
 		_exit(1);
 	}
 	if (cli) {
-		redfish_disconnect(cli);
+		redfish_disconnect_and_free(cli);
 	}
 
 	return stest_finish();
