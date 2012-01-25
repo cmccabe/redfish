@@ -6,7 +6,7 @@
 # 1. A stub one, which actually just uses the local filesystem and extended
 # attributes.
 # 2. An HDFS one, which forwards all calls to HDFS
-# 3. A real one which talks to the RedFish metadata and object servers.
+# 3. A real one which talks to the Redfish metadata and object servers.
 #
 # The third one is intended for production use; the first two are only for
 # testing. We'll always build all three libraries, but we'll only install

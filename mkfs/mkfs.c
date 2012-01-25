@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 the RedFish authors
+ * Copyright 2012 the Redfish authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,17 +31,17 @@
 static void fishmkfs_usage(int exitstatus)
 {
 	static const char *usage_lines[] = {
-"fishmkfs: initializes a RedFish metadata server.",
+"fishmkfs: initializes a Redfish metadata server.",
 "See http://www.club.cc.cmu.edu/~cmccabe/redfish.html for the most up-to-date",
-"information about RedFish.",
+"information about Redfish.",
 "",
 "Environment variables:",
 "REDFISH_CONF:  If this is set, it will be used to find the default path to a ",
-"               RedFish configuration file.",
+"               Redfish configuration file.",
 "",
 "Command-line options:",
 "-c <file-name>",
-"    Set the RedFish configuration file name",
+"    Set the Redfish configuration file name",
 "-F <filesystem-id>",
 "    Set the filesystem ID as a 64-bit hexadecimal number",
 "-h",
@@ -106,7 +106,7 @@ static void fishmkfs_parse_argv(int argc, char **argv, const char **uconf,
 		}
 	}
 	if (*uconf == NULL) {
-		fprintf(stderr, "You must supply a RedFish configuration "
+		fprintf(stderr, "You must supply a Redfish configuration "
 			"file.  Give -h for more help\n");
 		exit(EXIT_FAILURE);
 	}

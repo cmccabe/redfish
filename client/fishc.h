@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the RedFish authors
+ * Copyright 2011-2012 the Redfish authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,7 +52,7 @@ struct redfish_mds_locator
  */
 struct redfish_file;
 
-/** Represents the status of a RedFish file. */
+/** Represents the status of a Redfish file. */
 struct redfish_stat
 {
 	char *path;
@@ -93,12 +93,12 @@ struct redfish_version redfish_get_version(void);
  */
 const char* redfish_get_version_str(void);
 
-/** Create a new RedFish filesystem
+/** Create a new Redfish filesystem
  *
  * We will begin by querying the supplied list of hosts, asking each one for a
  * current shard map to get us started.
  *
- * @param uconf		Local path to a RedFish configuration file
+ * @param uconf		Local path to a Redfish configuration file
  * @param mid		The current metadata server ID
  * @param fsid		The filesystem ID of the new filesystem to create
  * @param err		(out param) error buffer.  If this is set, there was an
@@ -108,7 +108,7 @@ const char* redfish_get_version_str(void);
 void redfish_mkfs(const char *uconf, uint16_t mid, uint64_t fsid,
 			char *err, size_t err_len);
 
-/** Initialize a RedFish client instance.
+/** Initialize a Redfish client instance.
  *
  * We will begin by querying the supplied list of hosts, asking each one for a
  * current shard map to get us started.
@@ -155,7 +155,7 @@ void redfish_mlocs_free(struct redfish_mds_locator **mlocs);
 
 /** Create a new redfish user
  *
- * @param cli		The RedFish client
+ * @param cli		The Redfish client
  * @param user		The new user name
  * @param group		The primary group of the new user
  *
@@ -168,7 +168,7 @@ int redfish_useradd(struct redfish_client *cli, const char *user,
  * Files and directories assigned by this user will be reassigned to the user
  * 'nobody'.
  *
- * @param cli		The RedFish client
+ * @param cli		The Redfish client
  * @param user		The user name
  *
  * @return		0 on success; return code otherwise
@@ -177,7 +177,7 @@ int redfish_userdel(struct redfish_client *cli, const char *user);
 
 /** Create a new redfish group
  *
- * @param cli		The RedFish client
+ * @param cli		The Redfish client
  * @param group		The new group name
  *
  * @return		0 on success; return code otherwise
@@ -189,16 +189,16 @@ int redfish_groupadd(struct redfish_client *cli, const char *group);
  * 'everyone'.  Users who have this group as their primary group will instead
  * have the primary group 'everyone.'
  *
- * @param cli		The RedFish client
+ * @param cli		The Redfish client
  * @param group		The group name
  *
  * @return		0 on success; return code otherwise
  */
 int redfish_groupdel(struct redfish_client *cli, const char *group);
 
-/** Create a file in RedFish
+/** Create a file in Redfish
  *
- * @param cli		The RedFish client
+ * @param cli		The Redfish client
  * @param path		The file path
  * @param mode		The file mode
  * @param bufsz		The buffer size to use for the new file.
@@ -207,7 +207,7 @@ int redfish_groupdel(struct redfish_client *cli, const char *group);
  *			0 means to use the default number of replicas
  * @param blocksz	The size of the blocks to use
  *			0 means to use the default block size
- * @param ofe		(out-parameter) the RedFish file
+ * @param ofe		(out-parameter) the Redfish file
  *
  * @return		0 on success; error code otherwise
  *			On success, *ofe will contain a valid redfish file.
@@ -215,13 +215,13 @@ int redfish_groupdel(struct redfish_client *cli, const char *group);
 int redfish_create(struct redfish_client *cli, const char *path,
 	int mode, int bufsz, int repl, int blocksz, struct redfish_file **ofe);
 
-/** Open a RedFish file for reading
+/** Open a Redfish file for reading
  *
  * TODO: make buffer size configurable here?
  *
- * @param cli		The RedFish client
+ * @param cli		The Redfish client
  * @param path		The file path
- * @param ofe		(out-parameter) the RedFish file
+ * @param ofe		(out-parameter) the Redfish file
  *
  * @return		0 on success; error code otherwise
  *			On success, *ofe will contain a valid redfish file.
@@ -229,12 +229,12 @@ int redfish_create(struct redfish_client *cli, const char *path,
 int redfish_open(struct redfish_client *cli, const char *path,
 		struct redfish_file **ofe);
 
-/** Create a regular directory or directories in RedFish.
+/** Create a regular directory or directories in Redfish.
  *
  * Similar to mkdir -p, we will create the relevant directory as well as any
  * ancestor directories.
  *
- * @param cli		the RedFish client to use
+ * @param cli		the Redfish client to use
  * @param mode		The permission to use when creating the directories.
  *			If this is REDFISH_INVAL_MODE, the default mode will
  *			be used.
@@ -249,7 +249,7 @@ int redfish_mkdirs(struct redfish_client *cli, int mode, const char *path);
  *
  * Get the block locations where a given file is being stored.
  *
- * @param cli		the RedFish client
+ * @param cli		the Redfish client
  * @paths path		path
  * @param start		Start location in the file
  * @param len		Length of the region of the file to examine
@@ -268,7 +268,7 @@ void redfish_free_block_locs(struct redfish_block_loc **blc);
 
 /** Given a path, returns file status information
  *
- * @param cli		the RedFish client
+ * @param cli		the Redfish client
  * @paths path		path
  * @param osa		(out-parameter): file status
  *
@@ -286,7 +286,7 @@ void redfish_free_path_status(struct redfish_stat* osa);
 /** Given a directory name, return a list of status objects corresponding
  * to the objects in that directory.
  *
- * @param cli		the RedFish client
+ * @param cli		the Redfish client
  * @param dir		the directory to get a listing from
  * @param osa		(out-parameter) an array of statuses
  *
@@ -305,7 +305,7 @@ void redfish_free_path_statuses(struct redfish_stat* osa, int nosa);
 
 /** Changes the permission bits for a file or directory.
  *
- * @param cli		the RedFish client
+ * @param cli		the Redfish client
  * @param path		the path
  * @param mode		the new permission bits
  *
@@ -315,7 +315,7 @@ int redfish_chmod(struct redfish_client *cli, const char *path, int mode);
 
 /** Changes the owner and group of a file or directory.
  *
- * @param cli		the RedFish client
+ * @param cli		the Redfish client
  * @param path		the path
  * @param owner		the new owner name, or NULL to leave owner unchanged
  * @param group		the new group name, or NULL to leave group unchanged
@@ -327,7 +327,7 @@ int redfish_chown(struct redfish_client *cli, const char *path,
 
 /** Changes the mtime and atime of a file
  *
- * @param cli		the RedFish client
+ * @param cli		the Redfish client
  * @param path		the path
  * @param mtime		the new mtime, or -1 if the time should not be changed.
  * @param atime		the new atime, or -1 if the time should not be changed.
@@ -363,7 +363,7 @@ void redfish_disconnect(struct redfish_client *cli);
  * thing you can do with those pointers at that time is to call
  * redfish_free_file on them.  Please remember to do this.
  *
- * @param cli		the RedFish client to free
+ * @param cli		the Redfish client to free
  */
 void redfish_release_client(struct redfish_client *cli);
 
@@ -372,13 +372,13 @@ void redfish_release_client(struct redfish_client *cli);
  * This function is NOT thread-safe.  See redfish_release_client for an
  * explanation.
  *
- * @param cli		the RedFish client to disconnect and free.
+ * @param cli		the Redfish client to disconnect and free.
  */
 void redfish_disconnect_and_release(struct redfish_client *cli);
 
 /** Reads data from a redfish file
  *
- * @param ofe		the RedFish file
+ * @param ofe		the Redfish file
  * @param data		a buffer to read into
  * @param len		the maximum length of the data to read
  *
@@ -389,10 +389,10 @@ void redfish_disconnect_and_release(struct redfish_client *cli);
  */
 int redfish_read(struct redfish_file *ofe, void *data, int len);
 
-/** Returns the number of bytes that can be read from the RedFish file without
+/** Returns the number of bytes that can be read from the Redfish file without
  * blocking.
  *
- * @param ofe		the RedFish file
+ * @param ofe		the Redfish file
  *
  * @return		the number of bytes available to read
  */
@@ -400,7 +400,7 @@ int32_t redfish_available(struct redfish_file *ofe);
 
 /** Reads data from a redfish file
  *
- * @param ofe		the RedFish file
+ * @param ofe		the Redfish file
  * @param data		a buffer to read into
  * @param len		the maximum length of the data to read
  * @param off		offset to read data from
@@ -412,7 +412,7 @@ int redfish_pread(struct redfish_file *ofe, void *data, int len, int64_t off);
 
 /** Writes data to a redfish file
  *
- * @param ofe		the RedFish file
+ * @param ofe		the Redfish file
  * @param data		the data to write
  * @param len		the length of the data to write
  *
@@ -423,7 +423,7 @@ int redfish_write(struct redfish_file *ofe, const void *data, int len);
 /** Set the current position in a file
  * This works only for files opened in read-only mode.
  *
- * @param ofe		the RedFish file
+ * @param ofe		the Redfish file
  * @param off		the desired new offset
  *
  * @return		0 on success; error code otherwise
@@ -433,7 +433,7 @@ int redfish_fseek_abs(struct redfish_file *ofe, int64_t off);
 /** Set the current position in a file
  * This works only for files opened in read-only mode.
  *
- * @param ofe		the RedFish file
+ * @param ofe		the Redfish file
  * @param delta		the desired change in offset
  * @param out		(out param) the actual change in offset that was made
  *
@@ -443,7 +443,7 @@ int redfish_fseek_rel(struct redfish_file *ofe, int64_t delta, int64_t *out);
 
 /** Get the current position in a file
  *
- * @param ofe		the RedFish file
+ * @param ofe		the Redfish file
  *
  * Returns the current position in the file
  */
@@ -503,14 +503,14 @@ int redfish_unlink_tree(struct redfish_client *cli, const char *path);
  */
 int redfish_rename(struct redfish_client *cli, const char *src, const char *dst);
 
-/** Close a RedFish file.
+/** Close a Redfish file.
  *
  * For files opened for writing or appending, this triggers any locally
  * buffered data to be written out to the metadata servers.
  *
  * This operation is thread-safe.
  *
- * @param ofe		the RedFish file
+ * @param ofe		the Redfish file
  *
  * @return		0 on success; error code if the buffered data could not
  *			be written out as expected.
@@ -526,16 +526,16 @@ int redfish_close(struct redfish_file *ofe);
  * using the Redfish file while it is being freed.  After the file is freed, the
  * pointer becomes invalid and must never be used again.
  *
- * @param ofe		the RedFish file
+ * @param ofe		the Redfish file
  */
 void redfish_free_file(struct redfish_file *ofe);
 
-/** Close and free a RedFish file.
+/** Close and free a Redfish file.
  *
  * This is a convenience method.  It is equivalent to redfish_close followed by
  * redfish_free_file.  Like redfish_free_file, it is NOT thread-safe.
  *
- * @param ofe		the RedFish file
+ * @param ofe		the Redfish file
  *
  * @return		the return code of redfish_close
  */

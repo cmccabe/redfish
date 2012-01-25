@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the RedFish authors
+ * Copyright 2011-2012 the Redfish authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,9 +37,9 @@
 static void usage(int exitstatus)
 {
 	static const char *usage_lines[] = {
-"fishosd: the RedFish object storage daemon",
+"fishosd: the Redfish object storage daemon",
 "See http://www.club.cc.cmu.edu/~cmccabe/redfish.html for the most up-to-date",
-"information about RedFish.",
+"information about Redfish.",
 "",
 "fishosd usage:",
 "-c <osd-configuration-file>",

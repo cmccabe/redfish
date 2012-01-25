@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the RedFish authors
+ * Copyright 2011-2012 the Redfish authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,17 +56,17 @@ static void fishtool_top_level_usage(int exitstatus)
 	const struct fishtool_act **act;
 	const char *prequel = "";
 	static const char *usage_lines[] = {
-"fishtool: the RedFish administrative tool.",
+"fishtool: the Redfish administrative tool.",
 "See http://www.club.cc.cmu.edu/~cmccabe/redfish.html for the most up-to-date",
-"information about RedFish.",
+"information about Redfish.",
 "",
 "Standard environment variables:",
 "REDFISH_MLOCS: You can set this to a comma-separated list of metadata sever ",
 "               locations. Metadata sever locations are given as ",
 "               <hostname>:<port>. You can also specify metadata sever ",
 "               locations with -m.",
-"REDFISH_USER:  You can set this to a RedFish username, which will be used as ",
-"               the default RedFish username.",
+"REDFISH_USER:  You can set this to a Redfish username, which will be used as ",
+"               the default Redfish username.",
 "",
 "Standard command-line options:",
 "-h",
@@ -74,7 +74,7 @@ static void fishtool_top_level_usage(int exitstatus)
 "-m <hostname>:<port>",
 "    Add metadata server location.",
 "-u <username>",
-"    Set the RedFish username to connect as.",
+"    Set the Redfish username to connect as.",
 "",
 "Fishtool commands:",
 NULL
@@ -95,9 +95,9 @@ fishtool <command> -h\n");
 static void fishtool_act_usage(const struct fishtool_act *act)
 {
 	static const char *usage_lines[] = {
-"fishtool: the RedFish administrative tool.",
+"fishtool: the Redfish administrative tool.",
 "See http://www.club.cc.cmu.edu/~cmccabe/redfish.html for the most up-to-date",
-"information about RedFish.",
+"information about Redfish.",
 NULL
 	};
 	print_lines(stderr, usage_lines);

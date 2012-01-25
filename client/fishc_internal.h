@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the RedFish authors
+ * Copyright 2011-2012 the Redfish authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,17 +20,17 @@
 /** Default MDS port */
 #define REDFISH_DEFAULT_MDS_PORT 9000
 
-/** RedFish replication count
+/** Redfish replication count
  * TODO: make this adjustable
  */
 #define REDFISH_FIXED_REPL 3
 
-/** RedFish fixed 64 MB local buffer size
+/** Redfish fixed 64 MB local buffer size
  * TODO: make this adjustable
  */
 #define REDFISH_FIXED_LBUF_SZ 67108864
 
-/** RedFish fixed 64 MB chunk size
+/** Redfish fixed 64 MB chunk size
  * TODO: make this adjustable
  */
 #define REDFISH_FIXED_BLOCK_SZ 67108864

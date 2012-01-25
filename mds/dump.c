@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the RedFish authors
+ * Copyright 2011-2012 the Redfish authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,9 +34,9 @@
 static void usage(int exitstatus)
 {
 	static const char *usage_lines[] = {
-"fishmdump: dumps the contents of a RedFish metadata file",
+"fishmdump: dumps the contents of a Redfish metadata file",
 "See http://www.club.cc.cmu.edu/~cmccabe/redfish.html for the most up-to-date",
-"information about RedFish.",
+"information about Redfish.",
 "",
 "usage:",
 "fishmdump [options] <file-name>",
@@ -71,7 +71,7 @@ static void parse_argv(int argc, char **argv, const char **mstor_path,
 		}
 	}
 	if (optind == argc) {
-		glitch_log("You must supply the name of a RedFish "
+		glitch_log("You must supply the name of a Redfish "
 			"metadata file.  Type -h for help.\n");
 		usage(EXIT_FAILURE);
 	}

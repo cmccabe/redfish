@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# Copyright 2012 the RedFish authors
+# Copyright 2012 the Redfish authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ if (len(sys.argv) == 1) or (sys.argv[1] == "--help") or (sys.argv[1] == "-h"):
 pat = re.compile('#define[ \t]*([A-Z_]*)[ \t]*([0-9]*)[ \t]*/\* ([^*]*)\*/')
 
 print """/*
- * Copyright 2012 the RedFish authors
+ * Copyright 2012 the Redfish authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.

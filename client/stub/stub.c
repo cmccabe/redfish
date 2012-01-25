@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the RedFish authors
+ * Copyright 2011-2012 the Redfish authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,7 +60,7 @@ enum stub_perm {
 
 void redfish_release_client(struct redfish_client *cli);
 
-/** Represents a RedFish client.
+/** Represents a Redfish client.
  *
  * You can treat the data fields in this structure as constant between
  * redfish_connect and redfish_disconnect. In other words, in order to login as
@@ -83,7 +83,7 @@ struct redfish_client
 	pthread_mutex_t lock;
 };
 
-/** Represents a RedFish file */
+/** Represents a Redfish file */
 struct redfish_file
 {
 	/** Type of open file */

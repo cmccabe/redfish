@@ -18,10 +18,10 @@ parser.add_option("-c", "--cluster-config", dest="cluster_conf")
 parser.add_option("-b", "--redfish-build-directory", dest="bld_dir")
 (opts, args) = parser.parse_args()
 if opts.cluster_conf == None:
-    sys.stderr.write("you must give a RedFish cluster configuration file\n")
+    sys.stderr.write("you must give a Redfish cluster configuration file\n")
     sys.exit(1)
 if opts.bld_dir == None:
-    sys.stderr.write("you must give a RedFish build directory\n")
+    sys.stderr.write("you must give a Redfish build directory\n")
     sys.exit(1)
 
 jo = load_conf_file(opts.cluster_conf)

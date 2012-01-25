@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.6.4 FATAL_ERROR)
 
-# The name of our project is "RedFish". CMakeLists files in this project can
+# The name of our project is "Redfish". CMakeLists files in this project can
 # refer to the root source directory of the project as ${REDFISH_SOURCE_DIR} and
 # to the root binary directory of the project as ${REDFISH_BINARY_DIR}.
 project(redfish)
@@ -10,7 +10,7 @@ enable_testing()
 # Define "make check" as an alias for "make test."
 add_custom_target(check COMMAND ctest)
 
-SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "The RedFish Distributed Filesystem")
+SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "The Redfish Distributed Filesystem")
 SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt")
 SET(CPACK_PACKAGE_VERSION_MAJOR "1")
 SET(CPACK_PACKAGE_VERSION_MINOR "0")
@@ -32,7 +32,7 @@ set(CMAKE_CURRENT_BINARY_DIR, builds)
 SET(CMAKE_INSTALL_PREFIX /usr)
 
 set(REDFISH_CLIENT_LIB "fishc_real" CACHE STRING "For developers only. Which client library implementation to use (fishc_stub, fishc_hdfs, or fishc_real)")
-set(REDFISH_BUILD_JNI 1 CACHE BOOL "Build Hadoop JNI bindings for RedFish")
+set(REDFISH_BUILD_JNI 1 CACHE BOOL "Build Hadoop JNI bindings for Redfish")
 set(REDFISH_SO_REUSEADDR_HACK 0 CACHE BOOL "For developers only. Set to TRUE to use a hack which makes running unit tests easier.")
 
 if (REDFISH_BUILD_JNI)

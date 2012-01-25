@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the RedFish authors
+ * Copyright 2011-2012 the Redfish authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -103,7 +103,7 @@ enum stest_stat_res {
 
 /** Simple wrapper function for redfish_stat
  *
- * @param cli		RedFish client
+ * @param cli		Redfish client
  * @param path		path to stat
  *
  * @return		the result

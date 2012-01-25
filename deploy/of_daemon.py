@@ -108,7 +108,7 @@ class DaemonIter(object):
                 return Daemon(self.jo, darr[self.idx],
                         DaemonId(self.ty, self.idx + 1))
 
-""" Represents a RedFish daemon.
+""" Represents a Redfish daemon.
 FIXME: this code doesn't yet handle goofy filenames correctly
 FIXME: should distinguish between command failures and ssh failures
 """
@@ -137,7 +137,7 @@ class Daemon(object):
                     "ssh -o PasswordAuthentication=no -x",
                     (self.jd["host"] + ":" + remote_path),
                     local_path])
-    """ Generate a RedFish config file for this daemon """ 
+    """ Generate a Redfish config file for this daemon """ 
     def generate_daemon_conf(self, cmd):
         return self.jo
     def get_base_dir(self):

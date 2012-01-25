@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the RedFish authors
+ * Copyright 2011-2012 the Redfish authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ typedef void (*signal_cb_t)(int);
 /** The global fast log manager */
 extern struct fast_log_mgr *g_fast_log_mgr;
 
-/** Install the signal handlers for a RedFish daemon.
+/** Install the signal handlers for a Redfish daemon.
  *
  * @param err			a buffer to write any errors to
  * @param err_len		length of the error buffer

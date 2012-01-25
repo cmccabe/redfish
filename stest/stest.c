@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the RedFish authors
+ * Copyright 2011-2012 the Redfish authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,11 +67,11 @@ static void stest_usage(const char *argv0, struct stest_custom_opt *copt,
 			int ncopt, int exitstatus)
 {
 	int i;
-	fprintf(stderr, "%s: a RedFish system test\n", argv0);
+	fprintf(stderr, "%s: a Redfish system test\n", argv0);
 	{
 		static const char *usage_lines[] = {
 "See http://www.club.cc.cmu.edu/~cmccabe/redfish.html for the most up-to-date",
-"information about RedFish.",
+"information about Redfish.",
 "",
 "Standard system test options:",
 "-f",
@@ -81,7 +81,7 @@ static void stest_usage(const char *argv0, struct stest_custom_opt *copt,
 "-m <hostname>:<port>",
 "    Add metadata server location.",
 "-u <username>",
-"    Set the RedFish username to connect as.",
+"    Set the Redfish username to connect as.",
 NULL
 		};
 		print_lines(stderr, usage_lines);

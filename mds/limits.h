@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the RedFish authors
+ * Copyright 2011-2012 the Redfish authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 #ifndef REDFISH_MDS_LIMITS_DOT_H
 #define REDFISH_MDS_LIMITS_DOT_H
 
-/** maximum length of a path name in RedFish */
+/** maximum length of a path name in Redfish */
 #define RF_PATH_MAX 4096
 
 /** maximum number of OSDs that will be used store a single chunk */
@@ -26,7 +26,7 @@
 /** maximum number of replicas for any delegation */
 #define RF_MAX_REPLICAS 7
 
-/** maximum length of a path component in RedFish */
+/** maximum length of a path component in Redfish */
 #define RF_PCOMP_MAX 256
 
 /** maximum number of MDSes in a cluster */

@@ -1,4 +1,4 @@
-Here is an overview of what is in the various RedFish source directories.
+Here is an overview of what is in the various Redfish source directories.
 
 bin/
         Assorted helper scripts that didn't fit anywhere else.  These are
@@ -38,7 +38,7 @@ doc/dev/
         Documentation for developers
 
 hadoop/
-        Hadoop JNI bindings for RedFish.
+        Hadoop JNI bindings for Redfish.
 
 jorm/
         A system for serializing and deserializing JSON objects into C
