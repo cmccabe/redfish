@@ -215,7 +215,6 @@ void Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_redfishClose(
 		goto done;
 	}
 done:
-	redfish_set_m_ofe(jenv, jobj, NULL);
 	if (err[0])
 		redfish_throw(jenv, "java/io/IOException", err);
 }
