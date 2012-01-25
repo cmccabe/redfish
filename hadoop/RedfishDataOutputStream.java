@@ -43,47 +43,40 @@ class RedfishDataOutputStream extends OutputStream {
     }
   }
 
-  public RedfishDataOutputStream(long ofe) {
+  private RedfishDataOutputStream(long ofe) {
       m_ofe = ofe;
   }
 
+  /* This finalizer is intended to free the (small!) amount of memory used by
+   * the redfish_file data structure of a closed file.  It also destroys the
+   * pthread mutex used to make the rest of the functions thread-safe.
+   *
+   * Please call close() explicitly to close files.  This it NOT intended as a
+   * replacement for that function.
+   * */
   protected void finalize() throws Throwable {} {
-    try {
-      redfishClose();
-    }
-    catch (Exception e) {
-      e.printStackTrace();
-      System.out.println("Error closing RedfishDataOutputStream");
-    }
+    this.redfishFree();
   }
 
-  public void write(int b) throws IOException {
+  public int write(int b) throws IOException {
+    /* The oh-so-useful "write a single byte" method */
     byte[] buf = new byte[1];
     buf[0] = b;
-    redfishWrite(buf);
+    return write(buf, 0, 1);
   }
 
-  public void write(byte[] b) throws IOException {
-    redfishWrite(b);
-  }
+  public native //
+    void close() throws IOException;
 
-//  public void write(byte[] b, int off, int len) throws IOException {
-//  }
+  private native //
+    void redfishFree() throws IOException;
 
-  public void flush() throws IOException {
-    this.redfishFlush();
-  }
+  public native
+    void write(byte[] jarr, int off, int len) throws IOException;
 
-  public void close() throws IOException {
-    this.redfishClose();
-  }
+  public native //
+    long getPos() throws IOException;
 
-  private native
-  int redfishWrite(byte[] buf);
-
-  private native
-  void redfishFlush();
-
-  private native
-  void redfishClose();
+  public native //
+    void flush() throws IOException;
 }
