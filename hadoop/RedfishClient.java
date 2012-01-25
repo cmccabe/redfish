@@ -85,8 +85,8 @@ class RedfishClient {
     FileStatus redfishGetPathStatus(String jpath);
       throws IOException, FileNotFound;
 
-  public final native
-    FileStatus[] redfishListDirectory(String dir);
+  public final native //
+    FileStatus[] redfishListDirectory(String jpath);
       throws IOException;
 
   private final native //

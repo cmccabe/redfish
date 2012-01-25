@@ -114,21 +114,21 @@ static jobject redfish_stat_to_file_info(JNIEnv *jenv,
 
 	jowner = (*jenv)->NewStringUTF(jenv, osa->owner);
 	if (!jowner)
-		goto error;
+		goto done;
 	jgroup = (*jenv)->NewStringUTF(jenv, osa->group);
 	if (!jgroup)
-		goto error;
+		goto done;
 	jpath = (*jenv)->NewStringUTF(jenv, osa->path);
 	if (!jpath)
-		goto error;
+		goto done;
 	jpath_obj = (*jenv)->NewObject(jenv, g_cls_path,
 			g_mid_path_ctor, jpath);
 	if (!jpath_obj)
-		goto error;
+		goto done;
 	jperm = (*jenv)->NewObject(jenv, g_cls_file_perm,
 			g_mid_file_perm_ctor, (jshort)osa->mode);
 	if (!jperm)
-		goto error;
+		goto done;
 	length = osa->length;
 	is_dir = osa->is_dir;
 	repl = osa->repl;
@@ -138,13 +138,8 @@ static jobject redfish_stat_to_file_info(JNIEnv *jenv,
 	jstat = (*jenv)->NewObject(jenv, g_cls_file_status,
 		g_mid_file_status_ctor, length, is_dir, repl,
 		block_sz, mtime, atime, jperm, jowner, jgroup, jpath_obj);
-	if (!jstat)
-		goto error;
-	return jstat;
 
-error:
-	if (jstat)
-		(*jenv)->DeleteLocalRef(jenv, jstat);
+done:
 	if (jperm)
 		(*jenv)->DeleteLocalRef(jenv, jperm);
 	if (jpath_obj)
@@ -155,7 +150,7 @@ error:
 		(*jenv)->DeleteLocalRef(jenv, jgroup);
 	if (jowner)
 		(*jenv)->DeleteLocalRef(jenv, jowner);
-	return NULL;
+	return jstat;
 }
 
 jobject Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishGetPathStatus(
@@ -198,6 +193,54 @@ done:
 	if (err[0])
 		redfish_throw(jenv, "java/io/IOException", err);
 	return res;
+}
+
+jobjectArray Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishListDirectory(
+		JNIEnv *jenv, jobject jobj, jstring jpath)
+{
+	jobjectArray jarr = NULL;
+	int i, nosa;
+	struct redfish_client *cli;
+	struct redfish_stat *osa = NULL;
+	char cpath[RF_PATH_MAX], err[512] = { 0 };
+	size_t err_len = sizeof(err);
+
+	cli = redfish_get_m_cli(jenv, jobj);
+	if (!cli) {
+		strerror_r(EINVAL, err, err_len);
+		goto done;
+	}
+	(*jenv)->GetStringUTFRegion(jenv, jpath, 0, sizeof(cpath), cpath);
+	if ((*jenv)->ExceptionCheck(jenv))
+		goto done;
+	nosa = redfish_list_directory(cli, cpath, &osa);
+	if (nosa < 0) {
+		strerror_r(nosa, err, err_len);
+		goto done;
+	}
+	jarr = (*jenv)->NewObjectArray(jenv, nosa, g_cls_file_status, NULL);
+	if (!jarr) {
+		/* out of memory exception thrown */
+		goto done;
+	}
+	for (i = 0; i < nosa; ++i) {
+		jobject res;
+
+		res = redfish_stat_to_file_info(jenv, osa + i);
+		if (!res) {
+			strerror_r(ENOMEM, err, err_len);
+			goto done;
+		}
+		(*jenv)->SetObjectArrayElement(jenv, jarr, i, res);
+		(*jenv)->DeleteLocalRef(jenv, res);
+	}
+
+done:
+	if (osa)
+		redfish_free_path_statuses(osa, nosa);
+	if (err[0])
+		redfish_throw(jenv, "java/io/IOException", err);
+	return jarr;
 }
 
 void Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishChmod(
