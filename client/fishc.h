@@ -373,6 +373,8 @@ void redfish_disconnect_and_free(struct redfish_client *cli);
  *
  * @return		the number of bytes read on success; a negative error
  *			code on failure.  0 indicates EOF.
+ *			We won't return a short read unless the file itself is
+ *			shorter than the requested length.
  */
 int redfish_read(struct redfish_file *ofe, void *data, int len);
 
