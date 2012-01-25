@@ -69,7 +69,7 @@ class RedfishClient {
       int bufsz, short repl, int blocksz);
         throws IOException;
 
-  public final native
+  public final native //
     RedfishDataInputStream redfishOpen(String jpath);
       throws IOException;
 
