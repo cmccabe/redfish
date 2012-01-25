@@ -17,6 +17,23 @@
 #include "client/fishc.h"
 
 #include <stdlib.h>
+#include <stdio.h>
+
+/* "Convenience" functions that are the same in any client implementation. */
+void redfish_disconnect_and_free(struct redfish_client *cli)
+{
+	redfish_disconnect(cli);
+	redfish_free_client(cli);
+}
+
+int redfish_close_and_free(struct redfish_file *ofe)
+{
+	int ret;
+
+	ret = redfish_close(ofe);
+	redfish_free_file(ofe);
+	return ret;
+}
 
 void redfish_free_path_status(struct redfish_stat* osa)
 {
@@ -25,16 +42,12 @@ void redfish_free_path_status(struct redfish_stat* osa)
 	free(osa->group);
 }
 
-void redfish_free_path_statuses(struct redfish_stat* osas)
+void redfish_free_path_statuses(struct redfish_stat* osas, int nosa)
 {
-	struct redfish_stat *osa;
+	int i;
 
-	osa = osas;
-	while (1) {
-		if (!osa->path)
-			break;
-		redfish_free_path_status(osa);
-		++osa;
+	for (i = 0; i < nosa; ++i) {
+		redfish_free_path_status(osas + i);
 	}
 	free(osas);
 }

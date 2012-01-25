@@ -286,7 +286,7 @@ void redfish_free_path_status(struct redfish_stat* osa);
  *
  * @param cli		the RedFish client
  * @param dir		the directory to get a listing from
- * @param osa		(out-parameter) NULL-terminated array of statuses
+ * @param osa		(out-parameter) an array of statuses
  *
  * @return		the number of status objects on success; a negative
  *			error code otherwise
@@ -299,7 +299,7 @@ int redfish_list_directory(struct redfish_client *cli, const char *dir,
  * @param osa		array of file statuses
  * @param nosa		Length of osa
  */
-void redfish_free_path_statuses(struct redfish_stat* osa);
+void redfish_free_path_statuses(struct redfish_stat* osa, int nosa);
 
 /** Changes the permission bits for a file or directory.
  *
