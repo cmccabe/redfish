@@ -44,8 +44,8 @@ class RedfishClient {
     }
   }
 
-  public RedfishClient(String host, int port, String user) {
-    this.redfishConnect(host, port, user);
+  public RedfishClient(String configFile, String userName) {
+    this.redfishConnect(configFile, userName);
   }
 
   /* This finalizer is intended to free the (small!) amount of memory used by
@@ -61,7 +61,7 @@ class RedfishClient {
   }
 
   private final native //
-    String redfishConnect(String host, int port, String user)
+    String redfishConnect(String configFile, String userName)
       throws IOException;
 
   public final native

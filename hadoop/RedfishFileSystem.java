@@ -28,7 +28,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
 
-class RedfishFileSystem {
+class RedfishFileSystem extends FileSystem {
   private RedfishClient m_client;
   private URI m_uri;
   private String m_cwd;
@@ -52,32 +52,23 @@ class RedfishFileSystem {
 
   public void initialize(URI uri, Configuration conf) throws IOException {
     super(conf, log);
-    try {
-      String host;
-      int port;
-      String user;
-
-      if (uri.getHost() == null) {
-        host = conf.get("fs.redfish.mdsHostname", "");
-        port = conf.get("fs.redfish.mdsPort", 0);
-      }
-      else {
-        host = uri.getHost();
-        port = uri.getPort();
-      }
-      user = conf.get("fs.redfish.mdsUser", "");
-      if (
-
-      this.m_client = new RedfishClient();
-      this.m_uri = URI.create(uri.getScheme() + "://" + uri.getAuthority());
-      this.m_cwd = new Path("/user", System.getProperty("user.name")).makeQualified(this);
-      setConf(conf);
+    String configFile = conf.get("fs.redfish.configFile", "");
+    if (configFile == "") {
+      throw new IOException("You must set fs.redfish.configFile to the " +
+          "path to a valid Redfish configuration file");
     }
-    catch (Exception e) {
-      e.printStackTrace();
-      System.out.println("Unable to initialize KFS");
-      System.exit(-1);
-    }
+    String userName = System.getProperty("user.name");
+    this.m_client = new RedfishClient(configFile, userName);
+    this.m_uri = URI.create(uri.getScheme() + "://" + uri.getAuthority());
+    this.m_cwd = new Path("/user", System.getProperty("user.name")).makeQualified(this);
+    setConf(conf);
+  }
+
+  /* This will free most of the resources associated with the RedfishFileSystem.
+   */
+  public void close() throws IOException {
+    super();
+    m_client.redfishDisconnect();
   }
 
   public String getName() {
@@ -103,19 +94,19 @@ class RedfishFileSystem {
   }
 
   public FSDataInputStream open(Path f, int bufferSize) throws IOException {
-    return m_client.redfishOpen(makeAbsoluteStr(f), permission.toShort());
+    return m_client.redfishOpen(makeAbsoluteStr(f));
   }
 
   public FSDataOutputStream create(Path f,
-          FsPermission permission,
+          FsPermission perm,
           boolean overwrite,
           int bufferSize,
           short replication,
           long blockSize,
           Progressable progress) throws IOException
   {
-    return m_client.redfishCreate(makeAbsoluteStr(f), permission.toShort(),
-        bufferSize, replication, blockSize);
+    return m_client.redfishCreate(makeAbsoluteStr(f), perm.toShort(),
+                bufferSize, replication, blockSize);
   }
 
   public FSDataOutputStream append(Path f, int bufferSize,
@@ -124,19 +115,18 @@ class RedfishFileSystem {
   }
 
   public boolean rename(Path src, Path dst) throws IoException {
-    return (m_client.redfishRename(makeAbsoluteStr(src),
-        makeAbsoluteStr(dst)) == 0);
+    return m_client.redfishRename(makeAbsoluteStr(src), makeAbsoluteStr(dst));
   }
 
   public boolean delete(Path f) throws IoException {
-    return (m_client.redfishUnlink(makeAbsoluteStr(f) == 0));
+    return m_client.redfishUnlink(makeAbsoluteStr(f));
   }
 
-  public boolean delete(Path f) throws IoException {
-    if (recursive == true)
-      return (m_client.redfishUnlinkTree(makeAbsoluteStr(f) == 0));
+  public boolean delete(Path f, boolean recursive) throws IoException {
+    if (recursive)
+      return m_client.redfishUnlinkTree(makeAbsoluteStr(f));
     else
-      return (m_client.redfishUnlink(makeAbsoluteStr(f) == 0));
+      return m_client.redfishUnlink(makeAbsoluteStr(f));'
   }
 
   public FileStatus[] listStatus(Path f) throws IOException {
@@ -151,13 +141,23 @@ class RedfishFileSystem {
     return this.m_cwd;
   }
 
-  public boolean mkdirs(Path path, FsPermission permission)
-        throws IoException {
-    return (m_client.redfishMkdirs(makeAbsoluteStr(path),
-        permission.toShort()) == 0);
+  public boolean mkdirs(Path path, FsPermission perm) throws IoException {
+    return m_client.redfishMkdirs(makeAbsoluteStr(path), perm.toShort());
   }
 
   public FileStatus getFileStatus(Path path) throws IOException {
     return m_client.redfishGetPathStatus(makeAbsoluteStr(path));
+  }
+
+  public void setOwner(Path p, String user, String group) throws IOException {
+    m_client.redfishChown(makeAbsoluteStr(p), user, group);
+  }
+
+  public void setPermission(Path p, FsPermission perm) throws IOException {
+    m_client.redfishChmod(makeAbsoluteStr(p), perm.toShort());
+  }
+
+  public void setTimes(Path p, long mtime, long atime) throws IOException {
+    m_client.redfishUtimes(makeAbsoluteStr(p), mtime, atime);
   }
 };
