@@ -681,7 +681,7 @@ error:
 		free(zosa[i].group);
 	}
 	free(zosa);
-	return ret;
+	return FORCE_NEGATIVE(ret);
 }
 
 static int redfish_openwr_internal(struct redfish_client *cli, const char *path)

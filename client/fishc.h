@@ -288,7 +288,8 @@ void redfish_free_path_status(struct redfish_stat* osa);
  * @param dir		the directory to get a listing from
  * @param osa		(out-parameter) NULL-terminated array of statuses
  *
- * @return		0 on success; error code otherwise
+ * @return		the number of status objects on success; a negative
+ *			error code otherwise
  */
 int redfish_list_directory(struct redfish_client *cli, const char *dir,
 			      struct redfish_stat** osa);
