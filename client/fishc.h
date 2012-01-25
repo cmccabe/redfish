@@ -217,6 +217,8 @@ int redfish_create(struct redfish_client *cli, const char *path,
 
 /** Open a RedFish file for reading
  *
+ * TODO: make buffer size configurable here?
+ *
  * @param cli		The RedFish client
  * @param path		The file path
  * @param ofe		(out-parameter) the RedFish file
