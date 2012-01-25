@@ -28,7 +28,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
 
-class RedfishDataInputStream extends FSInputStream {
+class RedfishDataInputStream extends InputStream {
   private long m_ofe;
 
   static {
