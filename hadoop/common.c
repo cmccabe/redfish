@@ -32,6 +32,12 @@ jmethodID g_mid_file_perm_ctor;
 jclass g_cls_path;
 jmethodID g_mid_path_ctor;
 
+jclass g_cls_rf_in_stream;
+jmethodID g_mid_rf_in_stream_ctor;
+
+jclass g_cls_rf_out_stream;
+jmethodID g_mid_rf_out_stream_ctor;
+
 static int cache_class_and_ctor(JNIEnv *jenv, const char *name,
 		jclass *out_cls, jmethodID *out_ctor, const char *sig)
 {
@@ -87,12 +93,13 @@ void redfish_throw(JNIEnv *jenv, const char *name, const char *msg)
 
 static int cache_redfish_input_stream_fields(JNIEnv *jenv)
 {
-	jclass cls;
+	int ret;
 
-	cls = (*jenv)->FindClass(jenv, "RedfishInputStream");
-	if (!cls)
+	ret = cache_class_and_ctor(jenv, "RedfishInputStream",
+		&g_cls_rf_in_stream, &g_mid_rf_out_stream_ctor, "(J)V");
+	if (ret)
 		return -ENOENT;
-	g_fid_m_ofe = (*jenv)->GetFieldID(jenv, cls,
+	g_fid_m_ofe = (*jenv)->GetFieldID(jenv, g_cls_rf_in_stream,
 			"m_ofe", "Ljava/lang/Long;");
 	if (!g_fid_m_ofe)
 		return -ENOENT;

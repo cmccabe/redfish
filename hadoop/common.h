@@ -31,6 +31,12 @@ extern jmethodID g_mid_file_perm_ctor;
 extern jclass g_cls_path;
 extern jmethodID g_mid_path_ctor;
 
+extern jclass g_cls_rf_in_stream;
+extern jmethodID g_mid_rf_in_stream_ctor;
+
+extern jclass g_cls_rf_out_stream;
+extern jmethodID g_mid_rf_out_stream_ctor;
+
 /** Raise a Java exception from a JNI method
  *
  * @param jenv		The JNI environment
