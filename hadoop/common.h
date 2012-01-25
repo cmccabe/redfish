@@ -20,7 +20,8 @@
 #include <jni.h>
 
 extern jfieldID g_fid_m_cli;
-extern jfieldID g_fid_m_ofe;
+extern jfieldID g_fid_rf_in_stream_m_ofe;
+extern jfieldID g_fid_rf_out_stream_m_ofe;
 
 extern jclass g_cls_file_status;
 extern jmethodID g_mid_file_status_ctor;

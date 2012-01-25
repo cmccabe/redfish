@@ -21,7 +21,8 @@
 #include "util/compiler.h"
 
 jfieldID g_fid_m_cli;
-jfieldID g_fid_m_ofe;
+jfieldID g_fid_rf_in_stream_m_ofe;
+jfieldID g_fid_rf_out_stream_m_ofe;
 
 jclass g_cls_file_status;
 jmethodID g_mid_file_status_ctor;
@@ -99,9 +100,9 @@ static int cache_redfish_input_stream_fields(JNIEnv *jenv)
 		&g_cls_rf_in_stream, &g_mid_rf_out_stream_ctor, "(J)V");
 	if (ret)
 		return -ENOENT;
-	g_fid_m_ofe = (*jenv)->GetFieldID(jenv, g_cls_rf_in_stream,
+	g_fid_rf_in_stream_m_ofe = (*jenv)->GetFieldID(jenv, g_cls_rf_in_stream,
 			"m_ofe", "Ljava/lang/Long;");
-	if (!g_fid_m_ofe)
+	if (!g_fid_rf_in_stream_m_ofe)
 		return -ENOENT;
 	return 0;
 }

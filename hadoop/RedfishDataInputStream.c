@@ -34,12 +34,14 @@ BUILD_BUG_ON(sizeof(jint) != sizeof(int32_t));
 
 static void redfish_set_m_ofe(JNIEnv *jenv, jobject jobj, void *ptr)
 {
-	(*jenv)->SetLongField(jenv, jobj, g_fid_m_ofe, (jlong)(uintptr_t)ptr);
+	(*jenv)->SetLongField(jenv, jobj, g_fid_rf_in_stream_m_ofe,
+			(jlong)(uintptr_t)ptr);
 }
 
 static void* redfish_get_m_ofe(JNIEnv *jenv, jobject jobj)
 {
-	return (void*)(uintptr_t)(*jenv)->GetLongField(jenv, jobj, g_fid_m_ofe);
+	return (void*)(uintptr_t)(*jenv)->GetLongField(jenv, jobj,
+			g_fid_rf_in_stream_m_ofe);
 }
 
 jint Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_available(
