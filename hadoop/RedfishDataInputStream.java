@@ -76,8 +76,7 @@ class RedfishDataInputStream extends InputStream {
     return redfishRead(buf, off, len);
   }
 
-  public int read(long pos, byte[] buf, int off, int len)
-              throws IOException {
+  public int read(long pos, byte[] buf, int off, int len) throws IOException {
     return redfishPread(pos, buf, off, len);
   }
 
@@ -88,29 +87,23 @@ class RedfishDataInputStream extends InputStream {
   }
 
   public native
-    int available();
-      throws IOException;
+    int available() throws IOException;
 
   private native
-    int redfishRead(byte[] buf, int boff, int blen);
-      throws IOException;
+    int redfishRead(byte[] buf, int boff, int blen) throws IOException;
 
   private native
-    int redfishPread(long off, byte[] buf, int boff, int blen);
-      throws IOException;
+    int redfishPread(long off, byte[] buf, int boff, int blen) throws IOException;
 
   public native
-    void close();
-      throws IOException;
+    void close() throws IOException;
 
   private native
     void free();
 
   public native
-    void seek(long off);
-      throws IOException;
+    void seek(long off) throws IOException;
 
   public native
-    long getPos();
-      throws IOException;
+    long getPos() throws IOException;
 }
