@@ -181,6 +181,7 @@ jobject Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishGetPathStatus(
 	if (ret == -ENOENT) {
 		snprintf(err, err_len, "No such file as '%s'", cpath);
 		redfish_throw(jenv, "java/io/FileNotFound", err);
+		err[0] = '\0';
 		goto done;
 	}
 	else if (ret) {
