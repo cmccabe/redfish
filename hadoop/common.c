@@ -97,13 +97,28 @@ static int cache_redfish_input_stream_fields(JNIEnv *jenv)
 {
 	int ret;
 
-	ret = cache_class_and_ctor(jenv, "RedfishInputStream",
-		&g_cls_rf_in_stream, &g_mid_rf_out_stream_ctor, "(J)V");
+	ret = cache_class_and_ctor(jenv, "RedfishDataInputStream",
+		&g_cls_rf_in_stream, &g_mid_rf_in_stream_ctor, "(J)V");
 	if (ret)
 		return -ENOENT;
 	g_fid_rf_in_stream_m_ofe = (*jenv)->GetFieldID(jenv, g_cls_rf_in_stream,
 			"m_ofe", "Ljava/lang/Long;");
 	if (!g_fid_rf_in_stream_m_ofe)
+		return -ENOENT;
+	return 0;
+}
+
+static int cache_redfish_output_stream_fields(JNIEnv *jenv)
+{
+	int ret;
+
+	ret = cache_class_and_ctor(jenv, "RedfishDataOutputStream",
+		&g_cls_rf_out_stream, &g_mid_rf_out_stream_ctor, "(J)V");
+	if (ret)
+		return -ENOENT;
+	g_fid_rf_out_stream_m_ofe = (*jenv)->GetFieldID(jenv, g_cls_rf_out_stream,
+			"m_ofe", "Ljava/lang/Long;");
+	if (!g_fid_rf_out_stream_m_ofe)
 		return -ENOENT;
 	return 0;
 }
@@ -121,6 +136,9 @@ JNI_OnLoad(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
 	if (ret)
 		return JNI_ERR;
 	ret = cache_redfish_input_stream_fields(jenv);
+	if (ret)
+		return JNI_ERR;
+	ret = cache_redfish_output_stream_fields(jenv);
 	if (ret)
 		return JNI_ERR;
 	// org.apache.hadoop.fs.FileStatus FileStatus

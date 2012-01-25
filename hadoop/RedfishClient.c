@@ -111,6 +111,41 @@ done:
 	return jstream;
 }
 
+JNIEXPORT jobject JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishCreate(
+	JNIEnv *jenv, jobject jobj, jstring jpath, jshort mode,
+	jint bufsz, jshort repl, jint blocksz)
+{
+	jobject jstream = NULL;
+	int ret = 0;
+	char cpath[RF_PATH_MAX];
+	struct redfish_client *cli;
+	struct redfish_file *ofe = NULL;
+	char err[512] = { 0 };
+	size_t err_len = sizeof(err);
+
+	cli = redfish_get_m_cli(jenv, jobj);
+	if (cli != NULL) {
+		/* already initialized */
+		strerror_r(EINVAL, err, err_len);
+		goto done;
+	}
+	(*jenv)->GetStringUTFRegion(jenv, jpath, 0, sizeof(cpath), cpath);
+	if ((*jenv)->ExceptionCheck(jenv))
+		goto done;
+	ret = redfish_create(cli, cpath, mode, bufsz, repl, blocksz, &ofe);
+	if (ret) {
+		strerror_r(ret, err, err_len);
+		goto done;
+	}
+	jstream = (*jenv)->NewObject(jenv, g_cls_rf_out_stream,
+			g_mid_rf_out_stream_ctor, (jlong)(uintptr_t)ofe);
+done:
+	if (err[0])
+		redfish_throw(jenv, "java/io/IOException", err);
+	return jstream;
+}
+
 JNIEXPORT jboolean JNICALL
 Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishMkdirs(
 	JNIEnv *jenv, jobject jobj, jstring jpath, jshort jmode)
