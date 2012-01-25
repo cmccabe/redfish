@@ -63,9 +63,14 @@ class RedfishDataInputStream extends InputStream {
   }
 
   public int read() throws IOException {
+    int amt;
+
     /* The oh-so-useful "read a single byte" method */
     byte[] buf = new byte[1];
-    return redfishRead(buf, 0, 1);
+    amt = redfishRead(buf, 0, 1);
+    if (amt != 1)
+      return -1;
+    return buf[0];
   }
 
   public int read(byte[] buf) throws IOException {

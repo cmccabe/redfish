@@ -107,6 +107,13 @@ jint redfishDoRead(JNIEnv *jenv, jobject jobj, jlong jpos, jbyteArray jarr,
 		strerror_r(FORCE_POSITIVE(ret), err, err_len);
 		goto done;
 	}
+	else if (ret == 0) {
+		/* If we read 0 bytes, by Redfish semantics, that means we are
+		 * at the end of the file.  DataInputStream semantics demand
+		 * that we return -1 for EOF.
+		 */
+		ret = -1;
+	}
 	(*jenv)->SetByteArrayRegion(jenv, jarr, boff, blen, cbuf);
 
 done:
