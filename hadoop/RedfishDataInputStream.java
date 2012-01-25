@@ -100,10 +100,6 @@ class RedfishDataInputStream extends InputStream {
       throws IOException;
 
   public native
-    void flush();
-      throws IOException;
-
-  public native
     void close();
       throws IOException;
 

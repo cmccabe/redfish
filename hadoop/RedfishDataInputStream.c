@@ -173,29 +173,6 @@ jint Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_redfishPread(
 	return redfishDoRead(jenv, jobj, jpos, jarr, boff, blen);
 }
 
-void Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_redfishFlush(
-		JNIEnv *jenv, jobject jobj)
-{
-	int ret;
-	char err[512] = { 0 };
-	size_t err_len = sizeof(err);
-	struct redfish_file *ofe;
-
-	ofe = redfish_get_m_ofe(jenv, jobj);
-	if (!ofe) {
-		strerror_r(EINVAL, err, err_len);
-		goto done;
-	}
-	ret = redfish_hflush(ofe);
-	if (ret) {
-		strerror_r(FORCE_POSITIVE(ret), err, err_len);
-		goto done;
-	}
-done:
-	if (err[0])
-		redfish_throw(jenv, "java/io/IOException", err);
-}
-
 void Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_redfishClose(
 		JNIEnv *jenv, jobject jobj)
 {
