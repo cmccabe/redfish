@@ -65,18 +65,18 @@ class RedfishDataOutputStream extends OutputStream {
     return write(buf, 0, 1);
   }
 
-  public native //
+  public native
     void close() throws IOException;
 
-  private native //
+  private native
     void redfishFree() throws IOException;
 
   public native
     void write(byte[] jarr, int off, int len) throws IOException;
 
-  public native //
+  public native
     long getPos() throws IOException;
 
-  public native //
+  public native
     void flush() throws IOException;
 }
