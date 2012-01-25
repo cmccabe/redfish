@@ -42,7 +42,7 @@ static void* redfish_get_m_ofe(JNIEnv *jenv, jobject jobj)
 	return (void*)(uintptr_t)(*jenv)->GetLongField(jenv, jobj, g_fid_m_ofe);
 }
 
-jint Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_redfishAvailable(
+jint Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_available(
 		JNIEnv *jenv, jobject jobj)
 {
 	int32_t res = -EINVAL;
@@ -230,7 +230,7 @@ void Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_redfishFree(
 	redfish_set_m_ofe(jenv, jobj, NULL);
 }
 
-void Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_redfishFSeekAbs(
+void Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_seek(
 		JNIEnv *jenv, jobject jobj, jlong off)
 {
 	int ret;
@@ -253,7 +253,7 @@ done:
 		redfish_throw(jenv, "java/io/IOException", err);
 }
 
-jlong Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_redfishFSeekRel(
+jlong Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_skip(
 		JNIEnv *jenv, jobject jobj, jlong delta)
 {
 	int ret;
@@ -278,7 +278,7 @@ done:
 	return out;
 }
 
-jlong Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_redfishFTell(
+jlong Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_getPos(
 		JNIEnv *jenv, jobject jobj)
 {
 	int64_t ret = 0;

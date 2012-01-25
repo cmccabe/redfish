@@ -62,10 +62,6 @@ class RedfishDataInputStream extends FSInputStream {
     return false;
   }
 
-  public int available() {
-    return redfishAvailable();
-  }
-
   public int read() throws IOException {
     /* The oh-so-useful "read a single byte" method */
     byte[] buf = new byte[1];
@@ -85,49 +81,40 @@ class RedfishDataInputStream extends FSInputStream {
     return redfishPread(pos, buf, off, len);
   }
 
-  public long skip(long n) throws IOException {
-    return redfishFSeekRel(n)
-  }
-
-  public void seek(long pos) throws IOException {
-    redfishFSeekAbs(n);
-  }
-
-  public int available() throws IOException {
-  }
-
-  public long getPos() throws IOException {
-    return redfishFTell();
-  }
-
   public boolean seekToNewSource(long targetPos) throws IOException {
     /* Redfish handles failover between chunk replicas internally, so this
      * method should be unneeded? */
     return false;
   }
 
-  public void close() throws IOException {
-    redfishClose();
-  }
+  public native
+    int available();
+      throws IOException;
 
   private native
-  int redfishAvailable();
+    int redfishRead(byte[] buf, int boff, int blen);
+      throws IOException;
 
   private native
-  int redfishRead(byte[] buf, int boff, int blen);
+    int redfishPread(long off, byte[] buf, int boff, int blen);
+      throws IOException;
+
+  public native
+    void flush();
+      throws IOException;
+
+  public native
+    void close();
+      throws IOException;
 
   private native
-  int redfishPread(long off, byte[] buf, int boff, int blen);
+    void free();
 
-  private native
-  void redfishFlush();
+  public native
+    void seek(long off);
+      throws IOException;
 
-  private native
-  void redfishClose();
-
-  private native
-  void redfishFSeekAbs(long off); 
-
-  private native
-  long redfishFSeekRel(long delta); 
+  public native
+    long getPos();
+      throws IOException;
 }
