@@ -102,7 +102,7 @@ jobject Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishOpen(
 		goto done;
 	}
 	jstream = (*jenv)->NewObject(jenv, g_cls_rf_in_stream,
-			g_mid_rf_in_stream_ctor, (jlong)ofe);
+			g_mid_rf_in_stream_ctor, (jlong)(uintptr_t)ofe);
 done:
 	if (err[0])
 		redfish_throw(jenv, "java/io/IOException", err);
