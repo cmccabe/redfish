@@ -134,6 +134,6 @@ int main(int argc, char **argv)
 	ndirs = process_dirs(dirs);
 	unlink_test(cli, dirs, ndirs);
 	free(dirs);
-	redfish_disconnect_and_free(cli);
+	redfish_disconnect_and_release(cli);
 	return stest_finish();
 }

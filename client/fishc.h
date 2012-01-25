@@ -27,7 +27,7 @@
  * process that is accessing the filesystem.
  *
  * All operations on a Redfish Client are thread-safe, except for
- * redfish_free_client and redfish_disconnect_and_free.
+ * redfish_release_client and redfish_disconnect_and_release.
  */
 struct redfish_client;
 
@@ -340,32 +340,41 @@ int redfish_utimes(struct redfish_client *cli, const char *path,
 /** Disconnect a Redfish client instance
  *
  * Once a client instance is disconnected, no further operations can be
- * attempted on it.  This function is thread-safe.
+ * performed on it.  This function is thread-safe.
  *
- * There isn't anything you can do with a disconnected client except free it
- * using redfish_free_client.
+ * There isn't anything you can do with a disconnected client except release it
+ * using redfish_release_client.
  *
  * @param cli		the Redfish client to disconnect
  */
 void redfish_disconnect(struct redfish_client *cli);
 
-/** Destroy a RedFish client instance and free the memory associated with it.
+/** Release the memory associated with a Redfish client
  *
- * This function is NOT thread-safe.  You must ensure that no other thread is
- * using the Redfish client while it is being freed.  After the client is freed,
- * the pointer becomes invalid and must never be used again.
+ * This function will release the memory associated with a Redfish client.
+ * The memory may not actually be freed until all of the redfish_file
+ * structures created by this client have been freed with redfish_free_file.
+ *
+ * You must ensure that no other thread is using the Redfish client pointer
+ * while you are releasing it, or afterwards.
+ *
+ * The pointers to redfish_file structures created by this client will continue
+ * to be valid even after the client itself is released.  The only really useful
+ * thing you can do with those pointers at that time is to call
+ * redfish_free_file on them.  Please remember to do this.
  *
  * @param cli		the RedFish client to free
  */
-void redfish_free_client(struct redfish_client *cli);
+void redfish_release_client(struct redfish_client *cli);
 
 /** Disconnect and free a Redfish client.
  *
- * This function is NOT thread-safe.
+ * This function is NOT thread-safe.  See redfish_release_client for an
+ * explanation.
  *
  * @param cli		the RedFish client to disconnect and free.
  */
-void redfish_disconnect_and_free(struct redfish_client *cli);
+void redfish_disconnect_and_release(struct redfish_client *cli);
 
 /** Reads data from a redfish file
  *

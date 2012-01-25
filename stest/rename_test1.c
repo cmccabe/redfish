@@ -89,6 +89,6 @@ int main(int argc, char **argv)
 	stest_mlocs_free(mlocs);
 
 	rename_test1(cli);
-	redfish_disconnect_and_free(cli);
+	redfish_disconnect_and_release(cli);
 	return stest_finish();
 }

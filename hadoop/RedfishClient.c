@@ -476,6 +476,6 @@ void Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishFree(
 	cli = redfish_get_m_cli(jenv, jobj);
 	if (!cli)
 		return;
-	redfish_free_client(cli);
+	redfish_release_client(cli);
 	redfish_set_m_cli(jenv, jobj, NULL);
 }

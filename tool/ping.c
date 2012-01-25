@@ -39,7 +39,7 @@ int fishtool_ping(struct fishtool_params *params)
 		fprintf(stderr, "redfish_connect failed with error %d\n", ret);
 		return ret;
 	}
-	redfish_disconnect_and_free(cli);
+	redfish_disconnect_and_release(cli);
 
 	return 0;
 }

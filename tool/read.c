@@ -107,7 +107,7 @@ done:
 	if (ofe)
 		redfish_free_file(ofe);
 	if (cli)
-		redfish_disconnect_and_free(cli);
+		redfish_disconnect_and_release(cli);
 	return ret;
 }
 

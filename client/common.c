@@ -20,10 +20,10 @@
 #include <stdio.h>
 
 /* "Convenience" functions that are the same in any client implementation. */
-void redfish_disconnect_and_free(struct redfish_client *cli)
+void redfish_disconnect_and_release(struct redfish_client *cli)
 {
 	redfish_disconnect(cli);
-	redfish_free_client(cli);
+	redfish_release_client(cli);
 }
 
 int redfish_close_and_free(struct redfish_file *ofe)

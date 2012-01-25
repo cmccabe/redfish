@@ -80,6 +80,6 @@ int main(int argc, char **argv)
 	if (error && strcmp(error, "0")) {
 		_exit(1);
 	}
-	redfish_disconnect_and_free(cli);
+	redfish_disconnect_and_release(cli);
 	return stest_finish();
 }

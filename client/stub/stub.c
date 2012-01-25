@@ -58,7 +58,7 @@ enum stub_perm {
 #define XATTR_FISH_GROUP "user.fish_group"
 #define XATTR_FISH_MODE "user.fish_mode"
 
-void redfish_free_client(struct redfish_client *cli);
+void redfish_release_client(struct redfish_client *cli);
 
 /** Represents a RedFish client.
  *
@@ -187,19 +187,19 @@ int redfish_connect(POSSIBLY_UNUSED(struct redfish_mds_locator **mlocs),
 	if (!zcli->base)
 		goto oom_error;
 	if (access(zcli->base, R_OK | W_OK | X_OK)) {
-		redfish_free_client(zcli);
+		redfish_release_client(zcli);
 		return -ENOTDIR;
 	}
 	ret = check_xattr_support(zcli->base);
 	if (ret) {
-		redfish_free_client(zcli);
+		redfish_release_client(zcli);
 		return ret;
 	}
 	*cli = zcli;
 	return 0;
 
 oom_error:
-	redfish_free_client(zcli);
+	redfish_release_client(zcli);
 	return -ENOMEM;
 }
 
@@ -782,7 +782,7 @@ void redfish_disconnect(POSSIBLY_UNUSED(struct redfish_client *cli))
 	 * to anything when using the stub client. */
 }
 
-void redfish_free_client(struct redfish_client *cli)
+void redfish_release_client(struct redfish_client *cli)
 {
 	char **g;
 	free(cli->user);

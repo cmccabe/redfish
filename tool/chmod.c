@@ -74,7 +74,7 @@ int fishtool_chmod(struct fishtool_params *params)
 	ret = 0;
 done:
 	if (cli)
-		redfish_disconnect_and_free(cli);
+		redfish_disconnect_and_release(cli);
 	return ret;
 }
 
