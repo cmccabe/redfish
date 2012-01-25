@@ -108,7 +108,8 @@ static int cache_redfish_input_stream_fields(JNIEnv *jenv)
 	return 0;
 }
 
-jint JNI_OnLoad(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
+JNIEXPORT jint JNICALL
+JNI_OnLoad(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
 {
 	int ret;
 	JNIEnv *jenv = NULL;
@@ -139,7 +140,8 @@ jint JNI_OnLoad(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
 	return JNI_VERSION_1_2;
 }
 
-void JNI_OnUnload(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
+JNIEXPORT void JNICALL
+JNI_OnUnload(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
 {
 	JNIEnv *jenv;
 

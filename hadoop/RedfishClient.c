@@ -39,9 +39,10 @@ static void* redfish_get_m_cli(JNIEnv *jenv, jobject jobj)
 	return (void*)(uintptr_t)(*jenv)->GetLongField(jenv, jobj, g_fid_m_cli);
 }
 
-void Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishConnect(
-		JNIEnv *jenv, jobject jobj, POSSIBLY_UNUSED(jstring jhost),
-		POSSIBLY_UNUSED(jint jport), jstring juser)
+JNIEXPORT void JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishConnect(
+	JNIEnv *jenv, jobject jobj, POSSIBLY_UNUSED(jstring jhost),
+	POSSIBLY_UNUSED(jint jport), jstring juser)
 {
 	int ret = 0;
 	char cuser[RF_USER_MAX];
@@ -76,8 +77,9 @@ done:
 		redfish_throw(jenv, "java/io/IOException", err);
 }
 
-jobject Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishOpen(
-		JNIEnv *jenv, jobject jobj, jstring jpath)
+JNIEXPORT jobject JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishOpen(
+	JNIEnv *jenv, jobject jobj, jstring jpath)
 {
 	jobject jstream = NULL;
 	int ret = 0;
@@ -109,8 +111,9 @@ done:
 	return jstream;
 }
 
-jboolean Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishMkdirs(
-		JNIEnv *jenv, jobject jobj, jstring jpath, jshort jmode)
+JNIEXPORT jboolean JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishMkdirs(
+	JNIEnv *jenv, jobject jobj, jstring jpath, jshort jmode)
 {
 	int ret = 0;
 	char cpath[RF_PATH_MAX];
@@ -186,8 +189,9 @@ done:
 	return jstat;
 }
 
-jobject Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishGetPathStatus(
-		JNIEnv *jenv, jobject jobj, jstring jpath)
+JNIEXPORT jobject JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishGetPathStatus(
+	JNIEnv *jenv, jobject jobj, jstring jpath)
 {
 	int ret = 0;
 	jobject res = NULL;
@@ -228,8 +232,9 @@ done:
 	return res;
 }
 
-jobjectArray Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishListDirectory(
-		JNIEnv *jenv, jobject jobj, jstring jpath)
+JNIEXPORT jobjectArray JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishListDirectory(
+	JNIEnv *jenv, jobject jobj, jstring jpath)
 {
 	jobjectArray jarr = NULL;
 	int i, nosa;
@@ -276,8 +281,9 @@ done:
 	return jarr;
 }
 
-void Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishChmod(
-		JNIEnv *jenv, jobject jobj, jstring jpath, jshort jmode)
+JNIEXPORT void JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishChmod(
+	JNIEnv *jenv, jobject jobj, jstring jpath, jshort jmode)
 {
 	int ret;
 	char cpath[RF_PATH_MAX];
@@ -303,9 +309,10 @@ done:
 		redfish_throw(jenv, "java/io/IOException", err);
 }
 
-void Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishChown(
-		JNIEnv *jenv, jobject jobj, jstring jpath,
-		jstring jowner, jstring jgroup)
+JNIEXPORT void JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishChown(
+	JNIEnv *jenv, jobject jobj, jstring jpath, jstring jowner,
+	jstring jgroup)
 {
 	int ret;
 	char cpath[RF_PATH_MAX], err[512] = { 0 };
@@ -344,9 +351,9 @@ done:
 		redfish_throw(jenv, "java/io/IOException", err);
 }
 
-void Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishUtimes(
-		JNIEnv *jenv, jobject jobj, jstring jpath,
-		jlong mtime, jlong atime)
+JNIEXPORT void JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishUtimes(
+	JNIEnv *jenv, jobject jobj, jstring jpath, jlong mtime, jlong atime)
 {
 	int ret;
 	struct redfish_client *cli;
@@ -371,7 +378,8 @@ done:
 		redfish_throw(jenv, "java/io/IOException", err);
 }
 
-jboolean Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishUnlink(
+JNIEXPORT jboolean JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishUnlink(
 		JNIEnv *jenv, jobject jobj, jstring jpath)
 {
 	int ret;
@@ -398,8 +406,9 @@ done:
 	return (ret == 0);
 }
 
-jboolean Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishUnlinkTree(
-		JNIEnv *jenv, jobject jobj, jstring jpath)
+JNIEXPORT jboolean JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishUnlinkTree(
+	JNIEnv *jenv, jobject jobj, jstring jpath)
 {
 	int ret;
 	struct redfish_client *cli;
@@ -425,8 +434,9 @@ done:
 	return (ret == 0);
 }
 
-jboolean Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishRename(
-		JNIEnv *jenv, jobject jobj, jstring jsrc, jstring jdst)
+JNIEXPORT jboolean JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishRename(
+	JNIEnv *jenv, jobject jobj, jstring jsrc, jstring jdst)
 {
 	int ret;
 	struct redfish_client *cli;
@@ -455,8 +465,9 @@ done:
 	return (ret == 0);
 }
 
-void Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishDisconnect(
-		JNIEnv *jenv, jobject jobj)
+JNIEXPORT void JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishDisconnect(
+	JNIEnv *jenv, jobject jobj)
 {
 	struct redfish_client *cli;
 
@@ -468,8 +479,9 @@ void Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishDisconnect(
 	redfish_disconnect(cli);
 }
 
-void Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishFree(
-		JNIEnv *jenv, jobject jobj)
+JNIEXPORT void JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishFree(
+	JNIEnv *jenv, jobject jobj)
 {
 	struct redfish_client *cli;
 

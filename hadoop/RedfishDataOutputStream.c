@@ -44,8 +44,9 @@ static void* redfish_get_m_ofe(JNIEnv *jenv, jobject jobj)
 			g_fid_rf_out_stream_m_ofe);
 }
 
-void Java_org_apache_hadoop_fs_redfish_RedfishDataOutputStream_redfishClose(
-		JNIEnv *jenv, jobject jobj)
+JNIEXPORT void JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishDataOutputStream_redfishClose(
+	JNIEnv *jenv, jobject jobj)
 {
 	struct redfish_file *ofe;
 
@@ -55,8 +56,9 @@ void Java_org_apache_hadoop_fs_redfish_RedfishDataOutputStream_redfishClose(
 	redfish_close(ofe);
 }
 
-void Java_org_apache_hadoop_fs_redfish_RedfishDataOutputStream_redfishFree(
-		JNIEnv *jenv, jobject jobj)
+JNIEXPORT void JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishDataOutputStream_redfishFree(
+	JNIEnv *jenv, jobject jobj)
 {
 	struct redfish_file *ofe;
 
@@ -67,9 +69,9 @@ void Java_org_apache_hadoop_fs_redfish_RedfishDataOutputStream_redfishFree(
 	redfish_set_m_ofe(jenv, jobj, NULL);
 }
 
-void Java_org_apache_hadoop_fs_redfish_RedfishDataOutputStream_write(
-		JNIEnv *jenv, jobject jobj, jbyteArray jarr,
-		jint boff, jint blen)
+JNIEXPORT void JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishDataOutputStream_write(
+	JNIEnv *jenv, jobject jobj, jbyteArray jarr, jint boff, jint blen)
 {
 	jint ret = -1;
 	int8_t *cbuf = NULL;
@@ -112,8 +114,9 @@ done:
 		free(cbuf);
 }
 
-jlong Java_org_apache_hadoop_fs_redfish_RedfishDataOutputStream_getPos(
-		JNIEnv *jenv, jobject jobj)
+JNIEXPORT jlong JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishDataOutputStream_getPos(
+	JNIEnv *jenv, jobject jobj)
 {
 	int64_t ret = 0;
 	char err[512] = { 0 };
@@ -132,8 +135,9 @@ done:
 	return ret;
 }
 
-void Java_org_apache_hadoop_fs_redfish_RedfishDataOutputStream_redfishFlush(
-		JNIEnv *jenv, jobject jobj)
+JNIEXPORT void JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishDataOutputStream_redfishFlush(
+	JNIEnv *jenv, jobject jobj)
 {
 	int ret;
 	char err[512] = { 0 };
