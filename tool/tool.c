@@ -17,7 +17,7 @@
 #include "client/fishc.h"
 #include "core/process_ctx.h"
 #include "mds/limits.h"
-#include "tool/main.h"
+#include "tool/tool.h"
 #include "util/string.h"
 
 #include <errno.h>

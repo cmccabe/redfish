@@ -15,7 +15,7 @@
  */
 
 #include "client/fishc.h"
-#include "tool/main.h"
+#include "tool/tool.h"
 
 #include <errno.h>
 #include <fcntl.h>

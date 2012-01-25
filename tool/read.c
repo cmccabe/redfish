@@ -15,7 +15,7 @@
  */
 
 #include "client/fishc.h"
-#include "tool/main.h"
+#include "tool/tool.h"
 #include "util/error.h"
 #include "util/safe_io.h"
 #include "util/str_to_int.h"

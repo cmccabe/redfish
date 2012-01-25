@@ -2,11 +2,11 @@ add_executable(fishtool
     chmod.c
     chown.c
     locate.c
-    main.c
     mkdirs.c
     ping.c
     read.c
     rename.c
+    tool.c
     unlink.c
     write.c
 )
