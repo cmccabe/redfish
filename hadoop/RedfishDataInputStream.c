@@ -26,7 +26,7 @@
 #include "util/error.h"
 #include "util/macro.h"
 
-#define RF_DINSTREAM_MALLOC_THRESH 1024
+#define RF_DINSTREAM_MALLOC_THRESH 8192
 
 BUILD_BUG_ON(sizeof(jlong) < sizeof(void*));
 BUILD_BUG_ON(sizeof(jlong) != sizeof(int64_t));
@@ -68,58 +68,17 @@ done:
 	return res;
 }
 
-static jint validate_read_params(JNIEnv *jenv, jbyteArray jarr,
-		jint boff, jint blen)
-{
-	int32_t alen;
-	uint32_t end;
-
-	if (boff < 0) {
-		redfish_throw(jenv, "java/lang/IndexOutOfBoundsException",
-				"boff < 0");
-		return -1;
-	}
-	if (blen < 0) {
-		redfish_throw(jenv, "java/lang/IndexOutOfBoundsException",
-				"blen < 0");
-		return -1;
-	}
-	if (jarr == NULL) {
-		redfish_throw(jenv, "java/lang/NullPointerException",
-				"buf == NULL");
-		return -1;
-	}
-	/* It's important to do the addition of boff and blen as an unsigned
-	 * operation, so that we don't get undefined behavior on integer
-	 * overflow.  We do the comparison as a signed comparison, so that if
-	 * overflow did take place, we're comparing a positive number with a
-	 * negative one.
-	 *
-	 * Unlike C, Java defines integers as 4 bytes, no matter what the
-	 * underlying machine architecture may be.  That's why we can ignore the
-	 * jint, etc typedefs and just use uint32_t and friends.
-	 */
-	alen = (*jenv)->GetArrayLength(jenv, jarr);
-	end = ((uint32_t)boff) + ((uint32_t)blen);
-	if (((int32_t)end) < alen) {
-		redfish_throw(jenv, "java/lang/IndexOutOfBoundsException",
-				"boff + blen > buf.length()");
-		return -1;
-	}
-	return 0;
-}
-
 jint redfishDoRead(JNIEnv *jenv, jobject jobj, jlong jpos, jbyteArray jarr,
 		jint boff, jint blen)
 {
 	jint ret = -1;
 	int8_t *cbuf = NULL;
-	int8_t stack_buf[(blen < RF_DINSTREAM_MALLOC_THRESH) ? blen : 1];
+	int8_t stack_buf[(blen <= RF_DINSTREAM_MALLOC_THRESH) ? blen : 1];
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 	struct redfish_file *ofe;
 
-	ret = validate_read_params(jenv, jarr, boff, blen);
+	ret = validate_rw_params(jenv, jarr, boff, blen);
 	if (ret)
 		return ret;
 	ofe = redfish_get_m_ofe(jenv, jobj);
@@ -127,7 +86,7 @@ jint redfishDoRead(JNIEnv *jenv, jobject jobj, jlong jpos, jbyteArray jarr,
 		redfish_throw(jenv, "java/io/IOException", "m_ofe == NULL");
 		return -1;
 	}
-	if (blen >= RF_DINSTREAM_MALLOC_THRESH) {
+	if (blen > RF_DINSTREAM_MALLOC_THRESH) {
 		cbuf = malloc(blen);
 		if (!cbuf) {
 			strerror_r(ENOMEM, err, err_len);
@@ -151,7 +110,7 @@ jint redfishDoRead(JNIEnv *jenv, jobject jobj, jlong jpos, jbyteArray jarr,
 	(*jenv)->SetByteArrayRegion(jenv, jarr, boff, blen, cbuf);
 
 done:
-	if (blen >= RF_DINSTREAM_MALLOC_THRESH)
+	if (blen > RF_DINSTREAM_MALLOC_THRESH)
 		free(cbuf);
 	return ret;
 }

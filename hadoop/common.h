@@ -46,4 +46,17 @@ extern jmethodID g_mid_rf_out_stream_ctor;
  */
 extern void redfish_throw(JNIEnv *jenv, const char *name, const char *msg);
 
+/** Validate parameters for an array read/write operation
+ *
+ * @param jenv		The JNI environment
+ * @param jarr		The array
+ * @param boff		beginning offset into the array
+ * @param blen		length of the array interval we plan to use
+ *
+ * @return		0 on success; error code otherwise.  A java exception
+ *			will be raised on error.
+ */
+extern jint validate_rw_params(JNIEnv *jenv, jbyteArray jarr,
+			jint boff, jint blen);
+
 #endif

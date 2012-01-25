@@ -16,6 +16,7 @@
 
 #include <errno.h>
 #include <jni.h>
+#include <stdint.h>
 
 #include "hadoop/common.h"
 #include "util/compiler.h"
@@ -152,4 +153,45 @@ void JNI_OnUnload(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
 			&g_mid_file_perm_ctor);
 	uncache_class_and_ctor(jenv, &g_cls_path,
 			&g_mid_path_ctor);
+}
+
+jint validate_rw_params(JNIEnv *jenv, jbyteArray jarr,
+		jint boff, jint blen)
+{
+	int32_t alen;
+	uint32_t end;
+
+	if (boff < 0) {
+		redfish_throw(jenv, "java/lang/IndexOutOfBoundsException",
+				"boff < 0");
+		return -1;
+	}
+	if (blen < 0) {
+		redfish_throw(jenv, "java/lang/IndexOutOfBoundsException",
+				"blen < 0");
+		return -1;
+	}
+	if (jarr == NULL) {
+		redfish_throw(jenv, "java/lang/NullPointerException",
+				"buf == NULL");
+		return -1;
+	}
+	/* It's important to do the addition of boff and blen as an unsigned
+	 * operation, so that we don't get undefined behavior on integer
+	 * overflow.  We do the comparison as a signed comparison, so that if
+	 * overflow did take place, we're comparing a positive number with a
+	 * negative one.
+	 *
+	 * Unlike C, Java defines integers as 4 bytes, no matter what the
+	 * underlying machine architecture may be.  That's why we can ignore the
+	 * jint, etc typedefs and just use uint32_t and friends.
+	 */
+	alen = (*jenv)->GetArrayLength(jenv, jarr);
+	end = ((uint32_t)boff) + ((uint32_t)blen);
+	if (((int32_t)end) < alen) {
+		redfish_throw(jenv, "java/lang/IndexOutOfBoundsException",
+				"boff + blen > buf.length()");
+		return -1;
+	}
+	return 0;
 }
