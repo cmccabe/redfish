@@ -16,13 +16,21 @@
 
 #include <errno.h>
 #include <jni.h>
+#include <limits.h>
 #include <string.h>
 
 #include "client/fishc.h"
 #include "hadoop/common.h"
 #include "mds/limits.h"
 #include "util/compiler.h"
+#include "util/error.h"
 #include "util/macro.h"
+
+/* Hadoop expects block names to be in the format <hostname>:<port-number>.
+ * So the maximum length of this string is the host name length plus the maximum
+ * length of a colon and a 16-bit number.
+ */
+#define RF_BLOCK_NAME_MAX (_POSIX_HOST_NAME_MAX + 7)
 
 /* We must be able to fit a pointer into a Java 'long'.  Believe it or not, this
  * is the official way to store native pointers in Java structures.
@@ -171,6 +179,104 @@ done:
 	if (err[0])
 		redfish_throw(jenv, "java/io/IOException", err);
 	return (ret == 0);
+}
+
+static jobject redfish_block_loc_to_java(JNIEnv *jenv,
+		const struct redfish_block_loc *blc)
+{
+	int i;
+	char c_name[RF_BLOCK_NAME_MAX];
+	jobjectArray host_arr = NULL, name_arr = NULL;
+	jstring host = NULL, name = NULL;
+	jobject jblc = NULL;
+
+	host_arr = (*jenv)->NewObjectArray(jenv, blc->nhosts, g_cls_string, NULL);
+	if (!host_arr)
+		goto done;
+	name_arr = (*jenv)->NewObjectArray(jenv, blc->nhosts, g_cls_string, NULL);
+	if (!name_arr)
+		goto done;
+
+	for (i = 0; i < blc->nhosts; ++i) {
+		host = (*jenv)->NewStringUTF(jenv, blc->hosts[i].hostname);
+		if (!host)
+			goto done;
+		(*jenv)->SetObjectArrayElement(jenv, host_arr, i, host);
+		(*jenv)->DeleteLocalRef(jenv, host);
+		host = NULL;
+
+		snprintf(c_name, RF_BLOCK_NAME_MAX, "%s:%d",
+			blc->hosts[i].hostname, blc->hosts[i].port);
+		name = (*jenv)->NewStringUTF(jenv, c_name);
+		if (!name)
+			goto done;
+		(*jenv)->SetObjectArrayElement(jenv, name_arr, i, name);
+		(*jenv)->DeleteLocalRef(jenv, name);
+		name = NULL;
+	}
+	jblc = (*jenv)->NewObject(jenv, g_cls_block_loc,
+			g_mid_block_loc_ctor, name_arr, host_arr,
+			blc->start, blc->len);
+done:
+	if (host_arr)
+		(*jenv)->DeleteLocalRef(jenv, host_arr);
+	if (name_arr)
+		(*jenv)->DeleteLocalRef(jenv, name_arr);
+	if (host)
+		(*jenv)->DeleteLocalRef(jenv, host);
+	if (name)
+		(*jenv)->DeleteLocalRef(jenv, name);
+	return jblc;
+}
+
+JNIEXPORT jobjectArray JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishGetBlockLocations(
+	JNIEnv *jenv, jobject jobj, jstring jpath, jlong start, jlong len)
+{
+	int i;
+	jobject jitem;
+	jobjectArray jarr = NULL;
+	int nblc = 0;
+	char cpath[RF_PATH_MAX];
+	struct redfish_client *cli;
+	struct redfish_block_loc **blcs = NULL;
+	char err[512] = { 0 };
+	size_t err_len = sizeof(err);
+
+	cli = redfish_get_m_cli(jenv, jobj);
+	if (!cli) {
+		strerror_r(EINVAL, err, err_len);
+		redfish_throw(jenv, "java/io/IOException", err);
+		return NULL;
+	}
+	(*jenv)->GetStringUTFRegion(jenv, jpath, 0, sizeof(cpath), cpath);
+	if ((*jenv)->ExceptionCheck(jenv))
+		return NULL;
+	nblc = redfish_locate(cli, cpath, start, len, &blcs);
+	if (nblc < 0) {
+		strerror_r(FORCE_POSITIVE(nblc), err, err_len);
+		redfish_throw(jenv, "java/io/IOException", err);
+		return NULL;
+	}
+	jarr = (*jenv)->NewObjectArray(jenv, nblc, g_cls_block_loc, NULL);
+	if (!jarr) {
+		/* OOM exception raised by JVM */
+		redfish_free_block_locs(blcs, nblc);
+		return NULL;
+	}
+	for (i = 0; i < nblc; ++i) {
+		jitem = redfish_block_loc_to_java(jenv, blcs[i]);
+		if (!jitem) {
+			/* exception raised by JVM */
+			redfish_free_block_locs(blcs, nblc);
+			(*jenv)->DeleteLocalRef(jenv, jarr);
+			return NULL;
+		}
+		(*jenv)->SetObjectArrayElement(jenv, jitem, i, jarr);
+		(*jenv)->DeleteLocalRef(jenv, jitem);
+	}
+	redfish_free_block_locs(blcs, nblc);
+	return jarr;
 }
 
 static jobject redfish_stat_to_file_info(JNIEnv *jenv,

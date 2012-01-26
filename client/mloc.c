@@ -117,22 +117,3 @@ void redfish_mlocs_free(struct redfish_mds_locator **mlocs)
 	}
 	free(mlocs);
 }
-
-void redfish_free_block_locs(struct redfish_block_loc **blc)
-{
-	struct redfish_block_loc **i;
-
-	i = blc;
-	while (1) {
-		int j;
-		struct redfish_block_loc *b = *i;
-		if (!b)
-			break;
-		for (j = 0; j < b->num_hosts; ++j) {
-			free(b->hosts[j].hostname);
-		}
-		free(b);
-		++i;
-	}
-	free(blc);
-}

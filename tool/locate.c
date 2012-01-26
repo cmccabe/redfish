@@ -34,19 +34,22 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-static void print_block_locs(struct redfish_block_loc **blc)
+static void print_block_locs(struct redfish_block_loc **blcs, int nblc)
 {
-	struct redfish_block_loc **b;
+	int i, j;
+	struct redfish_block_loc *blc;
+	struct redfish_block_host *h;
+	const char *prequel;
 
-	for (b = blc; *b; ++b) {
-		int i;
-		const char *prequel = "";
-		struct redfish_block_host *h = (*b)->hosts;
+	for (i = 0; i < nblc; ++i) {
+		blc = blcs[i];
+		h = blc->hosts;
 
 		printf("starting %"PRId64" (len:%" PRId64 "):",
-				(*b)->start, (*b)->len);
-		for (i = 0; i < (*b)->num_hosts; ++i) {
-			printf("%s%s:%d", prequel, h[i].hostname,  h[i].port);
+				blc->start, blc->len);
+		prequel = "";
+		for (j = 0; j < blc->nhosts; ++j) {
+			printf("%s%s:%d", prequel, h[j].hostname,  h[j].port);
 			prequel = ",";
 		}
 		printf("\n");
@@ -58,10 +61,10 @@ int fishtool_locate(struct fishtool_params *params)
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 	const char *path, *start_str, *len_str;
-	int ret;
+	int ret, nblc;
 	uint64_t start = 0, len = 0xffffffffffffffffll;
 	struct redfish_client *cli = NULL;
-	struct redfish_block_loc **blc = NULL;
+	struct redfish_block_loc **blcs = NULL;
 
 	path = params->non_option_args[0];
 	if (!path) {
@@ -99,16 +102,17 @@ int fishtool_locate(struct fishtool_params *params)
 		fprintf(stderr, "redfish_connect failed with error %d\n", ret);
 		goto done;
 	}
-	ret = redfish_locate(cli, path, start, len, &blc);
-	if (ret) {
+	nblc = redfish_locate(cli, path, start, len, &blcs);
+	if (nblc < 0) {
+		ret = nblc;
 		fprintf(stderr, "redfish_locate failed with error %d\n", ret);
 		goto done;
 	}
-	print_block_locs(blc);
+	print_block_locs(blcs, nblc);
 	ret = 0;
 done:
-	if (blc)
-		redfish_free_block_locs(blc);
+	if (blcs)
+		redfish_free_block_locs(blcs, nblc);
 	if (cli)
 		redfish_disconnect_and_release(cli);
 	return ret;

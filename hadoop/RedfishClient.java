@@ -61,59 +61,47 @@ class RedfishClient {
   }
 
   private final native
-    String redfishConnect(String configFile, String userName)
-      throws IOException;
+    String redfishConnect(String configFile, String userName) throws IOException;
 
   public final native
     RedfishDataOutputStream redfishCreate(String jpath, short mode,
-      int bufsz, short repl, int blocksz);
-        throws IOException;
+      int bufsz, short repl, int blocksz) throws IOException;
 
   public final native
-    RedfishDataInputStream redfishOpen(String jpath);
+    RedfishDataInputStream redfishOpen(String jpath) throws IOException;
+
+  public final native
+    boolean redfishMkdirs(String jpath, short mode) throws IOException;
+
+  public final native
+    BlockLocation[] redfishGetBlockLocations(String jpath, long start, long len)
       throws IOException;
 
   public final native
-    boolean redfishMkdirs(String jpath, short mode);
-      throws IOException;
+    FileStatus redfishGetPathStatus(String jpath) throws IOException, FileNotFound;
 
   public final native
-    String[][] redfishGetBlockLocations(String jpath, long start, long len);
-      throws IOException;
+    FileStatus[] redfishListDirectory(String jpath) throws IOException;
 
-  public final native
-    FileStatus redfishGetPathStatus(String jpath);
-      throws IOException, FileNotFound;
+  private final native
+    void redfishChmod(String jpath, short mode) throws IOException;
 
-  public final native
-    FileStatus[] redfishListDirectory(String jpath);
+  private final native
+    void redfishChown(String jpath, String owner, String group)
       throws IOException;
 
   private final native
-    void redfishChmod(String jpath, short mode);
-      throws IOException;
-
-  private final native
-    void redfishChown(String jpath, String owner, String group);
-      throws IOException;
-
-  private final native
-    void redfishUtimes(String jpath, long mtime, long atime);
-      throws IOException;
+    void redfishUtimes(String jpath, long mtime, long atime) throws IOException;
 
   public final native
-    void redfishDisconnect(void);
-      throws IOException;
+    void redfishDisconnect(void) throws IOException;
 
   public final native
-    boolean redfishUnlink(String jpath);
-      throws IOException;
+    boolean redfishUnlink(String jpath) throws IOException;
 
   public final native
-    boolean redfishUnlinkTree(String jpath);
-      throws IOException;
+    boolean redfishUnlinkTree(String jpath) throws IOException;
 
   public final native
-    void redfishRename(String src, String dst);
-      throws IOException;
+    void redfishRename(String src, String dst) throws IOException;
 };

@@ -40,6 +40,8 @@ jmethodID g_mid_rf_in_stream_ctor;
 jclass g_cls_rf_out_stream;
 jmethodID g_mid_rf_out_stream_ctor;
 
+jclass g_cls_string;
+
 static int cache_class_and_ctor(JNIEnv *jenv, const char *name,
 		jclass *out_cls, jmethodID *out_ctor, const char *sig)
 {
@@ -123,6 +125,19 @@ static int cache_redfish_output_stream_fields(JNIEnv *jenv)
 	return 0;
 }
 
+static int cache_string_class(JNIEnv *jenv)
+{
+	jclass cls;
+
+	cls = (*jenv)->FindClass(jenv, "java/lang/String");
+	if (!cls)
+		return -ENOENT;
+	g_cls_string = (*jenv)->NewWeakGlobalRef(jenv, cls);
+	if (!g_cls_string)
+		return -ENOENT;
+	return 0;
+}
+
 JNIEXPORT jint JNICALL
 JNI_OnLoad(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
 {
@@ -155,6 +170,14 @@ JNI_OnLoad(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
 			&g_mid_path_ctor, "(java/lang/String;)V");
 	if (ret)
 		return JNI_ERR;
+	ret = cache_class_and_ctor(jenv, "BlockLocation", &g_cls_block_loc,
+			&g_mid_block_loc_ctor,
+			"([java/lang/String;[java/lang/String;JJ)V");
+	if (ret)
+		return JNI_ERR;
+	ret = cache_string_class(jenv);
+	if (ret)
+		return JNI_ERR;
 	return JNI_VERSION_1_2;
 }
 
@@ -167,12 +190,19 @@ JNI_OnUnload(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
 		return;
 	}
 	g_fid_m_cli = 0;
+	uncache_class_and_ctor(jenv, &g_cls_rf_in_stream,
+		     &g_mid_rf_in_stream_ctor);
+	uncache_class_and_ctor(jenv, &g_cls_rf_out_stream,
+		     &g_mid_rf_out_stream_ctor);
 	uncache_class_and_ctor(jenv, &g_cls_file_status,
 			&g_mid_file_status_ctor);
 	uncache_class_and_ctor(jenv, &g_cls_file_perm,
 			&g_mid_file_perm_ctor);
 	uncache_class_and_ctor(jenv, &g_cls_path,
 			&g_mid_path_ctor);
+	uncache_class_and_ctor(jenv, &g_cls_block_loc,
+			&g_mid_block_loc_ctor);
+	(*jenv)->DeleteGlobalRef(jenv, g_cls_string);
 }
 
 jint validate_rw_params(JNIEnv *jenv, jbyteArray jarr,

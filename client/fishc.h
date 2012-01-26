@@ -77,7 +77,7 @@ struct redfish_block_loc
 {
 	int64_t start;
 	int64_t len;
-	int num_hosts;
+	int nhosts;
 	struct redfish_block_host hosts[0];
 };
 
@@ -263,8 +263,9 @@ int redfish_locate(struct redfish_client *cli, const char *path,
 /** Free the array of block locations
  *
  * @param blc		The array of block locations
+ * @param nblc		Length of the array of block locations
  */
-void redfish_free_block_locs(struct redfish_block_loc **blc);
+void redfish_free_block_locs(struct redfish_block_loc **blc, int nblc);
 
 /** Given a path, returns file status information
  *

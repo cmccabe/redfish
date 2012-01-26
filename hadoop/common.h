@@ -38,6 +38,11 @@ extern jmethodID g_mid_rf_in_stream_ctor;
 extern jclass g_cls_rf_out_stream;
 extern jmethodID g_mid_rf_out_stream_ctor;
 
+extern jclass g_cls_block_loc;
+extern jmethodID g_mid_block_loc_ctor;
+
+extern jclass g_cls_string;
+
 /** Raise a Java exception from a JNI method
  *
  * @param jenv		The JNI environment

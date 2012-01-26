@@ -546,10 +546,10 @@ int redfish_locate(POSSIBLY_UNUSED(struct redfish_client *cli),
 		POSSIBLY_UNUSED(const char *path), int64_t start, int64_t len,
 		struct redfish_block_loc ***blc)
 {
-	int ret;
+	int ret, nblc = 1;
 	struct redfish_block_loc **zblc = NULL;
 
-	zblc = calloc(1, 2 * sizeof(struct redfish_block_loc *));
+	zblc = calloc(1, nblc * sizeof(struct redfish_block_loc *));
 	if (!zblc) {
 		ret = -ENOMEM;
 		goto error;
@@ -562,7 +562,7 @@ int redfish_locate(POSSIBLY_UNUSED(struct redfish_client *cli),
 	}
 	zblc[0]->start = start;
 	zblc[0]->len = len;
-	zblc[0]->num_hosts = 1;
+	zblc[0]->nhosts = 1;
 	zblc[0]->hosts[0].port = 0;
 	zblc[0]->hosts[0].hostname = strdup("localhost");
 	if (!zblc[0]->hosts[0].hostname) {
@@ -574,7 +574,7 @@ int redfish_locate(POSSIBLY_UNUSED(struct redfish_client *cli),
 
 error:
 	if (zblc)
-		redfish_free_block_locs(zblc);
+		redfish_free_block_locs(zblc, nblc);
 	return ret;
 }
 

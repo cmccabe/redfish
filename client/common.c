@@ -51,3 +51,18 @@ void redfish_free_path_statuses(struct redfish_stat* osas, int nosa)
 	}
 	free(osas);
 }
+
+void redfish_free_block_locs(struct redfish_block_loc **blcs, int nblc)
+{
+	struct redfish_block_loc *blc;
+	int i, j;
+
+	for (i = 0; i < nblc; ++i) {
+		blc = blcs[i];
+		for (j = 0; j < blc->nhosts; ++j) {
+			free(blc->hosts[j].hostname);
+		}
+		free(blc);
+	}
+	free(blcs);
+}
