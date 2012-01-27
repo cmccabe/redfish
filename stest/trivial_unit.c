@@ -31,11 +31,13 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 	EXPECT_ZERO(get_colocated_path(argv[0], "st_trivial",
 			      st_trivial, sizeof(st_trivial)));
 	EXPECT_ZERO(run_cmd(st_trivial, "-h", (char*)NULL));
-	EXPECT_ZERO(run_cmd(st_trivial, "-f", (char*)NULL));
-	EXPECT_ZERO(run_cmd(st_trivial, "-f", "error=0", (char*)NULL));
-	EXPECT_NONZERO(run_cmd(st_trivial, "-f", "error=1", (char*)NULL));
-	EXPECT_ZERO(run_cmd(st_trivial, "-m", "localhost:8080",
-			"-m", "foobarhost:8081", "-u", "myuser",
+	EXPECT_ZERO(run_cmd(st_trivial, "-c", "/tmp/redfish_conf",
+			"-f", (char*)NULL));
+	EXPECT_ZERO(run_cmd(st_trivial, "-c", "/tmp/redfish_conf",
 			"-f", "error=0", (char*)NULL));
+	EXPECT_NONZERO(run_cmd(st_trivial, "-c", "/tmp/redfish_conf",
+			"-f", "error=1", (char*)NULL));
+	EXPECT_ZERO(run_cmd(st_trivial, "-c", "/tmp/redfish_conf",
+			"-u", "myuser", "-f", "error=0", (char*)NULL));
 	return 0;
 }

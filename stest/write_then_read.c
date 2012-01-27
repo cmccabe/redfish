@@ -51,7 +51,7 @@ int main(int argc, char **argv)
 {
 	int ret;
 	struct redfish_client *cli = NULL;
-	struct redfish_mds_locator **mlocs;
+	const char *cpath;
 	const char *user, *error;
 	struct stest_custom_opt copt[] = {
 		{
@@ -63,15 +63,13 @@ int main(int argc, char **argv)
 	};
 	const int ncopt = sizeof(copt)/sizeof(copt[0]);
 
-	stest_init(argc, argv, copt, ncopt, &user, &mlocs);
-	ret = redfish_connect(mlocs, user, &cli);
+	stest_init(argc, argv, copt, ncopt, &cpath, &user);
+	ret = redfish_connect(cpath, user, &cli);
 	if (ret) {
 		stest_add_error("redfish_connect: failed to connect: "
 				"error %d\n", ret);
-		stest_mlocs_free(mlocs);
 		return EXIT_FAILURE;
 	}
-	stest_mlocs_free(mlocs);
 
 	write_then_read(cli);
 

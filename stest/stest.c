@@ -97,34 +97,24 @@ NULL
 }
 
 static void stest_parse_argv(int argc, char **argv,
-	struct stest_custom_opt *copt, int ncopt,
-	const char **user, struct redfish_mds_locator ***mlocs)
+		struct stest_custom_opt *copt, int ncopt, const char **user,
+		const char **cpath)
 {
 	char **s;
 	int c;
 	*user = NULL;
-	*mlocs = calloc(1, sizeof(struct redfish_mds_locator*));;
-	if (!*mlocs) {
-		fprintf(stderr, "out of memory.\n");
-		exit(EXIT_FAILURE);
-	}
-	while ((c = getopt(argc, argv, "fhm:u:")) != -1) {
+	*cpath = getenv("REDFISH_CONF");
+	while ((c = getopt(argc, argv, "c:fhu:")) != -1) {
 		switch (c) {
+		case 'c':
+			*cpath = optarg;
+			break;
 		case 'f':
 			g_daemonize = 0;
 			break;
 		case 'h':
 			stest_usage(argv[0], copt, ncopt, EXIT_SUCCESS);
 			break;
-		case 'm': {
-			char err[512] = { 0 };
-			redfish_mlocs_append(mlocs, optarg, err, sizeof(err));
-			if (err[0]) {
-				fprintf(stderr, "%s", err);
-				exit(EXIT_FAILURE);
-			}
-			break;
-		}
 		case 'u':
 			*user = optarg;
 			break;
@@ -161,15 +151,10 @@ static void stest_parse_argv(int argc, char **argv,
 	if (*user == NULL) {
 		*user = STEST_DEFAULT_USER;
 	}
-	if ((*mlocs)[0] == NULL) {
-		const char *default_mloc =
-			"localhost:" TO_STR2(REDFISH_DEFAULT_MDS_PORT);
-		char err[512] = { 0 };
-		redfish_mlocs_append(mlocs, default_mloc, err, sizeof(err));
-		if (err[0]) {
-			fprintf(stderr, "%s", err);
-			exit(EXIT_FAILURE);
-		}
+	if (*cpath == NULL) {
+		fprintf(stderr, "You must supply a configuration file "
+			"with -c, or by setting REDFISH_CONF");
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -254,25 +239,16 @@ static void stest_init_signals(const char *argv0)
 }
 
 void stest_init(int argc, char **argv,
-		struct stest_custom_opt *copt, int ncopt,
-		const char **user, struct redfish_mds_locator ***mlocs)
+		struct stest_custom_opt *copt, int ncopt, const char **cpath,
+		const char **user)
 {
-	stest_parse_argv(argc, argv, copt, ncopt, user, mlocs);
+	stest_parse_argv(argc, argv, copt, ncopt, user, cpath);
 	stest_status_files_init();
 	stest_init_signals(argv[0]);
 	stest_output_start_msg();
 	if (g_daemonize) {
 		daemon(0, 0);
 	}
-}
-
-void stest_mlocs_free(struct redfish_mds_locator **mlocs)
-{
-	struct redfish_mds_locator **m;
-	for (m = mlocs; *m; ++m) {
-		free(*m);
-	}
-	free(mlocs);
 }
 
 void stest_set_status(int pdone)

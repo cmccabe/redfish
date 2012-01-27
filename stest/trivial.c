@@ -21,7 +21,7 @@
 
 int main(int argc, char **argv)
 {
-	struct redfish_mds_locator **mlocs;
+	const char *cpath;
 	const char *user, *error;
 	struct stest_custom_opt copt[] = {
 		{
@@ -32,8 +32,7 @@ int main(int argc, char **argv)
 	};
 	const int ncopt = sizeof(copt)/sizeof(copt[0]);
 
-	stest_init(argc, argv, copt, ncopt, &user, &mlocs);
-	stest_mlocs_free(mlocs);
+	stest_init(argc, argv, copt, ncopt, &cpath, &user);
 
 	stest_set_status(10);
 	error = copt_get("error", copt, ncopt);

@@ -28,7 +28,7 @@ struct fishtool_act;
 struct fishtool_params
 {
 	const struct fishtool_act *act;
-	struct redfish_mds_locator **mlocs;
+	const char *cpath;
 	const char *user_name;
 	const char *lowercase_args[NUM_LETTERS];
 	const char *uppercase_args[NUM_LETTERS];

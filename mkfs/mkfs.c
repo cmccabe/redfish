@@ -56,23 +56,23 @@ NULL
 	exit(exitstatus);
 }
 
-static void fishmkfs_parse_argv(int argc, char **argv, const char **uconf,
+static void fishmkfs_parse_argv(int argc, char **argv, const char **cpath,
 				uint16_t *mid, uint64_t *fsid)
 {
+	int i;
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
-	int i;
 	long long ll;
 	char c;
 
-	*uconf = getenv("REDFISH_CONF");
+	*cpath = getenv("REDFISH_CONF");
 	*mid = RF_INVAL_MID;
 	*fsid = RF_INVAL_FSID;
 
 	while ((c = getopt(argc, argv, "c:F:hm:")) != -1) {
 		switch (c) {
 		case 'c':
-			*uconf = optarg;
+			*cpath = optarg;
 			break;
 		case 'F':
 			str_to_long_long(optarg, 16, &ll, err, err_len);
@@ -105,7 +105,7 @@ static void fishmkfs_parse_argv(int argc, char **argv, const char **uconf,
 			break;
 		}
 	}
-	if (*uconf == NULL) {
+	if (*cpath == NULL) {
 		fprintf(stderr, "You must supply a Redfish configuration "
 			"file.  Give -h for more help\n");
 		exit(EXIT_FAILURE);

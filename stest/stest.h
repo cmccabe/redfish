@@ -58,14 +58,14 @@ const char *copt_get(const char *key, struct stest_custom_opt *copt,
  *			non-mandatory. Custom options not found on the
  *			commandline will not have their entries in copt
  *			altered.
+ * @param ncopt		number of custom options
+ * @param cpath		(out-param) The path to the configuration file to use.
+ *			Statically allocated.
  * @param user		(out-param) The username to connect as. Statically
  *			allocated.
- * @param mlocs		(out-param) an array of mds locators. Dynamically
- *			allocated.
- * @param ncopt		number of custom options
  */
 extern void stest_init(int argc, char **argv, struct stest_custom_opt *copt,
-		       int ncopt, const char **user, struct redfish_mds_locator ***mlocs);
+		       int ncopt, const char **cpath, const char **user);
 
 /** Free mlocs array returned from stest_init
  *

@@ -25,8 +25,8 @@ int main(int argc, char **argv)
 {
 	int ret;
 	struct redfish_client *cli = NULL;
-	struct redfish_mds_locator **mlocs;
 	const char *user, *error;
+	const char *cpath;
 	struct stest_custom_opt copt[] = {
 		{
 			.key = "crash",
@@ -37,13 +37,12 @@ int main(int argc, char **argv)
 	};
 	const int ncopt = sizeof(copt)/sizeof(copt[0]);
 
-	stest_init(argc, argv, copt, ncopt, &user, &mlocs);
-	ret = redfish_connect(mlocs, user, &cli);
+	stest_init(argc, argv, copt, ncopt, &cpath, &user);
+	ret = redfish_connect(cpath, user, &cli);
 	if (ret) {
 		stest_add_error("redfish_connect: failed to connect: "
 				"error %d\n", ret);
 	}
-	stest_mlocs_free(mlocs);
 
 	stest_set_status(10);
 	error = copt_get("error", copt, ncopt);

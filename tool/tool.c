@@ -124,11 +124,10 @@ static struct fishtool_params* fishtool_parse_argv(int argc, char **argv)
 {
 	char c, **a;
 	const char *s;
-	char err[512] = { 0 };
-	size_t i, err_len = sizeof(err);
+	size_t i;
 	char getopt_str[512] = "hm:u:";
 	struct fishtool_params *params;
-	const char *mloc_str = NULL;
+	const char *cpath = NULL;
 	static const char TRUE[] = "true";
 
 	params = calloc(1, sizeof(struct fishtool_params));
@@ -136,7 +135,7 @@ static struct fishtool_params* fishtool_parse_argv(int argc, char **argv)
 		fprintf(stderr, "fishtool_parse_argv: OOM\n");
 		exit(EXIT_FAILURE);
 	}
-	mloc_str = getenv("REDFISH_META");
+	cpath = getenv("REDFISH_CONF");
 	params->act = get_fishtool_act(argv[1]);
 	if (params->act) {
 		snappend(getopt_str, sizeof(getopt_str), "%s",
@@ -144,14 +143,14 @@ static struct fishtool_params* fishtool_parse_argv(int argc, char **argv)
 	}
 	while ((c = getopt(argc, argv, getopt_str)) != -1) {
 		switch (c) {
+		case 'c':
+			cpath = optarg;
+			break;
 		case 'h':
 			if (params->act)
 				fishtool_act_usage(params->act);
 			else
 				fishtool_top_level_usage(EXIT_SUCCESS);
-			break;
-		case 'm':
-			mloc_str = optarg;
 			break;
 		case 'u':
 			params->user_name = optarg;
@@ -181,33 +180,22 @@ static struct fishtool_params* fishtool_parse_argv(int argc, char **argv)
 			"for more help\n");
 		exit(EXIT_FAILURE);
 	}
-	params->mlocs = redfish_mlocs_from_str(mloc_str, err, err_len);
-	if (err[0]) {
-		fprintf(stderr, "%s", err);
-		exit(EXIT_FAILURE);
-	}
-	if (params->mlocs[0] == 0) {
-		fprintf(stderr, "You must supply some metadata server "
-		       "locations "
-			"with -m or by setting the REDFISH_META "
-			"environment variable.\n");
-		exit(EXIT_FAILURE);
-	}
 	for (i = 0, a = argv + optind + 1;
 			(i < MAX_NON_OPTION_ARGS - 1) && (*a);
 			++a, ++i)
 	{
 		params->non_option_args[i] = *a;
 	}
-	if (params->user_name == NULL) {
-		params->user_name = RF_SUPERUSER_NAME;
+	if (params->cpath == NULL) {
+		fprintf(stderr, "You must specify a configuration file.  "
+			"Give -h for more help\n");
+		exit(EXIT_FAILURE);
 	}
 	return params;
 }
 
 static void free_fishtool_params(struct fishtool_params *params)
 {
-	redfish_mlocs_free(params->mlocs);
 	free(params);
 }
 

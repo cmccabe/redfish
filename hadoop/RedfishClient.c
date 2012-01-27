@@ -49,13 +49,11 @@ static void* redfish_get_m_cli(JNIEnv *jenv, jobject jobj)
 
 JNIEXPORT void JNICALL
 Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishConnect(
-	JNIEnv *jenv, jobject jobj, POSSIBLY_UNUSED(jstring jhost),
-	POSSIBLY_UNUSED(jint jport), jstring juser)
+	JNIEnv *jenv, jobject jobj, jstring configFile, jstring userName)
 {
 	int ret = 0;
-	char cuser[RF_USER_MAX];
+	char cconf_file[PATH_MAX], cuser_name[RF_USER_MAX];
 	struct redfish_client *cli  = NULL;
-	struct redfish_mds_locator **mlocs = NULL;
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 
@@ -65,22 +63,21 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishConnect(
 		strerror_r(EINVAL, err, err_len);
 		goto done;
 	}
-	(*jenv)->GetStringUTFRegion(jenv, juser, 0, sizeof(cuser), cuser);
+	(*jenv)->GetStringUTFRegion(jenv, configFile, 0,
+			sizeof(cconf_file), cconf_file);
 	if ((*jenv)->ExceptionCheck(jenv))
 		goto done;
-	/** TODO: fix when we use conf files instead of host/port pairs */
-	mlocs = redfish_mlocs_from_str("", err, err_len);
-	if (err[0])
+	(*jenv)->GetStringUTFRegion(jenv, userName, 0,
+			sizeof(cuser_name), cuser_name);
+	if ((*jenv)->ExceptionCheck(jenv))
 		goto done;
-	ret = redfish_connect(mlocs, cuser, &cli);
+	ret = redfish_connect(cconf_file, cuser_name, &cli);
 	if (ret) {
 		strerror_r(ret, err, err_len);
 		goto done;
 	}
 	redfish_set_m_cli(jenv, jobj, cli);
 done:
-	if (mlocs)
-		redfish_mlocs_free(mlocs);
 	if (err[0])
 		redfish_throw(jenv, "java/io/IOException", err);
 }

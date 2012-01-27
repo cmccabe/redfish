@@ -54,18 +54,16 @@ int main(int argc, char **argv)
 {
 	int ret;
 	struct redfish_client *cli = NULL;
-	struct redfish_mds_locator **mlocs;
+	const char *cpath;
 	const char *user;
 
-	stest_init(argc, argv, NULL, 0, &user, &mlocs);
-	ret = redfish_connect(mlocs, user, &cli);
+	stest_init(argc, argv, NULL, 0, &cpath, &user);
+	ret = redfish_connect(cpath, user, &cli);
 	if (ret) {
 		stest_add_error("redfish_connect: failed to connect: "
 				"error %d\n", ret);
-		stest_mlocs_free(mlocs);
 		return EXIT_FAILURE;
 	}
-	stest_mlocs_free(mlocs);
 
 	mkdirs_test(cli);
 

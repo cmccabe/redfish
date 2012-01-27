@@ -165,7 +165,7 @@ void redfish_mkfs(POSSIBLY_UNUSED(const char *uconf),
 	}
 }
 
-int redfish_connect(POSSIBLY_UNUSED(struct redfish_mds_locator **mlocs),
+int redfish_connect(POSSIBLY_UNUSED(const char *conf_path),
 			const char *user, struct redfish_client **cli)
 {
 	int ret;

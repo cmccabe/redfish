@@ -59,7 +59,7 @@ int fishtool_write(struct fishtool_params *params)
 			goto done;
 		}
 	}
-	ret = redfish_connect(params->mlocs, params->user_name, &cli);
+	ret = redfish_connect(params->cpath, params->user_name, &cli);
 	if (ret) {
 		fprintf(stderr, "redfish_connect failed with error %d\n", ret);
 		goto done;
