@@ -183,7 +183,8 @@ int redfish_groupdel(struct redfish_client *cli, const char *group);
  *			On success, *ofe will contain a valid redfish file.
  */
 int redfish_create(struct redfish_client *cli, const char *path,
-	int mode, int bufsz, int repl, int blocksz, struct redfish_file **ofe);
+	int mode, int bufsz, int repl, uint32_t blocksz,
+	struct redfish_file **ofe);
 
 /** Open a Redfish file for reading
  *

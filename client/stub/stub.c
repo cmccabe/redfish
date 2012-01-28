@@ -374,7 +374,7 @@ static int set_group(int fd, const char *group)
 
 int redfish_create(struct redfish_client *cli, const char *path,
 	int mode, POSSIBLY_UNUSED(int bufsz), POSSIBLY_UNUSED(int repl),
-	POSSIBLY_UNUSED(int blocksz), struct redfish_file **ofe)
+	POSSIBLY_UNUSED(uint32_t blocksz), struct redfish_file **ofe)
 {
 	int ret, fd = -1;
 	char epath[PATH_MAX];
