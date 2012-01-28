@@ -21,6 +21,7 @@ import java.net.*;
 
 import org.apache.commons.logging.Log;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
@@ -29,7 +30,7 @@ import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
 
 
-class RedfishClient {
+public final class RedfishClient {
   private long m_cli;
 
   static {
@@ -44,7 +45,7 @@ class RedfishClient {
     }
   }
 
-  public RedfishClient(String configFile, String userName) {
+  public RedfishClient(String configFile, String userName) throws IOException {
     this.redfishConnect(configFile, userName);
   }
 
@@ -57,15 +58,18 @@ class RedfishClient {
    * it NOT intended as a replacement for that function.
    * */
   protected void finalize() throws Throwable {} {
-    this.redfishFreeClient();
+    this.redfishReleaseClient();
   }
 
   private final native
     String redfishConnect(String configFile, String userName) throws IOException;
 
+  private final native
+    void redfishReleaseClient();
+
   public final native
     RedfishDataOutputStream redfishCreate(String jpath, short mode,
-      int bufsz, short repl, int blocksz) throws IOException;
+      int bufsz, short repl, long blocksz) throws IOException;
 
   public final native
     RedfishDataInputStream redfishOpen(String jpath) throws IOException;
@@ -78,23 +82,23 @@ class RedfishClient {
       throws IOException;
 
   public final native
-    FileStatus redfishGetPathStatus(String jpath) throws IOException, FileNotFound;
+    FileStatus redfishGetPathStatus(String jpath) throws IOException, FileNotFoundException;
 
   public final native
     FileStatus[] redfishListDirectory(String jpath) throws IOException;
 
-  private final native
+  public final native
     void redfishChmod(String jpath, short mode) throws IOException;
 
-  private final native
+  public final native
     void redfishChown(String jpath, String owner, String group)
       throws IOException;
 
-  private final native
+  public final native
     void redfishUtimes(String jpath, long mtime, long atime) throws IOException;
 
   public final native
-    void redfishDisconnect(void) throws IOException;
+    void redfishDisconnect() throws IOException;
 
   public final native
     boolean redfishUnlink(String jpath) throws IOException;
@@ -103,5 +107,5 @@ class RedfishClient {
     boolean redfishUnlinkTree(String jpath) throws IOException;
 
   public final native
-    void redfishRename(String src, String dst) throws IOException;
+    boolean redfishRename(String src, String dst) throws IOException;
 };

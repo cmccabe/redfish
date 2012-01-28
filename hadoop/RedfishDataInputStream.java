@@ -74,7 +74,7 @@ class RedfishDataInputStream extends InputStream {
   }
 
   public int read(byte[] buf) throws IOException {
-    return redfishRead(buf, 0, buf.length());
+    return redfishRead(buf, 0, buf.length);
   }
 
   public int read(byte[] buf, int off, int len) throws IOException {
@@ -111,4 +111,7 @@ class RedfishDataInputStream extends InputStream {
 
   public native
     long getPos() throws IOException;
+
+  private native
+    void redfishFree();
 }

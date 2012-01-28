@@ -168,19 +168,6 @@ done:
 }
 
 JNIEXPORT void JNICALL
-Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_redfishFree(
-	JNIEnv *jenv, jobject jobj)
-{
-	struct redfish_file *ofe;
-
-	ofe = redfish_get_m_ofe(jenv, jobj);
-	if (!ofe)
-		return;
-	redfish_free_file(ofe);
-	redfish_set_m_ofe(jenv, jobj, NULL);
-}
-
-JNIEXPORT void JNICALL
 Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_seek(
 	JNIEnv *jenv, jobject jobj, jlong off)
 {
@@ -249,4 +236,17 @@ done:
 	if (err[0])
 		redfish_throw(jenv, "java/io/IOException", err);
 	return ret;
+}
+
+JNIEXPORT void JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_redfishFree(
+	JNIEnv *jenv, jobject jobj)
+{
+	struct redfish_file *ofe;
+
+	ofe = redfish_get_m_ofe(jenv, jobj);
+	if (!ofe)
+		return;
+	redfish_free_file(ofe);
+	redfish_set_m_ofe(jenv, jobj, NULL);
 }

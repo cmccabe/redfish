@@ -21,12 +21,16 @@ import java.net.*;
 
 import org.apache.commons.logging.Log;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem.Statistics;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.permission.FsPermission;
+import org.apache.hadoop.util.Progressable;
 
 class RedfishFileSystem extends FileSystem {
   private RedfishClient m_client;
@@ -51,7 +55,6 @@ class RedfishFileSystem extends FileSystem {
   }
 
   public void initialize(URI uri, Configuration conf) throws IOException {
-    super(conf, log);
     String configFile = conf.get("fs.redfish.configFile", "");
     if (configFile == "") {
       throw new IOException("You must set fs.redfish.configFile to the " +
@@ -60,14 +63,13 @@ class RedfishFileSystem extends FileSystem {
     String userName = System.getProperty("user.name");
     this.m_client = new RedfishClient(configFile, userName);
     this.m_uri = URI.create(uri.getScheme() + "://" + uri.getAuthority());
-    this.m_cwd = new Path("/user", System.getProperty("user.name")).makeQualified(this);
+    this.m_cwd = new Path("/user", System.getProperty("user.name")).makeQualified(this).toUri().getPath();
     setConf(conf);
   }
 
   /* This will free most of the resources associated with the RedfishFileSystem.
    */
   public void close() throws IOException {
-    super();
     m_client.redfishDisconnect();
   }
 
@@ -94,7 +96,7 @@ class RedfishFileSystem extends FileSystem {
   }
 
   public FSDataInputStream open(Path f, int bufferSize) throws IOException {
-    return m_client.redfishOpen(makeAbsoluteStr(f));
+    return new FSDataInputStream(m_client.redfishOpen(makeAbsoluteStr(f)));
   }
 
   public FSDataOutputStream create(Path f,
@@ -105,8 +107,8 @@ class RedfishFileSystem extends FileSystem {
           long blockSize,
           Progressable progress) throws IOException
   {
-    return m_client.redfishCreate(makeAbsoluteStr(f), perm.toShort(),
-                bufferSize, replication, blockSize);
+    return new FSDataOutputStream(m_client.redfishCreate(makeAbsoluteStr(f),
+                perm.toShort(), bufferSize, replication, blockSize), statistics);
   }
 
   public FSDataOutputStream append(Path f, int bufferSize,
@@ -114,19 +116,19 @@ class RedfishFileSystem extends FileSystem {
     throw new IOException("not yet implemented");
   }
 
-  public boolean rename(Path src, Path dst) throws IoException {
+  public boolean rename(Path src, Path dst) throws IOException {
     return m_client.redfishRename(makeAbsoluteStr(src), makeAbsoluteStr(dst));
   }
 
-  public boolean delete(Path f) throws IoException {
+  public boolean delete(Path f) throws IOException {
     return m_client.redfishUnlink(makeAbsoluteStr(f));
   }
 
-  public boolean delete(Path f, boolean recursive) throws IoException {
+  public boolean delete(Path f, boolean recursive) throws IOException {
     if (recursive)
       return m_client.redfishUnlinkTree(makeAbsoluteStr(f));
     else
-      return m_client.redfishUnlink(makeAbsoluteStr(f));'
+      return m_client.redfishUnlink(makeAbsoluteStr(f));
   }
 
   public FileStatus[] listStatus(Path f) throws IOException {
@@ -138,10 +140,10 @@ class RedfishFileSystem extends FileSystem {
   }
 
   public Path getWorkingDirectory() {
-    return this.m_cwd;
+    return new Path(this.m_cwd);
   }
 
-  public boolean mkdirs(Path path, FsPermission perm) throws IoException {
+  public boolean mkdirs(Path path, FsPermission perm) throws IOException {
     return m_client.redfishMkdirs(makeAbsoluteStr(path), perm.toShort());
   }
 

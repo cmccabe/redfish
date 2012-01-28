@@ -82,6 +82,19 @@ done:
 		redfish_throw(jenv, "java/io/IOException", err);
 }
 
+JNIEXPORT void JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishRelease(
+	JNIEnv *jenv, jobject jobj)
+{
+	struct redfish_client *cli;
+
+	cli = redfish_get_m_cli(jenv, jobj);
+	if (!cli)
+		return;
+	redfish_release_client(cli);
+	redfish_set_m_cli(jenv, jobj, NULL);
+}
+
 JNIEXPORT jobject JNICALL
 Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishOpen(
 	JNIEnv *jenv, jobject jobj, jstring jpath)
@@ -119,7 +132,7 @@ done:
 JNIEXPORT jobject JNICALL
 Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishCreate(
 	JNIEnv *jenv, jobject jobj, jstring jpath, jshort mode,
-	jint bufsz, jshort repl, jint blocksz)
+	jint bufsz, jshort repl, jlong blocksz)
 {
 	jobject jstream = NULL;
 	int ret = 0;
@@ -138,7 +151,13 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishCreate(
 	(*jenv)->GetStringUTFRegion(jenv, jpath, 0, sizeof(cpath), cpath);
 	if ((*jenv)->ExceptionCheck(jenv))
 		goto done;
-	ret = redfish_create(cli, cpath, mode, bufsz, repl, blocksz, &ofe);
+	if (blocksz > 0xffffffffLLU) {
+		redfish_throw(jenv, "java/lang/IllegalArgumentException",
+			"blocksz too large");
+		return NULL;
+	}
+	ret = redfish_create(cli, cpath, mode, bufsz, repl,
+			(uint32_t)blocksz, &ofe);
 	if (ret) {
 		strerror_r(ret, err, err_len);
 		goto done;
@@ -617,15 +636,3 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishDisconnect(
 	redfish_disconnect(cli);
 }
 
-JNIEXPORT void JNICALL
-Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishFree(
-	JNIEnv *jenv, jobject jobj)
-{
-	struct redfish_client *cli;
-
-	cli = redfish_get_m_cli(jenv, jobj);
-	if (!cli)
-		return;
-	redfish_release_client(cli);
-	redfish_set_m_cli(jenv, jobj, NULL);
-}

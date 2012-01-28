@@ -58,18 +58,18 @@ class RedfishDataOutputStream extends OutputStream {
     this.redfishFree();
   }
 
-  public int write(int b) throws IOException {
+  public void write(int b) throws IOException {
     /* The oh-so-useful "write a single byte" method */
     byte[] buf = new byte[1];
-    buf[0] = b;
-    return write(buf, 0, 1);
+    buf[0] = (byte)b;
+    write(buf, 0, 1);
   }
 
   public native
     void close() throws IOException;
 
   private native
-    void redfishFree() throws IOException;
+    void redfishFree();
 
   public native
     void write(byte[] jarr, int off, int len) throws IOException;
