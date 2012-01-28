@@ -58,14 +58,14 @@ public final class RedfishClient {
    * it NOT intended as a replacement for that function.
    * */
   protected void finalize() throws Throwable {} {
-    this.redfishReleaseClient();
+    this.redfishRelease();
   }
 
   private final native
     String redfishConnect(String configFile, String userName) throws IOException;
 
   private final native
-    void redfishReleaseClient();
+    void redfishRelease();
 
   public final native
     RedfishDataOutputStream redfishCreate(String jpath, short mode,

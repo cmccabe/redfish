@@ -50,10 +50,12 @@ class RedfishFileSystem extends FileSystem {
   public RedfishFileSystem() {
   }
 
+  @Override
   public URI getUri() {
     return this.m_uri;
   }
 
+  @Override
   public void initialize(URI uri, Configuration conf) throws IOException {
     String configFile = conf.get("fs.redfish.configFile", "");
     if (configFile == "") {
@@ -69,14 +71,12 @@ class RedfishFileSystem extends FileSystem {
 
   /* This will free most of the resources associated with the RedfishFileSystem.
    */
+  @Override
   public void close() throws IOException {
     m_client.redfishDisconnect();
   }
 
-  public String getName() {
-    return this.getUri().toString();
-  }
-
+  @Override
   public BlockLocation[] getFileBlockLocations(FileStatus fstatus,
         long start, long len) throws IOException {
     if (fstatus == null) {
@@ -95,10 +95,13 @@ class RedfishFileSystem extends FileSystem {
               (makeAbsoluteStr(fstatus.getPath()), start, len);
   }
 
+
+  @Override
   public FSDataInputStream open(Path f, int bufferSize) throws IOException {
     return new FSDataInputStream(m_client.redfishOpen(makeAbsoluteStr(f)));
   }
 
+  @Override
   public FSDataOutputStream create(Path f,
           FsPermission perm,
           boolean overwrite,
@@ -111,19 +114,23 @@ class RedfishFileSystem extends FileSystem {
                 perm.toShort(), bufferSize, replication, blockSize), statistics);
   }
 
+  @Override
   public FSDataOutputStream append(Path f, int bufferSize,
           Progressable progress) throws IOException {
     throw new IOException("not yet implemented");
   }
 
+  @Override
   public boolean rename(Path src, Path dst) throws IOException {
     return m_client.redfishRename(makeAbsoluteStr(src), makeAbsoluteStr(dst));
   }
 
+  @Override
   public boolean delete(Path f) throws IOException {
     return m_client.redfishUnlink(makeAbsoluteStr(f));
   }
 
+  @Override
   public boolean delete(Path f, boolean recursive) throws IOException {
     if (recursive)
       return m_client.redfishUnlinkTree(makeAbsoluteStr(f));
@@ -131,34 +138,42 @@ class RedfishFileSystem extends FileSystem {
       return m_client.redfishUnlink(makeAbsoluteStr(f));
   }
 
+  @Override
   public FileStatus[] listStatus(Path f) throws IOException {
     return m_client.redfishListDirectory(makeAbsoluteStr(f));
   }
 
+  @Override
   public void setWorkingDirectory(Path wd) {
     this.m_cwd = makeAbsoluteStr(wd);
   }
 
+  @Override
   public Path getWorkingDirectory() {
     return new Path(this.m_cwd);
   }
 
+  @Override
   public boolean mkdirs(Path path, FsPermission perm) throws IOException {
     return m_client.redfishMkdirs(makeAbsoluteStr(path), perm.toShort());
   }
 
+  @Override
   public FileStatus getFileStatus(Path path) throws IOException {
     return m_client.redfishGetPathStatus(makeAbsoluteStr(path));
   }
 
+  @Override
   public void setOwner(Path p, String user, String group) throws IOException {
     m_client.redfishChown(makeAbsoluteStr(p), user, group);
   }
 
+  @Override
   public void setPermission(Path p, FsPermission perm) throws IOException {
     m_client.redfishChmod(makeAbsoluteStr(p), perm.toShort());
   }
 
+  @Override
   public void setTimes(Path p, long mtime, long atime) throws IOException {
     m_client.redfishUtimes(makeAbsoluteStr(p), mtime, atime);
   }
