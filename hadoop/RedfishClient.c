@@ -151,7 +151,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishCreate(
 	(*jenv)->GetStringUTFRegion(jenv, jpath, 0, sizeof(cpath), cpath);
 	if ((*jenv)->ExceptionCheck(jenv))
 		goto done;
-	if (blocksz > 0xffffffffLLU) {
+	if (blocksz > 0xffffffffLL) {
 		redfish_throw(jenv, "java/lang/IllegalArgumentException",
 			"blocksz too large");
 		return NULL;
