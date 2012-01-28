@@ -120,3 +120,8 @@ do
         "${HADOOP_PATH}/${FS_DIR_PATH}/${f}" \
             || die "failed to link ${f}"
 done
+
+# NOTE: you may want to add libhfishc to the native Hadoop libraries folder,
+# using a command such as this:
+# ln -s /home/cmccabe/tmp/redfish/hadoop/libhfishc.so
+#     /media/fish/hadoop-0.20.203.0/lib/native/Linux-amd64-64/libhfishc.so 
