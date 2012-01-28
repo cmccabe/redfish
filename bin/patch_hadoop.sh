@@ -95,7 +95,7 @@ patch -p1 << EOF
  
  <property>
 +  <name>fs.redfish.impl</name>
-+  <value>org.apache.hadoop.fs.RedfishFileSystem</value>
++  <value>org.apache.hadoop.fs.redfish.RedfishFileSystem</value>
 +  <description>The FileSystem for redfish: uris.</description>
 +</property>
 +
