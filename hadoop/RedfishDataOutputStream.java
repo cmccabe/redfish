@@ -33,11 +33,11 @@ class RedfishDataOutputStream extends OutputStream {
 
   static {
     try {
-      System.loadLibrary("hadoopfishc");
+      System.loadLibrary("hfishc");
     }
     catch (UnsatisfiedLinkError e) {
       e.printStackTrace();
-      System.err.println("Unable to load hadoopfishc: " +
+      System.err.println("Unable to load hfishc: " +
                 System.getProperty("java.library.path"));
       System.exit(1);
     }

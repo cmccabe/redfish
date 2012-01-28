@@ -40,6 +40,9 @@ jmethodID g_mid_rf_in_stream_ctor;
 jclass g_cls_rf_out_stream;
 jmethodID g_mid_rf_out_stream_ctor;
 
+jclass g_cls_block_loc;
+jmethodID g_mid_block_loc_ctor;
+
 jclass g_cls_string;
 
 static int cache_class_and_ctor(JNIEnv *jenv, const char *name,

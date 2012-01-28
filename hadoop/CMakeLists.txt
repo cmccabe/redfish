@@ -3,10 +3,10 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 
 include_directories(${JNI_INCLUDE_DIRS})
 
-add_library(fishc_jni
+add_library(hfishc SHARED
     RedfishClient.c
     RedfishDataInputStream.c
     RedfishDataOutputStream.c
     common.c
 )
-target_link_libraries(fishc_jni ${JAVA_JVM_LIBRARY} pthread)
+target_link_libraries(hfishc ${JAVA_JVM_LIBRARY} pthread)
