@@ -26,8 +26,8 @@ extern jfieldID g_fid_rf_out_stream_m_ofe;
 extern jclass g_cls_file_status;
 extern jmethodID g_mid_file_status_ctor;
 
-extern jclass g_cls_file_perm;
-extern jmethodID g_mid_file_perm_ctor;
+extern jclass g_cls_fs_perm;
+extern jmethodID g_mid_fs_perm_ctor;
 
 extern jclass g_cls_path;
 extern jmethodID g_mid_path_ctor;

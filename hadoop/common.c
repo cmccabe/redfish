@@ -21,6 +21,13 @@
 #include "hadoop/common.h"
 #include "util/compiler.h"
 
+/** Class prefix for Redfish classes */
+#define RF_CP "org/apache/hadoop/fs/redfish/"
+
+#define FSPERM_CP "org/apache/hadoop/fs/permission/FsPermission"
+
+#define PATH_CP "org/apache/hadoop/fs/Path"
+
 jfieldID g_fid_m_cli;
 jfieldID g_fid_rf_in_stream_m_ofe;
 jfieldID g_fid_rf_out_stream_m_ofe;
@@ -28,8 +35,8 @@ jfieldID g_fid_rf_out_stream_m_ofe;
 jclass g_cls_file_status;
 jmethodID g_mid_file_status_ctor;
 
-jclass g_cls_file_perm;
-jmethodID g_mid_file_perm_ctor;
+jclass g_cls_fs_perm;
+jmethodID g_mid_fs_perm_ctor;
 
 jclass g_cls_path;
 jmethodID g_mid_path_ctor;
@@ -76,11 +83,10 @@ static int cache_redfish_client_fields(JNIEnv *jenv)
 {
 	jclass cls;
 
-	cls = (*jenv)->FindClass(jenv, "RedfishClient");
+	cls = (*jenv)->FindClass(jenv,  RF_CP "RedfishClient");
 	if (!cls)
 		return -ENOENT;
-	g_fid_m_cli = (*jenv)->GetFieldID(jenv, cls,
-			"m_cli", "Ljava/lang/Long;");
+	g_fid_m_cli = (*jenv)->GetFieldID(jenv, cls, "m_cli", "J");
 	if (!g_fid_m_cli)
 		return -ENOENT;
 	return 0;
@@ -102,12 +108,12 @@ static int cache_redfish_input_stream_fields(JNIEnv *jenv)
 {
 	int ret;
 
-	ret = cache_class_and_ctor(jenv, "RedfishDataInputStream",
+	ret = cache_class_and_ctor(jenv, RF_CP "RedfishDataInputStream",
 		&g_cls_rf_in_stream, &g_mid_rf_in_stream_ctor, "(J)V");
 	if (ret)
 		return -ENOENT;
 	g_fid_rf_in_stream_m_ofe = (*jenv)->GetFieldID(jenv, g_cls_rf_in_stream,
-			"m_ofe", "Ljava/lang/Long;");
+			"m_ofe", "J");
 	if (!g_fid_rf_in_stream_m_ofe)
 		return -ENOENT;
 	return 0;
@@ -117,12 +123,12 @@ static int cache_redfish_output_stream_fields(JNIEnv *jenv)
 {
 	int ret;
 
-	ret = cache_class_and_ctor(jenv, "RedfishDataOutputStream",
+	ret = cache_class_and_ctor(jenv, RF_CP "RedfishDataOutputStream",
 		&g_cls_rf_out_stream, &g_mid_rf_out_stream_ctor, "(J)V");
 	if (ret)
 		return -ENOENT;
 	g_fid_rf_out_stream_m_ofe = (*jenv)->GetFieldID(jenv, g_cls_rf_out_stream,
-			"m_ofe", "Ljava/lang/Long;");
+			"m_ofe", "J");
 	if (!g_fid_rf_out_stream_m_ofe)
 		return -ENOENT;
 	return 0;
@@ -147,40 +153,50 @@ JNI_OnLoad(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
 	int ret;
 	JNIEnv *jenv = NULL;
 
+	printf("libhfishc: entering JNI_OnLoad\n");
 	if ((*jvm)->GetEnv(jvm, (void **)&jenv, JNI_VERSION_1_2)) {
 		return JNI_ERR; /* JNI version not supported */
 	}
+	printf("libhfishc: caching client fields\n");
 	ret = cache_redfish_client_fields(jenv);
 	if (ret)
 		return JNI_ERR;
+	printf("libhfishc: caching input stream fields\n");
 	ret = cache_redfish_input_stream_fields(jenv);
 	if (ret)
 		return JNI_ERR;
+	printf("libhfishc: caching output stream fields\n");
 	ret = cache_redfish_output_stream_fields(jenv);
 	if (ret)
 		return JNI_ERR;
-	// org.apache.hadoop.fs.FileStatus FileStatus
-	ret = cache_class_and_ctor(jenv, "FileStatus", &g_cls_file_status,
-			&g_mid_file_status_ctor,
-			"(JZIJJJFsPermission;java/lang/String;java/lang/String;Path;)V");
+	printf("libhfishc: caching FilePermission\n");
+	ret = cache_class_and_ctor(jenv, FSPERM_CP,
+			&g_cls_fs_perm, &g_mid_fs_perm_ctor, "(S)V");
 	if (ret)
 		return JNI_ERR;
-	ret = cache_class_and_ctor(jenv, "FilePermission", &g_cls_file_perm,
-			&g_mid_file_perm_ctor, "(S)V");
+	printf("libhfishc: caching FileStatus\n");
+	ret = cache_class_and_ctor(jenv, "org/apache/hadoop/fs/FileStatus",
+			&g_cls_file_status, &g_mid_file_status_ctor,
+			"(JZIJJJL" FSPERM_CP ";Ljava/lang/String;"
+			"Ljava/lang/String;L" PATH_CP ";)V");
 	if (ret)
 		return JNI_ERR;
-	ret = cache_class_and_ctor(jenv, "Path", &g_cls_path,
-			&g_mid_path_ctor, "(java/lang/String;)V");
+	printf("libhfishc: caching Path\n");
+	ret = cache_class_and_ctor(jenv, PATH_CP, &g_cls_path, &g_mid_path_ctor,
+			"(Ljava/lang/String;)V");
 	if (ret)
 		return JNI_ERR;
-	ret = cache_class_and_ctor(jenv, "BlockLocation", &g_cls_block_loc,
-			&g_mid_block_loc_ctor,
-			"([java/lang/String;[java/lang/String;JJ)V");
+	printf("libhfishc: caching BlockLocation\n");
+	ret = cache_class_and_ctor(jenv, "org/apache/hadoop/fs/BlockLocation",
+			&g_cls_block_loc, &g_mid_block_loc_ctor,
+			"([Ljava/lang/String;[Ljava/lang/String;JJ)V");
 	if (ret)
 		return JNI_ERR;
+	printf("libhfishc: caching Java string class\n");
 	ret = cache_string_class(jenv);
 	if (ret)
 		return JNI_ERR;
+	printf("libhfishc: JNI_OnLoad succeeded\n");
 	return JNI_VERSION_1_2;
 }
 
@@ -197,10 +213,10 @@ JNI_OnUnload(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
 		     &g_mid_rf_in_stream_ctor);
 	uncache_class_and_ctor(jenv, &g_cls_rf_out_stream,
 		     &g_mid_rf_out_stream_ctor);
+	uncache_class_and_ctor(jenv, &g_cls_fs_perm,
+			&g_mid_fs_perm_ctor);
 	uncache_class_and_ctor(jenv, &g_cls_file_status,
 			&g_mid_file_status_ctor);
-	uncache_class_and_ctor(jenv, &g_cls_file_perm,
-			&g_mid_file_perm_ctor);
 	uncache_class_and_ctor(jenv, &g_cls_path,
 			&g_mid_path_ctor);
 	uncache_class_and_ctor(jenv, &g_cls_block_loc,

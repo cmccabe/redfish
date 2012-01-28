@@ -318,8 +318,8 @@ static jobject redfish_stat_to_file_info(JNIEnv *jenv,
 			g_mid_path_ctor, jpath);
 	if (!jpath_obj)
 		goto done;
-	jperm = (*jenv)->NewObject(jenv, g_cls_file_perm,
-			g_mid_file_perm_ctor, (jshort)osa->mode);
+	jperm = (*jenv)->NewObject(jenv, g_cls_fs_perm,
+			g_mid_fs_perm_ctor, (jshort)osa->mode);
 	if (!jperm)
 		goto done;
 	length = osa->length;
