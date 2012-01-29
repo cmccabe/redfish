@@ -21,14 +21,15 @@ import java.net.*;
 
 import org.apache.commons.logging.Log;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.PositionedReadable;
+import org.apache.hadoop.fs.Seekable;
 
-class RedfishDataInputStream extends InputStream {
+class RedfishDataInputStream extends InputStream
+            implements Seekable, PositionedReadable, Closeable {
   private long m_ofe;
 
   static {
@@ -58,10 +59,12 @@ class RedfishDataInputStream extends InputStream {
     this.redfishFree();
   }
 
+  @Override
   public boolean markSupported() {
     return false;
   }
 
+  @Override
   public int read() throws IOException {
     int amt;
 
@@ -73,24 +76,42 @@ class RedfishDataInputStream extends InputStream {
     return buf[0];
   }
 
+  @Override
   public int read(byte[] buf) throws IOException {
     return redfishRead(buf, 0, buf.length);
   }
 
+  @Override
   public int read(byte[] buf, int off, int len) throws IOException {
     return redfishRead(buf, off, len);
   }
 
+  @Override
   public int read(long pos, byte[] buf, int off, int len) throws IOException {
     return redfishPread(pos, buf, off, len);
   }
 
+  @Override
+  public void readFully(long pos, byte[] buf, int off, int len) throws IOException {
+    int nread = redfishPread(pos, buf, off, len);
+    if (nread < len) {
+      throw new EOFException("End of file reached before reading fully.");
+    }
+  }
+
+  @Override
+  public void readFully(long pos, byte[] buf) throws IOException {
+    readFully(pos, buf, 0, buf.length);
+  }
+
+  @Override
   public boolean seekToNewSource(long targetPos) throws IOException {
     /* Redfish handles failover between chunk replicas internally, so this
      * method should be unneeded? */
     return false;
   }
 
+  @Override
   public native
     int available() throws IOException;
 
@@ -100,15 +121,18 @@ class RedfishDataInputStream extends InputStream {
   private native
     int redfishPread(long off, byte[] buf, int boff, int blen) throws IOException;
 
+  @Override
   public native
     void close() throws IOException;
 
   private native
     void free();
 
+  @Override
   public native
     void seek(long off) throws IOException;
 
+  @Override
   public native
     long getPos() throws IOException;
 

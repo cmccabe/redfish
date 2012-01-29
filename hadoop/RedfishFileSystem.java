@@ -95,7 +95,6 @@ class RedfishFileSystem extends FileSystem {
               (makeAbsoluteStr(fstatus.getPath()), start, len);
   }
 
-
   @Override
   public FSDataInputStream open(Path f, int bufferSize) throws IOException {
     return new FSDataInputStream(m_client.redfishOpen(makeAbsoluteStr(f)));

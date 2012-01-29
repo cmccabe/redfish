@@ -27,8 +27,10 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.Syncable;
 
-class RedfishDataOutputStream extends OutputStream {
+class RedfishDataOutputStream extends OutputStream
+            implements Syncable, Closeable, Flushable {
   private long m_ofe;
 
   static {
@@ -58,6 +60,7 @@ class RedfishDataOutputStream extends OutputStream {
     this.redfishFree();
   }
 
+  @Override
   public void write(int b) throws IOException {
     /* The oh-so-useful "write a single byte" method */
     byte[] buf = new byte[1];
@@ -65,18 +68,22 @@ class RedfishDataOutputStream extends OutputStream {
     write(buf, 0, 1);
   }
 
+  @Override
   public native
     void close() throws IOException;
 
   private native
     void redfishFree();
 
+  @Override
   public native
     void write(byte[] jarr, int off, int len) throws IOException;
 
-  public native
-    long getPos() throws IOException;
-
+  @Override
   public native
     void flush() throws IOException;
+
+  @Override
+  public native
+    void sync() throws IOException;
 }
