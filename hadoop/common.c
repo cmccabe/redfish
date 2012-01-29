@@ -205,6 +205,7 @@ JNI_OnUnload(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
 {
 	JNIEnv *jenv;
 
+	printf("libhfishc: entering JNI_OnUnload\n");
 	if ((*jvm)->GetEnv(jvm, (void **)&jenv, JNI_VERSION_1_2)) {
 		return;
 	}
@@ -222,6 +223,7 @@ JNI_OnUnload(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
 	uncache_class_and_ctor(jenv, &g_cls_block_loc,
 			&g_mid_block_loc_ctor);
 	(*jenv)->DeleteGlobalRef(jenv, g_cls_string);
+	printf("libhfishc: exiting JNI_OnUnload\n");
 }
 
 jint validate_rw_params(JNIEnv *jenv, jbyteArray jarr,
