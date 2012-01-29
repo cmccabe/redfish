@@ -114,29 +114,8 @@ done:
 		free(cbuf);
 }
 
-JNIEXPORT jlong JNICALL
-Java_org_apache_hadoop_fs_redfish_RedfishDataOutputStream_getPos(
-	JNIEnv *jenv, jobject jobj)
-{
-	int64_t ret = 0;
-	char err[512] = { 0 };
-	size_t err_len = sizeof(err);
-	struct redfish_file *ofe;
-
-	ofe = redfish_get_m_ofe(jenv, jobj);
-	if (!ofe) {
-		strerror_r(EINVAL, err, err_len);
-		goto done;
-	}
-	ret = redfish_ftell(ofe);
-done:
-	if (err[0])
-		redfish_throw(jenv, "java/io/IOException", err);
-	return ret;
-}
-
 JNIEXPORT void JNICALL
-Java_org_apache_hadoop_fs_redfish_RedfishDataOutputStream_redfishFlush(
+Java_org_apache_hadoop_fs_redfish_RedfishDataOutputStream_flush(
 	JNIEnv *jenv, jobject jobj)
 {
 	int ret;
@@ -150,6 +129,30 @@ Java_org_apache_hadoop_fs_redfish_RedfishDataOutputStream_redfishFlush(
 		goto done;
 	}
 	ret = redfish_hflush(ofe);
+	if (ret) {
+		strerror_r(FORCE_POSITIVE(ret), err, err_len);
+		goto done;
+	}
+done:
+	if (err[0])
+		redfish_throw(jenv, "java/io/IOException", err);
+}
+
+JNIEXPORT void JNICALL
+Java_org_apache_hadoop_fs_redfish_RedfishDataOutputStream_sync(
+	JNIEnv *jenv, jobject jobj)
+{
+	int ret;
+	char err[512] = { 0 };
+	size_t err_len = sizeof(err);
+	struct redfish_file *ofe;
+
+	ofe = redfish_get_m_ofe(jenv, jobj);
+	if (!ofe) {
+		strerror_r(EINVAL, err, err_len);
+		goto done;
+	}
+	ret = redfish_hsync(ofe);
 	if (ret) {
 		strerror_r(FORCE_POSITIVE(ret), err, err_len);
 		goto done;
