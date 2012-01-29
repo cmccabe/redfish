@@ -64,6 +64,14 @@ get_fs_dir_path() {
     esac
 }
 
+get_fs_test_dir_path() {
+    case "${HADOOP_VERSION}" in
+        0.20) FS_TEST_DIR_PATH="src/test/org/apache/hadoop/fs/";;
+        0.21) FS_TEST_DIR_PATH="src/test/core/org/apache/hadoop/fs/";;
+        *) die "unknown hadoop version ${HADOOP_VERSION}"
+    esac
+}
+
 while getopts  "E:hp:" flag; do
     case $flag in
         E)  HADOOP_VERSION=$OPTARG;;
@@ -118,6 +126,14 @@ for f in RedfishFileSystem.java \
 do
     ln -s "${REDFISH_SRC_BASE}/hadoop/${f}" \
         "${HADOOP_PATH}/${FS_DIR_PATH}/${f}" \
+            || die "failed to link ${f}"
+done
+
+get_fs_test_dir_path
+for f in TestRedfishFileSystem.java
+do
+    ln -s "${REDFISH_SRC_BASE}/hadoop/test/${f}" \
+        "${HADOOP_PATH}/${FS_TEST_DIR_PATH}/${f}" \
             || die "failed to link ${f}"
 done
 
