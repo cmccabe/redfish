@@ -64,4 +64,17 @@ extern void redfish_throw(JNIEnv *jenv, const char *name, const char *msg);
 extern jint validate_rw_params(JNIEnv *jenv, jbyteArray jarr,
 			jint boff, jint blen);
 
+/** Translates a java string into a C string
+ *
+ * @param jenv		The JNI environment
+ * @param jstr		The java string
+ * @param cstr		The C string
+ * @param cstr_len	Length of the C string
+ *
+ * @return		0 on success; error code otherwise.  A java exception
+ *			will be raised on error.
+ */
+extern int jstr_to_cstr(JNIEnv *jenv, jstring jstr, char *cstr,
+			size_t cstr_len);
+
 #endif

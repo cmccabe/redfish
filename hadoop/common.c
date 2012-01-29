@@ -266,3 +266,41 @@ jint validate_rw_params(JNIEnv *jenv, jbyteArray jarr,
 	}
 	return 0;
 }
+
+int jstr_to_cstr(JNIEnv *jenv, jstring jstr, char *cstr, size_t cstr_len)
+{
+	char err[128];
+	size_t err_len = sizeof(err);
+	int32_t jlen, clen;
+
+	/* GetStringUTFLength is kind of a bizarre API.
+	 *
+	 * First, we have to supply the length of the region we want to get--
+	 * but not in bytes, in UTF-8 characters!  If you ask for too many, you
+	 * get an exception.  How about having a simple API that just gets the
+	 * whole string; isn't that what 9999 people out of 10000 want?
+	 * But no, we have to make the extra function call every time.
+	 *
+	 * Secondly, it does no bounds checking.  So we have to make another
+	 * extra function call here to find out what the length would be as a
+	 * UTF-8 string.  The example in the JNI programmer's guide even omits
+	 * bounds checking-- they comment on ther omission, but don't fix it!
+	 * Somebody was not thinking clearly here.
+	 *
+	 * Despite all the warts, this API at least lets us avoid doing tons of
+	 * malloc()s, and that is a good thing.
+	 */
+	clen = (*jenv)->GetStringUTFLength(jenv, jstr);
+	if (clen > (int32_t)cstr_len) {
+		snprintf(err, err_len, "jstr_to_cstr: tried to load %d byte "
+			 "java string into %Zd byte C string\n", clen, cstr_len);
+		redfish_throw(jenv,
+			"java/lang/StringIndexOutOfBoundsException", err);
+		return -ENAMETOOLONG;
+	}
+	jlen = (*jenv)->GetStringLength(jenv, jstr);
+	(*jenv)->GetStringUTFRegion(jenv, jstr, 0, jlen, cstr);
+	if ((*jenv)->ExceptionCheck(jenv))
+		return -EIO;
+	return 0;
+}

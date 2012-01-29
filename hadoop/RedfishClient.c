@@ -63,13 +63,9 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishConnect(
 		strerror_r(EINVAL, err, err_len);
 		goto done;
 	}
-	(*jenv)->GetStringUTFRegion(jenv, configFile, 0,
-			sizeof(cconf_file), cconf_file);
-	if ((*jenv)->ExceptionCheck(jenv))
+	if (jstr_to_cstr(jenv, configFile, cconf_file, sizeof(cconf_file)))
 		goto done;
-	(*jenv)->GetStringUTFRegion(jenv, userName, 0,
-			sizeof(cuser_name), cuser_name);
-	if ((*jenv)->ExceptionCheck(jenv))
+	if (jstr_to_cstr(jenv, userName, cuser_name, sizeof(cuser_name)))
 		goto done;
 	ret = redfish_connect(cconf_file, cuser_name, &cli);
 	if (ret) {
@@ -113,8 +109,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishOpen(
 		strerror_r(EINVAL, err, err_len);
 		goto done;
 	}
-	(*jenv)->GetStringUTFRegion(jenv, jpath, 0, sizeof(cpath), cpath);
-	if ((*jenv)->ExceptionCheck(jenv))
+	if (jstr_to_cstr(jenv, jpath, cpath, sizeof(cpath)))
 		goto done;
 	ret = redfish_open(cli, cpath, &ofe);
 	if (ret) {
@@ -148,8 +143,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishCreate(
 		strerror_r(EINVAL, err, err_len);
 		goto done;
 	}
-	(*jenv)->GetStringUTFRegion(jenv, jpath, 0, sizeof(cpath), cpath);
-	if ((*jenv)->ExceptionCheck(jenv))
+	if (jstr_to_cstr(jenv, jpath, cpath, sizeof(cpath)))
 		goto done;
 	if (blocksz > 0xffffffffLL) {
 		redfish_throw(jenv, "java/lang/IllegalArgumentException",
@@ -180,17 +174,20 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishMkdirs(
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 
+	printf("mkdirs: enter\n");
 	cli = redfish_get_m_cli(jenv, jobj);
 	if (!cli) {
+		printf("mkdirs: get_m_cli failed\n");
 		strerror_r(EINVAL, err, err_len);
 		goto done;
 	}
-	(*jenv)->GetStringUTFRegion(jenv, jpath, 0, sizeof(cpath), cpath);
-	if ((*jenv)->ExceptionCheck(jenv))
+	if (jstr_to_cstr(jenv, jpath, cpath, sizeof(cpath)))
 		goto done;
 	ret = redfish_mkdirs(cli, jmode, cpath);
-	if (ret)
+	if (ret) {
+		printf("mkdirs: redfish_mkdirs returned %d\n", ret);
 		goto done;
+	}
 done:
 	if (err[0])
 		redfish_throw(jenv, "java/io/IOException", err);
@@ -265,8 +262,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishGetBlockLocations(
 		redfish_throw(jenv, "java/io/IOException", err);
 		return NULL;
 	}
-	(*jenv)->GetStringUTFRegion(jenv, jpath, 0, sizeof(cpath), cpath);
-	if ((*jenv)->ExceptionCheck(jenv))
+	if (jstr_to_cstr(jenv, jpath, cpath, sizeof(cpath)))
 		return NULL;
 	nblc = redfish_locate(cli, cpath, start, len, &blcs);
 	if (nblc < 0) {
@@ -363,8 +359,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishGetPathStatus(
 		strerror_r(EINVAL, err, err_len);
 		goto done;
 	}
-	(*jenv)->GetStringUTFRegion(jenv, jpath, 0, sizeof(cpath), cpath);
-	if ((*jenv)->ExceptionCheck(jenv))
+	if (jstr_to_cstr(jenv, jpath, cpath, sizeof(cpath)))
 		goto done;
 	ret = redfish_get_path_status(cli, cpath, &osa);
 	if (ret == -ENOENT) {
@@ -405,8 +400,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishListDirectory(
 		strerror_r(EINVAL, err, err_len);
 		goto done;
 	}
-	(*jenv)->GetStringUTFRegion(jenv, jpath, 0, sizeof(cpath), cpath);
-	if ((*jenv)->ExceptionCheck(jenv))
+	if (jstr_to_cstr(jenv, jpath, cpath, sizeof(cpath)))
 		goto done;
 	nosa = redfish_list_directory(cli, cpath, &osa);
 	if (nosa < 0) {
@@ -453,8 +447,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishChmod(
 		strerror_r(EINVAL, err, err_len);
 		goto done;
 	}
-	(*jenv)->GetStringUTFRegion(jenv, jpath, 0, sizeof(cpath), cpath);
-	if ((*jenv)->ExceptionCheck(jenv))
+	if (jstr_to_cstr(jenv, jpath, cpath, sizeof(cpath)))
 		goto done;
 	ret = redfish_chmod(cli, cpath, jmode);
 	if (ret) {
@@ -482,20 +475,27 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishChown(
 		strerror_r(EINVAL, err, err_len);
 		goto done;
 	}
-	(*jenv)->GetStringUTFRegion(jenv, jpath, 0, sizeof(cpath), cpath);
-	if ((*jenv)->ExceptionCheck(jenv))
+	if (jstr_to_cstr(jenv, jpath, cpath, sizeof(cpath)))
 		goto done;
 	if (jowner) {
-		(*jenv)->GetStringUTFRegion(jenv, jowner, 0,
-				sizeof(cowner), cowner);
-		if ((*jenv)->ExceptionCheck(jenv))
+		if (jstr_to_cstr(jenv, jowner, cowner, sizeof(cowner)))
 			goto done;
+		if (!cowner[0]) {
+			redfish_throw(jenv,
+				"java/lang/IllegalArgumentException",
+				"empty owner string");
+			goto done;
+		}
 	}
 	if (jgroup) {
-		(*jenv)->GetStringUTFRegion(jenv, jgroup, 0,
-				sizeof(cgroup), cgroup);
-		if ((*jenv)->ExceptionCheck(jenv))
+		if (jstr_to_cstr(jenv, jgroup, cgroup, sizeof(cgroup)))
 			goto done;
+		if (!cgroup[0]) {
+			redfish_throw(jenv,
+				"java/lang/IllegalArgumentException",
+				"empty group string");
+			goto done;
+		}
 	}
 	ret = redfish_chown(cli, cpath,
 		(cowner[0] ? cowner : NULL), (cgroup[0] ? cgroup : NULL));
@@ -522,8 +522,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishUtimes(
 		strerror_r(EINVAL, err, err_len);
 		goto done;
 	}
-	(*jenv)->GetStringUTFRegion(jenv, jpath, 0, sizeof(cpath), cpath);
-	if ((*jenv)->ExceptionCheck(jenv))
+	if (jstr_to_cstr(jenv, jpath, cpath, sizeof(cpath)))
 		goto done;
 	ret = redfish_utimes(cli, cpath, mtime, atime);
 	if (ret) {
@@ -549,8 +548,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishUnlink(
 		strerror_r(EINVAL, err, err_len);
 		goto done;
 	}
-	(*jenv)->GetStringUTFRegion(jenv, jpath, 0, sizeof(cpath), cpath);
-	if ((*jenv)->ExceptionCheck(jenv))
+	if (jstr_to_cstr(jenv, jpath, cpath, sizeof(cpath)))
 		goto done;
 	ret = redfish_unlink(cli, cpath);
 	if (ret) {
@@ -577,8 +575,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishUnlinkTree(
 		strerror_r(EINVAL, err, err_len);
 		goto done;
 	}
-	(*jenv)->GetStringUTFRegion(jenv, jpath, 0, sizeof(cpath), cpath);
-	if ((*jenv)->ExceptionCheck(jenv))
+	if (jstr_to_cstr(jenv, jpath, cpath, sizeof(cpath)))
 		goto done;
 	ret = redfish_unlink_tree(cli, cpath);
 	if (ret) {
@@ -605,11 +602,9 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishRename(
 		strerror_r(EINVAL, err, err_len);
 		goto done;
 	}
-	(*jenv)->GetStringUTFRegion(jenv, jsrc, 0, sizeof(csrc), csrc);
-	if ((*jenv)->ExceptionCheck(jenv))
+	if (jstr_to_cstr(jenv, jsrc, csrc, sizeof(csrc)))
 		goto done;
-	(*jenv)->GetStringUTFRegion(jenv, jdst, 0, sizeof(cdst), cdst);
-	if ((*jenv)->ExceptionCheck(jenv))
+	if (jstr_to_cstr(jenv, jdst, cdst, sizeof(cdst)))
 		goto done;
 	ret = redfish_rename(cli, csrc, cdst);
 	if (ret) {
