@@ -9,4 +9,4 @@ add_library(hfishc SHARED
     RedfishDataOutputStream.c
     common.c
 )
-target_link_libraries(hfishc ${JAVA_JVM_LIBRARY} pthread)
+target_link_libraries(hfishc ${JAVA_JVM_LIBRARY} ${REDFISH_CLIENT_LIB} pthread)
