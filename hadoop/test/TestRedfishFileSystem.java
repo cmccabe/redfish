@@ -44,7 +44,7 @@ public class TestRedfishFileSystem extends TestCase {
 
   @Override
   protected void tearDown() throws Exception {
-    m_fs.close()
+    m_fs.close();
   }
 
   // @Test
@@ -79,21 +79,21 @@ public class TestRedfishFileSystem extends TestCase {
 
       Path foo1 = new Path("/sft/foo.1");
       FSDataOutputStream foo1out = m_fs.create(foo1, true, 4096, (short) 1, (long) 4096, null);
-      foo1.close();
-      FileStatus[] p = m_fs.listStatus(subDir1);
+      foo1out.close();
+      FileStatus[] p = m_fs.listStatus(sft);
       assertEquals(p.length, 1);
 
       Path foo2 = new Path("/sft/foo.2");
       FSDataOutputStream foo2out = m_fs.create(foo2, true, 4096, (short) 1, (long) 4096, null);
-      foo2.close();
-      FileStatus[] p = m_fs.listStatus(subDir1);
+      foo2out.close();
+      p = m_fs.listStatus(sft);
       assertEquals(p.length, 2);
 
-      m_fs.delete(file1, true);
-      p = m_fs.listStatus(subDir1);
+      m_fs.delete(foo1, true);
+      p = m_fs.listStatus(sft);
       assertEquals(p.length, 1);
-      m_fs.delete(file2, true);
-      p = m_fs.listStatus(subDir1);
+      m_fs.delete(foo2, true);
+      p = m_fs.listStatus(sft);
       assertEquals(p.length, 0);
       m_fs.delete(sft, true);
       assertFalse(m_fs.exists(sft));
@@ -102,37 +102,39 @@ public class TestRedfishFileSystem extends TestCase {
   // @Test
   // Check file/read write
   public void readWrite() throws Exception {
-      FSDataOutputStream w1 = m_fs.create("/rw1", true, 4096,
-            (short) 1, (long) 4096, null);
-      byte[] data = new byte[4096];
-      for (int i = 0; i < data.length; i++)
-          data[i] = (byte) (i % 10);
-      w1.write((int)1000);
-      w1.write((int)2000);
-      w1.write(data, 0, data.length);
-      w1.close();
+    Path rwPath = new Path("/rw1");
+    FSDataOutputStream w1 = m_fs.create(rwPath, true, 4096,
+          (short) 1, (long) 4096, null);
+    byte[] data = new byte[4096];
+    for (int i = 0; i < data.length; i++)
+        data[i] = (byte) (i % 10);
+    w1.write((int)1000);
+    w1.write((int)2000);
+    w1.write(data, 0, data.length);
+    w1.close();
 
-      FSDataInputStream r1 = m_fs.open("/rw1", 4096);
-      int w;
-      w = s2.read();
-      assertEquals(w, 1000);
-      w = s2.read();
-      assertEquals(w, 2000);
+    FSDataInputStream r1 = m_fs.open(rwPath, 4096);
+    int w;
+    w = r1.read();
+    assertEquals(w, 1000);
+    w = r1.read();
+    assertEquals(w, 2000);
 
-      oldPos = s2.getPos();
-      assertNotEquals(oldPos, 0);
-      byte[] buf = new byte[data.len];
-      s2.read(buf, 0, buf.length);
-      for (int i = 0; i < data.length; i++)
-          assertEquals(data[i], buf[i]);
+    long oldPos = r1.getPos();
+    assertTrue(oldPos != 0);
+    byte[] buf = new byte[data.length];
+    r1.read(buf, 0, buf.length);
+    for (int i = 0; i < data.length; i++)
+        assertEquals(data[i], buf[i]);
 
-      byte[] buf2 = new byte[10 + data.len];
-      s2.read(oldPos, buf, 10, buf.length);
-      for (int i = 0; i < data.length; i++)
-          assertEquals(data[i], buf2[i + 10]);
-      s2.close();
+    final int TEST_OFF = 10;
+    byte[] buf2 = new byte[TEST_OFF + data.length];
+    r1.read(oldPos, buf, TEST_OFF, buf.length);
+    for (int i = 0; i < data.length; i++)
+        assertEquals(data[i], buf2[i + TEST_OFF]);
+    r1.close();
 
-      m_fs.delete("/rw1", false);
-      assertFalse(m_fs.exists("/rw1"));
+    m_fs.delete(rwPath, false);
+    assertFalse(m_fs.exists(rwPath));
   }
 }
