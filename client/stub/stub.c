@@ -318,6 +318,7 @@ static int stub_check_perm(struct redfish_client *cli, const char *epath,
 				return ret;
 		}
 	}
+	printf("success\n");
 	return 0;
 }
 
@@ -326,6 +327,9 @@ static int stub_check_file_perm(struct redfish_client *cli,
 {
 	struct stat st_buf;
 
+	if (strlen(epath) < strlen(cli->base)) {
+		return -ENOENT;
+	}
 	if (stat(epath, &st_buf) < 0) {
 		return -errno;
 	}
@@ -340,6 +344,10 @@ static int stub_check_dir_perm(struct redfish_client *cli,
 {
 	struct stat st_buf;
 
+	if (strlen(epath) < strlen(cli->base)) {
+		/* Can always list the root directory. */
+		return 0;
+	}
 	if (stat(epath, &st_buf) < 0) {
 		return -errno;
 	}
@@ -620,7 +628,7 @@ done:
 	return ret;
 }
 
-int redfish_list_directory(struct redfish_client *cli, const char *dir,
+int redfish_list_directory(struct redfish_client *cli, const char *path,
 			      struct redfish_stat** osa)
 {
 	struct redfish_dirp *dp = NULL;
@@ -628,11 +636,12 @@ int redfish_list_directory(struct redfish_client *cli, const char *dir,
 	int i, ret, nosa = 0;
 	struct redfish_stat *zosa = NULL;
 
-	if (dir[0] != '/')
+	if (path[0] != '/')
 		return -EDOM;
-	if (zsnprintf(epath, PATH_MAX, "%s%s", cli->base, dir))
-		return -ENAMETOOLONG;
-	canonicalize_path(epath);
+	ret = get_stub_path(cli, path, epath, PATH_MAX);
+	if (ret)
+		return ret;
+	printf("redfish_list_directory: path='%s', epath='%s'\n", path, epath);
 	pthread_mutex_lock(&cli->lock);
 	ret = stub_check_enc_dir_perm(cli, epath, STUB_VPERM_READ);
 	if (ret)
@@ -647,9 +656,9 @@ int redfish_list_directory(struct redfish_client *cli, const char *dir,
 		de = do_readdir(dp);
 		if (!de)
 			break;
-		if (strcmp(de->d_name, "."))
+		if (!strcmp(de->d_name, "."))
 			continue;
-		else if (strcmp(de->d_name, ".."))
+		else if (!strcmp(de->d_name, ".."))
 			continue;
 		++nosa;
 		xosa = realloc(zosa, nosa * sizeof(struct redfish_stat));
