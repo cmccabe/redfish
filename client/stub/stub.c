@@ -900,7 +900,7 @@ int redfish_unlink_tree(struct redfish_client *cli, const char *path)
 	ret = stub_check_enc_dir_perm(cli, epath, STUB_VPERM_WRITE);
 	if (ret)
 		goto done;
-	ret = run_cmd("rm", "-rf", path, (char*)NULL);
+	ret = run_cmd("rm", "-rf", epath, (char*)NULL);
 done:
 	pthread_mutex_unlock(&cli->lock);
 	return ret;
