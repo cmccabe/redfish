@@ -259,9 +259,9 @@ jint validate_rw_params(JNIEnv *jenv, jbyteArray jarr,
 	 */
 	alen = (*jenv)->GetArrayLength(jenv, jarr);
 	end = ((uint32_t)boff) + ((uint32_t)blen);
-	if (((int32_t)end) < alen) {
+	if (((int32_t)end) > alen) {
 		redfish_throw(jenv, "java/lang/IndexOutOfBoundsException",
-				"boff + blen > buf.length()");
+				"boff + blen > buf.length");
 		return -1;
 	}
 	return 0;
