@@ -32,7 +32,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.util.Progressable;
 
-class RedfishFileSystem extends FileSystem {
+public class RedfishFileSystem extends FileSystem {
   private RedfishClient m_client;
   private URI m_uri;
   private String m_cwd;

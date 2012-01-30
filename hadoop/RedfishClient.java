@@ -30,7 +30,7 @@ import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
 
 
-public final class RedfishClient {
+final class RedfishClient {
   private long m_cli;
 
   static {

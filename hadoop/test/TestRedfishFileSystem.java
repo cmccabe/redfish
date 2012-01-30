@@ -49,7 +49,7 @@ public class TestRedfishFileSystem extends TestCase {
 
   // @Test
   // Test mkdir and recursive rm
-  public void mkdirTest1() throws Exception {
+  public void testMkdir() throws Exception {
       // make the dir
       Path d1 = new Path("d1");
       m_fs.mkdirs(d1);
@@ -72,7 +72,7 @@ public class TestRedfishFileSystem extends TestCase {
 
   // @Test
   // Test file creation and unlinking
-  public void createUnlink() throws Exception {
+  public void testUnlink() throws Exception {
       Path sft = new Path("/sft");
       m_fs.mkdirs(sft);
       assertTrue(m_fs.isDirectory(sft));
@@ -101,7 +101,7 @@ public class TestRedfishFileSystem extends TestCase {
 
   // @Test
   // Check file/read write
-  public void readWrite() throws Exception {
+  public void testReadAndWrite() throws Exception {
     Path rwPath = new Path("/rw1");
     FSDataOutputStream w1 = m_fs.create(rwPath, true, 4096,
           (short) 1, (long) 4096, null);
