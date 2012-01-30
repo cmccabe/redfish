@@ -353,34 +353,32 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishGetPathStatus(
 	char cpath[RF_PATH_MAX], err[512] = { 0 };
 	size_t err_len = sizeof(err);
 
-	memset(&osa, 0, sizeof(osa));
 	cli = redfish_get_m_cli(jenv, jobj);
 	if (!cli) {
 		strerror_r(EINVAL, err, err_len);
-		goto done;
+		redfish_throw(jenv, "java/io/IOException", err);
+		return NULL;
 	}
 	if (jstr_to_cstr(jenv, jpath, cpath, sizeof(cpath)))
-		goto done;
+		return NULL;
 	ret = redfish_get_path_status(cli, cpath, &osa);
 	if (ret == -ENOENT) {
 		snprintf(err, err_len, "No such file as '%s'", cpath);
-		redfish_throw(jenv, "java/io/FileNotFound", err);
-		err[0] = '\0';
-		goto done;
+		redfish_throw(jenv, "java/io/FileNotFoundException", err);
+		return NULL;
 	}
 	else if (ret) {
 		strerror_r(ret, err, err_len);
-		goto done;
+		redfish_throw(jenv, "java/io/IOException", err);
+		return NULL;
 	}
 	res = redfish_stat_to_file_info(jenv, &osa);
+	redfish_free_path_status(&osa);
 	if (!res) {
 		strerror_r(ENOMEM, err, err_len);
-		goto done;
-	}
-done:
-	redfish_free_path_status(&osa);
-	if (err[0])
 		redfish_throw(jenv, "java/io/IOException", err);
+		return NULL;
+	}
 	return res;
 }
 
