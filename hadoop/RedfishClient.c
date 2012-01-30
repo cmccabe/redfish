@@ -104,7 +104,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishOpen(
 	size_t err_len = sizeof(err);
 
 	cli = redfish_get_m_cli(jenv, jobj);
-	if (cli != NULL) {
+	if (!cli) {
 		/* already initialized */
 		strerror_r(EINVAL, err, err_len);
 		goto done;
