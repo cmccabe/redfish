@@ -144,7 +144,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_redfishPread(
 }
 
 JNIEXPORT void JNICALL
-Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_redfishClose(
+Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_close(
 	JNIEnv *jenv, jobject jobj)
 {
 	int ret;
@@ -154,17 +154,15 @@ Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_redfishClose(
 
 	ofe = redfish_get_m_ofe(jenv, jobj);
 	if (!ofe) {
-		strerror_r(EINVAL, err, err_len);
-		goto done;
+		redfish_throw(jenv, "java/io/IOException", "m_ofe == NULL");
+		return;
 	}
 	ret = redfish_close(ofe);
 	if (ret) {
 		strerror_r(FORCE_POSITIVE(ret), err, err_len);
-		goto done;
-	}
-done:
-	if (err[0])
 		redfish_throw(jenv, "java/io/IOException", err);
+		return;
+	}
 }
 
 JNIEXPORT void JNICALL

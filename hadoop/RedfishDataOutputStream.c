@@ -48,12 +48,22 @@ JNIEXPORT void JNICALL
 Java_org_apache_hadoop_fs_redfish_RedfishDataOutputStream_close(
 	JNIEnv *jenv, jobject jobj)
 {
+	char err[512];
+	size_t err_len = sizeof(err);
+	int ret;
 	struct redfish_file *ofe;
 
 	ofe = redfish_get_m_ofe(jenv, jobj);
-	if (!ofe)
+	if (!ofe) {
+		redfish_throw(jenv, "java/io/IOException", "m_ofe == NULL");
 		return;
-	redfish_close(ofe);
+	}
+	ret = redfish_close(ofe);
+	if (ret) {
+		strerror_r(FORCE_POSITIVE(ret), err, err_len);
+		redfish_throw(jenv, "java/io/IOException", err);
+		return;
+	}
 }
 
 JNIEXPORT void JNICALL
