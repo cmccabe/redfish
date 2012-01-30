@@ -45,7 +45,7 @@ static void* redfish_get_m_ofe(JNIEnv *jenv, jobject jobj)
 }
 
 JNIEXPORT void JNICALL
-Java_org_apache_hadoop_fs_redfish_RedfishDataOutputStream_redfishClose(
+Java_org_apache_hadoop_fs_redfish_RedfishDataOutputStream_close(
 	JNIEnv *jenv, jobject jobj)
 {
 	struct redfish_file *ofe;
