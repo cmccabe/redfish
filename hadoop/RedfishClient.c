@@ -69,7 +69,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishConnect(
 		goto done;
 	ret = redfish_connect(cconf_file, cuser_name, &cli);
 	if (ret) {
-		strerror_r(ret, err, err_len);
+		strerror_r(FORCE_POSITIVE(ret), err, err_len);
 		goto done;
 	}
 	redfish_set_m_cli(jenv, jobj, cli);
@@ -113,7 +113,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishOpen(
 		goto done;
 	ret = redfish_open(cli, cpath, &ofe);
 	if (ret) {
-		strerror_r(ret, err, err_len);
+		strerror_r(FORCE_POSITIVE(ret), err, err_len);
 		goto done;
 	}
 	jstream = (*jenv)->NewObject(jenv, g_cls_rf_in_stream,
@@ -153,7 +153,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishCreate(
 	ret = redfish_create(cli, cpath, mode, bufsz, repl,
 			(uint32_t)blocksz, &ofe);
 	if (ret) {
-		strerror_r(ret, err, err_len);
+		strerror_r(FORCE_POSITIVE(ret), err, err_len);
 		goto done;
 	}
 	jstream = (*jenv)->NewObject(jenv, g_cls_rf_out_stream,
@@ -368,7 +368,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishGetPathStatus(
 		return NULL;
 	}
 	else if (ret) {
-		strerror_r(ret, err, err_len);
+		strerror_r(FORCE_POSITIVE(ret), err, err_len);
 		redfish_throw(jenv, "java/io/IOException", err);
 		return NULL;
 	}
@@ -402,7 +402,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishListDirectory(
 		goto done;
 	nosa = redfish_list_directory(cli, cpath, &osa);
 	if (nosa < 0) {
-		strerror_r(nosa, err, err_len);
+		strerror_r(FORCE_POSITIVE(nosa), err, err_len);
 		goto done;
 	}
 	jarr = (*jenv)->NewObjectArray(jenv, nosa, g_cls_file_status, NULL);
@@ -449,7 +449,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishChmod(
 		goto done;
 	ret = redfish_chmod(cli, cpath, jmode);
 	if (ret) {
-		strerror_r(ret, err, err_len);
+		strerror_r(FORCE_POSITIVE(ret), err, err_len);
 		goto done;
 	}
 done:
@@ -498,7 +498,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishChown(
 	ret = redfish_chown(cli, cpath,
 		(cowner[0] ? cowner : NULL), (cgroup[0] ? cgroup : NULL));
 	if (ret) {
-		strerror_r(ret, err, err_len);
+		strerror_r(FORCE_POSITIVE(ret), err, err_len);
 		goto done;
 	}
 done:
@@ -524,7 +524,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishUtimes(
 		goto done;
 	ret = redfish_utimes(cli, cpath, mtime, atime);
 	if (ret) {
-		strerror_r(ret, err, err_len);
+		strerror_r(FORCE_POSITIVE(ret), err, err_len);
 		goto done;
 	}
 done:
@@ -550,7 +550,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishUnlink(
 		goto done;
 	ret = redfish_unlink(cli, cpath);
 	if (ret) {
-		strerror_r(ret, err, err_len);
+		strerror_r(FORCE_POSITIVE(ret), err, err_len);
 		goto done;
 	}
 done:
@@ -577,7 +577,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishUnlinkTree(
 		goto done;
 	ret = redfish_unlink_tree(cli, cpath);
 	if (ret) {
-		strerror_r(ret, err, err_len);
+		strerror_r(FORCE_POSITIVE(ret), err, err_len);
 		goto done;
 	}
 done:
@@ -606,7 +606,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishRename(
 		goto done;
 	ret = redfish_rename(cli, csrc, cdst);
 	if (ret) {
-		strerror_r(ret, err, err_len);
+		strerror_r(FORCE_POSITIVE(ret), err, err_len);
 		goto done;
 	}
 done:

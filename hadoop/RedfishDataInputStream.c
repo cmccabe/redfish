@@ -60,7 +60,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishDataInputStream_available(
 	}
 	res = redfish_available(ofe);
 	if (res < 0) {
-		strerror_r(res, err, err_len);
+		strerror_r(FORCE_POSITIVE(res), err, err_len);
 		goto done;
 	}
 done:
