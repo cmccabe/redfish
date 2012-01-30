@@ -229,6 +229,12 @@ JNI_OnUnload(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
 jint validate_rw_params(JNIEnv *jenv, jbyteArray jarr,
 		jint boff, jint blen)
 {
+	/* TODO: we could probably skip at least some of this verification,
+	 * since a lot of the JNI functions, like SetByteArrayRegion, seem to
+	 * validate paramaters for us.  It would have to be done carefully,
+	 * though, to avoid exposing us to mishaps elsewhere in the code or
+	 * implementation details of the various JNI implementations.
+	 */
 	int32_t alen;
 	uint32_t end;
 
