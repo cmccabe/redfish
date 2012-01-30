@@ -120,21 +120,25 @@ popd &> /dev/null
 # TODO: export files using C preprocessor instead, to support multiple versions
 # via #defines
 get_fs_dir_path
+mkdir -p "${HADOOP_PATH}/${FS_DIR_PATH}/redfish/" \
+    || die "failed to mkdir on line ${LINENO}"
 for f in RedfishFileSystem.java \
     RedfishDataOutputStream.java \
     RedfishDataInputStream.java \
     RedfishClient.java
 do
     ln -s "${REDFISH_SRC_BASE}/hadoop/${f}" \
-        "${HADOOP_PATH}/${FS_DIR_PATH}/${f}" \
+        "${HADOOP_PATH}/${FS_DIR_PATH}/redfish/${f}" \
             || die "failed to link ${f}"
 done
 
 get_fs_test_dir_path
+mkdir -p "${HADOOP_PATH}/${FS_TEST_DIR_PATH}/redfish/" \
+    || die "failed to mkdir on line ${LINENO}"
 for f in TestRedfishFileSystem.java
 do
     ln -s "${REDFISH_SRC_BASE}/hadoop/test/${f}" \
-        "${HADOOP_PATH}/${FS_TEST_DIR_PATH}/${f}" \
+        "${HADOOP_PATH}/${FS_TEST_DIR_PATH}/redfish/${f}" \
             || die "failed to link ${f}"
 done
 
