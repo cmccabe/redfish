@@ -73,7 +73,7 @@ class RedfishDataInputStream extends InputStream
     amt = redfishRead(buf, 0, 1);
     if (amt != 1)
       return -1;
-    return buf[0];
+    return (int)(buf[0] & 0xff);
   }
 
   @Override
