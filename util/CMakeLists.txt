@@ -7,7 +7,6 @@ add_library(util
     fast_log.c
     fast_log_mgr.c
     fast_log_types.c
-    msleep.c
     net.c
     packed.c
     path.c
@@ -19,9 +18,15 @@ add_library(util
     tempfile.c
     terror.c
     thread.c
+    time.c
     username.c
 )
 target_link_libraries(util ${JSON_C_LIBRARY} platform pthread)
+
+IF (CMAKE_SYSTEM MATCHES "Linux")
+    FIND_LIBRARY(RT_LIBRARY rt)
+    target_link_libraries(util rt)
+ENDIF (CMAKE_SYSTEM MATCHES "Linux")
 
 add_library(utest
     test.c
@@ -91,3 +96,7 @@ add_test(packed_unit ${CMAKE_CURRENT_BINARY_DIR}/packed_unit packed_unit)
 add_executable(username_unit username_unit.c)
 target_link_libraries(username_unit util utest)
 add_test(username_unit ${CMAKE_CURRENT_BINARY_DIR}/username_unit username_unit)
+
+add_executable(time_unit time_unit.c)
+target_link_libraries(time_unit util utest)
+add_test(time_unit ${CMAKE_CURRENT_BINARY_DIR}/time_unit time_unit)

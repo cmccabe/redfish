@@ -19,8 +19,8 @@
 #include "rsem/rsem_cli.h"
 #include "rsem/rsem_srv.h"
 #include "util/error.h"
-#include "util/msleep.h"
 #include "util/test.h"
+#include "util/time.h"
 
 #include <errno.h>
 #include <pthread.h>
@@ -71,7 +71,7 @@ static void* test3a(void *v)
 
 	RETRY_ON_EINTR(res, sem_wait(&g_test3a_local_sem));
 	g_test3a_mcguffin = 1;
-	do_msleep(10);
+	mt_msleep(10);
 	rsem_post(rcli, "baz");
 	return NULL;
 }

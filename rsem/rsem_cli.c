@@ -18,10 +18,10 @@
 #include "rsem/rsem.h"
 #include "rsem/rsem_cli.h"
 #include "util/error.h"
-#include "util/msleep.h"
 #include "util/net.h"
 #include "util/platform/socket.h"
 #include "util/safe_io.h"
+#include "util/time.h"
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -193,7 +193,7 @@ void rsem_post(struct rsem_client *rcli, const char *name)
 		int ret = rsem_post_impl(rcli, name);
 		if (ret == 0)
 			return;
-		do_msleep(1000);
+		mt_msleep(1000);
 	}
 }
 

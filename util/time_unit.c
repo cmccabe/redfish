@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the Redfish authors
+ * Copyright 2012 the Redfish authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,27 @@
  * limitations under the License.
  */
 
-#include "util/msleep.h"
+#include "util/test.h"
+#include "util/time.h"
 
-#include <poll.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <stdio.h>
 
-void do_msleep(int milli)
+int main(void)
 {
-	poll(NULL, 0, milli);
+	time_t cur, next, after;
+
+	cur = mt_time();
+	next = cur + 1;
+	mt_sleep_until(next);
+	after = mt_time();
+	EXPECT_GT(after, cur);
+	EXPECT_GE(after, next);
+	cur = mt_time();
+	mt_msleep(1);
+	after = mt_time();
+	EXPECT_GE(after, cur);
+
+	return EXIT_SUCCESS;
 }

@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-#include "core/glitch_log.h"
 #include "common/config/logc.h"
+#include "core/glitch_log.h"
 #include "core/pid_file.h"
 #include "core/signal.h"
 #include "jorm/json.h"
 #include "rsem/rsem.h"
 #include "rsem/rsem_srv.h"
 #include "util/compiler.h"
-#include "util/msleep.h"
 #include "util/string.h"
+#include "util/time.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -148,7 +148,7 @@ int main(int argc, char **argv)
 		goto done_signal_shutdown;
 	}
 	while (1) {
-		do_msleep(100000);
+		mt_msleep(100000);
 	}
 
 done_signal_shutdown:

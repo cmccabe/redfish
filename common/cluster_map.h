@@ -18,6 +18,7 @@
 #define REDFISH_UTIL_CLUSTER_MAP_DOT_H
 
 #include <stdint.h> /* for uint32_t, etc. */
+#include <time.h> /* for time_t */
 #include <unistd.h> /* for size_t */
 
 /*
@@ -36,7 +37,7 @@ struct daemon_info {
 	/** In or out? */
 	uint16_t in;
 	/** Last contact time (this field is not serialized) */
-	uint32_t time;
+	time_t time;
 };
 
 struct cmap {
