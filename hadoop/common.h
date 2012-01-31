@@ -19,6 +19,10 @@
 
 #include <jni.h>
 
+/** Primitive Redfish Hadoop JNI debugging.  This is mostly for debugging
+ * JNI_OnLoad issues */
+#define HJNI_DEBUG(...) printf(__VA_ARGS__)
+
 extern jfieldID g_fid_m_cli;
 extern jfieldID g_fid_rf_in_stream_m_ofe;
 extern jfieldID g_fid_rf_out_stream_m_ofe;

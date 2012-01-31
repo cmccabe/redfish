@@ -152,12 +152,9 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishCreate(
 	ret = redfish_create(cli, cpath, mode, bufsz, repl,
 			(uint32_t)blocksz, &ofe);
 	if (ret) {
-		printf("redfishCreate: failed to create '%s': error %d\n",
-			cpath, ret);
 		strerror_r(FORCE_POSITIVE(ret), err, err_len);
 		goto done;
 	}
-	printf("redfishCreate: creating '%s' with ofe = %p\n", cpath, ofe);
 	jstream = (*jenv)->NewObject(jenv, g_cls_rf_out_stream,
 			g_mid_rf_out_stream_ctor, (jlong)(uintptr_t)ofe);
 done:
@@ -176,10 +173,8 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishMkdirs(
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 
-	printf("mkdirs: enter\n");
 	cli = redfish_get_m_cli(jenv, jobj);
 	if (!cli) {
-		printf("mkdirs: get_m_cli failed\n");
 		strerror_r(EINVAL, err, err_len);
 		goto done;
 	}
@@ -187,7 +182,6 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishMkdirs(
 		goto done;
 	ret = redfish_mkdirs(cli, jmode, cpath);
 	if (ret) {
-		printf("mkdirs: redfish_mkdirs returned %d\n", ret);
 		goto done;
 	}
 done:

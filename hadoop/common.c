@@ -153,50 +153,50 @@ JNI_OnLoad(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
 	int ret;
 	JNIEnv *jenv = NULL;
 
-	printf("libhfishc: entering JNI_OnLoad\n");
+	HJNI_DEBUG("libhfishc: entering JNI_OnLoad\n");
 	if ((*jvm)->GetEnv(jvm, (void **)&jenv, JNI_VERSION_1_2)) {
 		return JNI_ERR; /* JNI version not supported */
 	}
-	printf("libhfishc: caching client fields\n");
+	HJNI_DEBUG("libhfishc: caching client fields\n");
 	ret = cache_redfish_client_fields(jenv);
 	if (ret)
 		return JNI_ERR;
-	printf("libhfishc: caching input stream fields\n");
+	HJNI_DEBUG("libhfishc: caching input stream fields\n");
 	ret = cache_redfish_input_stream_fields(jenv);
 	if (ret)
 		return JNI_ERR;
-	printf("libhfishc: caching output stream fields\n");
+	HJNI_DEBUG("libhfishc: caching output stream fields\n");
 	ret = cache_redfish_output_stream_fields(jenv);
 	if (ret)
 		return JNI_ERR;
-	printf("libhfishc: caching FilePermission\n");
+	HJNI_DEBUG("libhfishc: caching FilePermission\n");
 	ret = cache_class_and_ctor(jenv, FSPERM_CP,
 			&g_cls_fs_perm, &g_mid_fs_perm_ctor, "(S)V");
 	if (ret)
 		return JNI_ERR;
-	printf("libhfishc: caching FileStatus\n");
+	HJNI_DEBUG("libhfishc: caching FileStatus\n");
 	ret = cache_class_and_ctor(jenv, "org/apache/hadoop/fs/FileStatus",
 			&g_cls_file_status, &g_mid_file_status_ctor,
 			"(JZIJJJL" FSPERM_CP ";Ljava/lang/String;"
 			"Ljava/lang/String;L" PATH_CP ";)V");
 	if (ret)
 		return JNI_ERR;
-	printf("libhfishc: caching Path\n");
+	HJNI_DEBUG("libhfishc: caching Path\n");
 	ret = cache_class_and_ctor(jenv, PATH_CP, &g_cls_path, &g_mid_path_ctor,
 			"(Ljava/lang/String;)V");
 	if (ret)
 		return JNI_ERR;
-	printf("libhfishc: caching BlockLocation\n");
+	HJNI_DEBUG("libhfishc: caching BlockLocation\n");
 	ret = cache_class_and_ctor(jenv, "org/apache/hadoop/fs/BlockLocation",
 			&g_cls_block_loc, &g_mid_block_loc_ctor,
 			"([Ljava/lang/String;[Ljava/lang/String;JJ)V");
 	if (ret)
 		return JNI_ERR;
-	printf("libhfishc: caching Java string class\n");
+	HJNI_DEBUG("libhfishc: caching Java string class\n");
 	ret = cache_string_class(jenv);
 	if (ret)
 		return JNI_ERR;
-	printf("libhfishc: JNI_OnLoad succeeded\n");
+	HJNI_DEBUG("libhfishc: JNI_OnLoad succeeded\n");
 	return JNI_VERSION_1_2;
 }
 
@@ -205,7 +205,7 @@ JNI_OnUnload(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
 {
 	JNIEnv *jenv;
 
-	printf("libhfishc: entering JNI_OnUnload\n");
+	HJNI_DEBUG("libhfishc: entering JNI_OnUnload\n");
 	if ((*jvm)->GetEnv(jvm, (void **)&jenv, JNI_VERSION_1_2)) {
 		return;
 	}
@@ -223,7 +223,7 @@ JNI_OnUnload(JavaVM *jvm, POSSIBLY_UNUSED(void *reserved))
 	uncache_class_and_ctor(jenv, &g_cls_block_loc,
 			&g_mid_block_loc_ctor);
 	(*jenv)->DeleteGlobalRef(jenv, g_cls_string);
-	printf("libhfishc: exiting JNI_OnUnload\n");
+	HJNI_DEBUG("libhfishc: exiting JNI_OnUnload\n");
 }
 
 jint validate_rw_params(JNIEnv *jenv, jbyteArray jarr,
