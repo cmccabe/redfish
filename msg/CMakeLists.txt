@@ -7,11 +7,11 @@ add_library(msgr
     msgr.c
 )
 target_link_libraries(msgr
-    core
+    common
     util
     ${LIBEV_LIBRARIES}
 )
 
 add_executable(msgr_unit msgr_unit.c)
-target_link_libraries(msgr_unit msgr util utest)
+target_link_libraries(msgr_unit core msgr utest)
 add_test(msgr_unit ${CMAKE_CURRENT_BINARY_DIR}/msgr_unit msgr_unit)
