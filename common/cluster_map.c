@@ -41,7 +41,7 @@
 PACKED(struct packed_addr {
 	uint32_t ip;
 	uint16_t port;
-	uint16_t pad;
+	uint16_t in;
 });
 
 PACKED(struct packed_cmap {
@@ -185,6 +185,8 @@ struct cmap *cmap_from_buffer(const char *buf, size_t buf_len,
 		pa = (struct packed_addr*)buf;
 		oinfo[i].ip = unpack_from_be32(&pa->ip);
 		oinfo[i].port = unpack_from_be16(&pa->port);
+		oinfo[i].in = unpack_from_be16(&pa->in);
+		oinfo[i].time = 0;
 		buf_len -= sizeof(struct packed_addr);
 		buf += sizeof(struct packed_addr);
 	}
@@ -197,6 +199,8 @@ struct cmap *cmap_from_buffer(const char *buf, size_t buf_len,
 		pa = (struct packed_addr*)buf;
 		minfo[i].ip = unpack_from_be32(&pa->ip);
 		minfo[i].port = unpack_from_be16(&pa->port);
+		minfo[i].in = unpack_from_be16(&pa->in);
+		minfo[i].time = 0;
 		buf_len -= sizeof(struct packed_addr);
 		buf += sizeof(struct packed_addr);
 	}
@@ -238,12 +242,14 @@ char *cmap_to_buffer(const struct cmap *cmap, size_t *buf_len)
 		pa = (struct packed_addr*)b;
 		pack_to_be32(&pa->ip, cmap->oinfo[i].ip);
 		pack_to_be16(&pa->port, cmap->oinfo[i].port);
+		pack_to_be16(&pa->in, cmap->oinfo[i].in);
 		b += sizeof(struct packed_addr);
 	}
 	for (i = 0; i < cmap->num_mds; ++i) {
 		pa = (struct packed_addr*)b;
 		pack_to_be32(&pa->ip, cmap->minfo[i].ip);
 		pack_to_be16(&pa->port, cmap->minfo[i].port);
+		pack_to_be16(&pa->in, cmap->minfo[i].in);
 		b += sizeof(struct packed_addr);
 	}
 	return buf;

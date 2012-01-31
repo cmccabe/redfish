@@ -33,8 +33,10 @@ struct daemon_info {
 	uint32_t ip;
 	/** IPv4 port */
 	uint16_t port;
-	/** Nonzero if the node is in the cluster */
-	int in;
+	/** In or out? */
+	uint16_t in;
+	/** Last contact time (this field is not serialized) */
+	uint32_t time;
 };
 
 struct cmap {
@@ -69,7 +71,7 @@ extern struct cmap *cmap_from_conf(const struct unitaryc *conf,
  *
  * @param buf		The source buffer
  * @param buf_len	Length of the source buffer
- * @param err		(out-param) the error buffer 
+ * @param err		(out-param) the error buffer
  * @param err_len	Length of the error buffer
  *
  * @return		New cluster map on success, NULL otherwise
