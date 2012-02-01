@@ -121,8 +121,6 @@ struct msgr {
 	int listen_fd;
 	/** Port we're listening on, if any */
 	uint16_t listen_port;
-	/** Size to use when allocating mtran objects on the heap */
-	size_t tran_sz;
 	/** Callback to invoke when transactions receive messages */
 	msgr_cb_t cb;
 	/** Next transaction ID that will be given out */
@@ -182,7 +180,7 @@ void fast_log_msgr(struct msgr *msgr, uint32_t ty,
 /****************************** mtran ********************************/
 void *mtran_alloc(struct msgr *msgr)
 {
-	struct mtran *tr = calloc(1, msgr->tran_sz);
+	struct mtran *tr = calloc(1, sizeof(struct mtran));
 	if (!tr)
 		return NULL;
 	tr->trid = msgr->next_trid;
@@ -706,7 +704,7 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 
 /****************************** msgr ********************************/
 struct msgr *msgr_init(char *err, size_t err_len,
-		int max_conn, int max_tran, size_t tran_sz, msgr_cb_t cb,
+		int max_conn, int max_tran, msgr_cb_t cb,
 		int timeout_period, int timeout_cnt_max,
 		struct fast_log_mgr *fb_mgr)
 {
@@ -725,7 +723,6 @@ struct msgr *msgr_init(char *err, size_t err_len,
 	}
 	msgr->state = MSGR_STATE_INIT;
 	msgr->listen_fd = -1;
-	msgr->tran_sz = tran_sz;
 	msgr->cb = cb;
 	msgr->next_trid = random();
 	if (msgr->next_trid == 0)

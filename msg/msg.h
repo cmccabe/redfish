@@ -41,19 +41,22 @@ struct mtran {
 		RB_ENTRY(mtran) active_entry;
 		STAILQ_ENTRY(mtran) pending_entry;
 	} u;
-	/* Message to send, if in sending mode; NULL otherwise */
+	/** Message to send, if in sending mode; NULL otherwise */
 	struct msg *m;
-	/* Messenger transactor ID-- used to distinguish between simltaneous
+	/** Messenger transactor ID-- used to distinguish between simltaneous
 	 * transactions occuring on the same TCP connection */
 	uint32_t trid;
-	/* Remote messenger transactor ID. The ID this has on the remote end,
+	/** Remote messenger transactor ID. The ID this has on the remote end,
 	 * or 0 if we don't yet know the remote messenger transactor id.
 	 * transactions occuring on the same TCP connection */
 	uint32_t rem_trid;
-	/* remote IP address */
+	/** remote IP address */
 	uint32_t ip;
-	/* remote port */
+	/** remote port */
 	uint16_t port;
+	/** private data.  This will start out as NULL on newly allocated
+	 * transactors (like those you get back from msgr_listen) */
+	void *priv;
 };
 
 extern void *calloc_msg(uint32_t ty, uint32_t len);

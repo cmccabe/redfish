@@ -52,19 +52,13 @@ struct mmm_test2 {
 
 uint32_t g_localhost = INADDR_NONE;
 
-struct foo_tran {
-	struct mtran base;
-	uint32_t i;
-};
-
 static sem_t g_msgr_test_simple_send_sem;
 
 void foo_cb(struct mconn *conn, struct mtran *tr)
 {
 	struct mmm_test2 *mm;
-	struct foo_tran *ft = (struct foo_tran*)tr;
 	uint16_t ty;
-	uint32_t i;
+	uint32_t i, tr_i;
 
 	//fprintf(stderr, "invoking tr %p\n", tr);
 	if (tr->m == NULL) {
@@ -83,18 +77,15 @@ void foo_cb(struct mconn *conn, struct mtran *tr)
 	}
 	mm = (struct mmm_test2*)tr->m;
 	i = unpack_from_be32(&mm->i);
-	if (i != (ft->i + 1)) {
+	tr_i = (uint32_t)(uintptr_t)tr->priv;
+	if (i != tr_i + 1) {
 		fprintf(stderr, "foo_cb: expected i=%d, got i=%d\n",
-			ft->i + 1, i);
+			tr_i + 1, i);
 		abort();
 	}
 	sem_post(&g_msgr_test_simple_send_sem);
-	mtran_free(tr);
+	free(tr);
 }
-
-struct bar_tran {
-	struct mtran base;
-};
 
 void bar_cb(struct mconn *conn, struct mtran *tr)
 {
@@ -103,12 +94,12 @@ void bar_cb(struct mconn *conn, struct mtran *tr)
 	uint32_t i;
 	uint16_t ty;
 	if (tr->m == NULL) {
-		mtran_free(tr);
+		free(tr);
 		return;
 	}
 	else if (IS_ERR(tr->m)) {
 		fprintf(stderr, "bar_cb: send error %d\n", PTR_ERR(tr->m));
-		mtran_free(tr);
+		free(tr);
 		abort();
 	}
 	m = (struct mmm_test1*)tr->m;
@@ -150,11 +141,11 @@ static int msgr_test_init_shutdown(int start)
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 
-	foo_msgr = msgr_init(err, err_len, 10, 10, sizeof(struct foo_tran),
+	foo_msgr = msgr_init(err, err_len, 10, 10,
 			foo_cb, 60, 5, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
-	bar_msgr = msgr_init(err, err_len, 10, 10, sizeof(struct bar_tran),
+	bar_msgr = msgr_init(err, err_len, 10, 10,
 			bar_cb, 60, 5, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
@@ -175,19 +166,19 @@ handle_error:
 	return 1;
 }
 
-static int send_foo_tr(struct msgr* foo_msgr, uint32_t i)
+static int send_foo_tr(struct msgr* msgr, uint32_t i)
 {
-	struct foo_tran *tr;
+	struct mtran *tr;
 	struct mmm_test1 *mout;
-	tr = mtran_alloc(foo_msgr);
+	tr = mtran_alloc(msgr);
 	if (!tr)
 		return -ENOMEM;
 	mout = calloc_msg(MMM_TEST1, sizeof(struct mmm_test1));
 	if (!mout)
 		return -ENOMEM;
 	pack_to_be32(&mout->i, i);
-	tr->i = i;
-	mtran_send(foo_msgr, (struct mtran*)tr, g_localhost,
+	tr->priv = (void*)(uintptr_t)i;
+	mtran_send(msgr, tr, g_localhost,
 		MSGR_UNIT_PORT, (struct msg*)mout);
 	return 0;
 }
@@ -201,11 +192,11 @@ static int msgr_test_simple_send(int num_sends)
 
 	EXPECT_ZERO(sem_init(&g_msgr_test_simple_send_sem, 0, 0));
 
-	foo_msgr = msgr_init(err, err_len, 10, 10, sizeof(struct foo_tran),
+	foo_msgr = msgr_init(err, err_len, 10, 10,
 				foo_cb, 60, 5, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
-	bar_msgr = msgr_init(err, err_len, 10, 10, sizeof(struct bar_tran),
+	bar_msgr = msgr_init(err, err_len, 10, 10,
 				bar_cb, 60, 5, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
@@ -266,11 +257,11 @@ static int msgr_test_conn_timeout(void)
 
 	EXPECT_ZERO(sem_init(&g_msgr_test_conn_timeout_sem, 0, 0));
 
-	baz1_msgr = msgr_init(err, err_len, 10, 10, sizeof(struct foo_tran),
+	baz1_msgr = msgr_init(err, err_len, 10, 10,
 				baz_cb, 1, 1, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
-	baz2_msgr = msgr_init(err, err_len, 10, 10, sizeof(struct foo_tran),
+	baz2_msgr = msgr_init(err, err_len, 10, 10,
 				baz_cb, 1, 1, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
