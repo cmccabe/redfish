@@ -95,6 +95,15 @@ struct mtran {
 	void *priv;
 };
 
+/** Convert an mtran state to a string
+ *
+ * @param state		The mtran state
+ *
+ * @return		A statically allocated string representing the state
+ *			name
+ */
+extern const char *mtran_state_to_str(uint16_t state);
+
 extern void *calloc_msg(uint32_t ty, uint32_t len);
 
 extern struct msg *copy_msg(const struct msg *m);

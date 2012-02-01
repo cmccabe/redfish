@@ -61,12 +61,18 @@ void foo_cb(struct mconn *conn, struct mtran *tr)
 	uint32_t i, tr_i;
 
 	//fprintf(stderr, "invoking tr %p\n", tr);
-	if (tr->m == NULL) {
+	if (tr->state == MTRAN_STATE_SENT) {
+		if (tr->m && IS_ERR(tr->m)) {
+			fprintf(stderr, "foo_cb: send error %d\n",
+				PTR_ERR(tr->m));
+			abort();
+		}
 		mtran_recv_next(conn, tr);
 		return;
 	}
-	else if (IS_ERR(tr->m)) {
-		fprintf(stderr, "foo_cb: send error %d\n", PTR_ERR(tr->m));
+	else if (tr->state != MTRAN_STATE_RECV) {
+		fprintf(stderr, "foo_cb: mtran in unexpected state %s\n",
+			mtran_state_to_str(tr->state));
 		abort();
 	}
 	ty = unpack_from_be16(&tr->m->ty);
@@ -93,13 +99,18 @@ void bar_cb(struct mconn *conn, struct mtran *tr)
 	struct mmm_test2 *mout;
 	uint32_t i;
 	uint16_t ty;
-	if (tr->m == NULL) {
+	if (tr->state == MTRAN_STATE_SENT) {
+		if (tr->m && IS_ERR(tr->m)) {
+			fprintf(stderr, "bar_cb: send error %d\n",
+				PTR_ERR(tr->m));
+			abort();
+		}
 		mtran_free(tr);
 		return;
 	}
-	else if (IS_ERR(tr->m)) {
-		fprintf(stderr, "bar_cb: send error %d\n", PTR_ERR(tr->m));
-		mtran_free(tr);
+	else if (tr->state != MTRAN_STATE_RECV) {
+		fprintf(stderr, "bar_cb: mtran in unexpected state %s\n",
+			mtran_state_to_str(tr->state));
 		abort();
 	}
 	m = (struct mmm_test1*)tr->m;

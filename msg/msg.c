@@ -70,3 +70,22 @@ void dump_msg_hdr(struct msg *msg, char *buf, size_t buf_len)
 		unpack_from_be32(&msg->len),
 		unpack_from_be16(&msg->ty));
 }
+
+const char *mtran_state_to_str(uint16_t state)
+{
+	switch (state) {
+	case MTRAN_STATE_IDLE:
+		return "MTRAN_STATE_IDLE";
+	case MTRAN_STATE_SENDING:
+		return "MTRAN_STATE_SENDING";
+	case MTRAN_STATE_SENT:
+		return "MTRAN_STATE_SENT";
+	case MTRAN_STATE_ACTIVE:
+		return "MTRAN_STATE_ACTIVE";
+	case MTRAN_STATE_RECV:
+		return "MTRAN_STATE_RECV";
+	default:
+		break;
+	}
+	return "(unknown)";
+}
