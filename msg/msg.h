@@ -35,13 +35,47 @@ struct msg {
 	char data[0];
 });
 
+enum mtran_state {
+	MTRAN_STATE_IDLE = 0,
+	/** The mtran is in the 'pending' queue of an mconn.  It is waiting to
+	 * be sent, or in the process of being sent. */
+	MTRAN_STATE_SENDING = 1,
+	/** We just sent the message associated with this mtran */
+	MTRAN_STATE_SENT = 2,
+	/** This mtran is in the 'active' tree of an mconn.  That means we are
+	 * either waiting for a message to come in for this mtran, or a message
+	 * is in the process of coming in.
+	 */
+	MTRAN_STATE_ACTIVE = 3,
+	/** We just received a message on this mtran */
+	MTRAN_STATE_RECV = 4,
+};
+
 /** Transactor */
 struct mtran {
 	union {
 		RB_ENTRY(mtran) active_entry;
 		STAILQ_ENTRY(mtran) pending_entry;
 	} u;
-	/** Message to send, if in sending mode; NULL otherwise */
+	/** The message.
+	 *
+	 * This is an overloaded field (maybe too overloaded?)
+	 *
+	 * Before mtran_send, this contains the message to send.  Once the
+	 * message has been sent, this contains NULL if the send was
+	 * successful, or an error pointer if it wasn't.
+	 *
+	 * In a transactor created by mtran_listen, this contains the message
+	 * that was received.
+	 *
+	 * What if you invoke mtran_recv_next on a transactor?  Well, some time
+	 * later the appropriate response callback will be made.  At that point,
+	 * this field can have several values.  It will contain
+	 * ERR_PTR(ETIMEDOUT) if we timed out waiting for a response.  It will
+	 * contain a different error pointer if there was some TCP-level error.
+	 * If we successfully received a response, it will contain a pointer to
+	 * the response message that was received.
+	 */
 	struct msg *m;
 	/** Messenger transactor ID-- used to distinguish between simltaneous
 	 * transactions occuring on the same TCP connection */
@@ -54,6 +88,8 @@ struct mtran {
 	uint32_t ip;
 	/** remote port */
 	uint16_t port;
+	/** transactor state */
+	uint16_t state;
 	/** private data.  This will start out as NULL on newly allocated
 	 * transactors (like those you get back from msgr_listen) */
 	void *priv;

@@ -187,6 +187,7 @@ void *mtran_alloc(struct msgr *msgr)
 	msgr->next_trid++;
 	if (msgr->next_trid == 0)
 		msgr->next_trid++;
+	tr->state = MTRAN_STATE_IDLE;
 	return tr;
 }
 
@@ -218,6 +219,7 @@ static struct mtran *mtran_lookup_by_id(struct mconn *conn, uint32_t trid)
 void mtran_send(struct msgr *msgr, struct mtran *tr,
 		uint32_t ip, uint16_t port, struct msg *m)
 {
+	tr->state = MTRAN_STATE_SENDING;
 	tr->ip = ip;
 	tr->port = port;
 	tr->m = m;
@@ -231,6 +233,7 @@ void mtran_send(struct msgr *msgr, struct mtran *tr,
 
 void mtran_send_next(struct mconn *conn, struct mtran *tr, struct msg *m)
 {
+	tr->state = MTRAN_STATE_SENDING;
 	tr->m = m;
 	m->rem_trid = htobe32(tr->trid);
 	m->trid = htobe32(tr->rem_trid);
@@ -242,12 +245,17 @@ void mtran_send_next(struct mconn *conn, struct mtran *tr, struct msg *m)
 
 void mtran_recv_next(struct mconn *conn, struct mtran *tr)
 {
+	tr->state = MTRAN_STATE_ACTIVE;
 	RB_INSERT(active_tr, &conn->active_head, tr);
 }
 
 static void mtran_deliver_netfail(struct mconn *conn,
 		struct mtran *tr, int err)
 {
+	if (tr->state == MTRAN_STATE_SENDING)
+		tr->state = MTRAN_STATE_SENT;
+	else
+		tr->state = MTRAN_STATE_RECV;
 	if (!IS_ERR(tr->m))
 		free(tr->m);
 	tr->m = ERR_PTR(FORCE_POSITIVE(err));
@@ -529,6 +537,8 @@ static void mconn_writable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			mconn_next_state_logic(conn);
 			return;
 		}
+		if (tr->state != MTRAN_STATE_SENDING)
+			abort();
 		full = be32toh(tr->m->len);
 		amt = full - conn->cnt;
 		res = write(conn->sock, tr->m, amt);
@@ -550,6 +560,7 @@ static void mconn_writable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			mconn_state_transition(conn, MCONN_QUIESCENT);
 			free(tr->m);
 			tr->m = NULL;
+			tr->state = MTRAN_STATE_SENT;
 			msgr->cb(conn, tr);
 			mconn_next_state_logic(conn);
 		}
@@ -645,6 +656,7 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			tr->port = conn->port;
 			conn->inbound_msg->trid = htobe32(tr->trid);
 			tr->rem_trid = be32toh(conn->inbound_msg->rem_trid);
+			tr->state = MTRAN_STATE_ACTIVE;
 			RB_INSERT(active_tr, &conn->active_head, tr);
 		}
 		else {
@@ -665,6 +677,8 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 				return;
 			}
 		}
+		if (tr->state != MTRAN_STATE_ACTIVE)
+			abort();
 		conn->inbound_tr = tr;
 		mconn_state_transition(conn, MCONN_READING);
 		/* fall through */
@@ -694,6 +708,7 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		tr = conn->inbound_tr;
 		conn->inbound_tr = NULL;
 		tr->m = m;
+		tr->state = MTRAN_STATE_RECV;
 		msgr->cb(conn, tr);
 		mconn_next_state_logic(conn);
 		return;
