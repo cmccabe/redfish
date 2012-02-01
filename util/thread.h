@@ -31,8 +31,7 @@ struct redfish_thread
 	struct fast_log_buf *fb;
 	uint32_t thread_id;
 	redfish_thread_fn_t fn;
-	void *init_data;
-	void *init_data2;
+	void *priv;
 };
 
 /** Create a redfish thread
@@ -40,14 +39,13 @@ struct redfish_thread
  * @param mgr		fast log manager to use
  * @param rt		(out param) thread structure to be initialized
  * @param fn		function to run
- * @param data		some data to pass to the new thread
- * @param data2		some more data to pass to the new thread
+ * @param priv		some data to pass to the new thread
  *
  * @return		0 on success; error code otherwise
  */
 extern int redfish_thread_create(struct fast_log_mgr *mgr,
 		struct redfish_thread* rt, redfish_thread_fn_t fn,
-		void *data, void *data2);
+		void *priv);
 
 /** Join a Redfish thread
  *

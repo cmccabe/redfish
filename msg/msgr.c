@@ -1028,7 +1028,7 @@ static void run_msgr_notify_cb(struct ev_loop *loop, struct ev_async *w,
 
 static int run_msgr(struct redfish_thread *rt)
 {
-	struct msgr *msgr = (struct msgr*)rt->init_data;
+	struct msgr *msgr = (struct msgr*)rt->priv;
 
 	fast_log_msgr(msgr, FAST_LOG_MSGR_INFO, 0,
 		0, 0, 0, FLME_MSGR_INIT, cram_into_u16(rt->thread_id));
@@ -1057,7 +1057,7 @@ void msgr_start(struct msgr *msgr, char *err, size_t err_len)
 		ev_io_start(msgr->loop, &msgr->w_listen_fd);
 	}
 	ret = redfish_thread_create(msgr->fb_mgr, &msgr->rt,
-				run_msgr, msgr, NULL);
+				run_msgr, msgr);
 	if (ret) {
 		snprintf(err, err_len, "msgr_start: pthread_create failed "
 			 "with error %d", ret);
