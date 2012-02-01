@@ -85,3 +85,25 @@ int redfish_thread_join(struct redfish_thread *rt)
 	else
 		return 0;
 }
+
+int pthread_cond_init_mt(pthread_cond_t *cond)
+{
+	int ret;
+	pthread_condattr_t attr;
+
+	ret = pthread_condattr_init(&attr);
+	if (ret)
+		return ret;
+	ret = pthread_condattr_setclock(&attr, CLOCK_MONOTONIC);
+	if (ret) {
+		pthread_condattr_destroy(&attr);
+		return ret;
+	}
+	ret = pthread_cond_init(cond, &attr);
+	if (ret) {
+		pthread_condattr_destroy(&attr);
+		return ret;
+	}
+	pthread_condattr_destroy(&attr);
+	return 0;
+}

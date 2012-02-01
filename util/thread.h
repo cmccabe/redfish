@@ -37,6 +37,7 @@ struct redfish_thread
 
 /** Create a redfish thread
  *
+ * @param mgr		fast log manager to use
  * @param rt		(out param) thread structure to be initialized
  * @param fn		function to run
  * @param data		some data to pass to the new thread
@@ -55,5 +56,13 @@ extern int redfish_thread_create(struct fast_log_mgr *mgr,
  * @return		0 on thread success; error code otherwise
  */
 extern int redfish_thread_join(struct redfish_thread *rt);
+
+/** Initialize a condition variable to use CLOCK_MONOTONIC
+ *
+ * @param cond		the condition variable to initialize
+ *
+ * @return		0 on thread success; error code otherwise
+ */
+extern int pthread_cond_init_mt(pthread_cond_t *cond);
 
 #endif
