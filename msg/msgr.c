@@ -248,6 +248,8 @@ void mtran_recv_next(struct mconn *conn, struct mtran *tr)
 static void mtran_deliver_netfail(struct mconn *conn,
 		struct mtran *tr, int err)
 {
+	if (!IS_ERR(tr->m))
+		free(tr->m);
 	tr->m = ERR_PTR(FORCE_POSITIVE(err));
 	conn->msgr->cb(conn, tr);
 }

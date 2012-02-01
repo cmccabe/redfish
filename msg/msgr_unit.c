@@ -84,7 +84,7 @@ void foo_cb(struct mconn *conn, struct mtran *tr)
 		abort();
 	}
 	sem_post(&g_msgr_test_simple_send_sem);
-	free(tr);
+	mtran_free(tr);
 }
 
 void bar_cb(struct mconn *conn, struct mtran *tr)
@@ -94,12 +94,12 @@ void bar_cb(struct mconn *conn, struct mtran *tr)
 	uint32_t i;
 	uint16_t ty;
 	if (tr->m == NULL) {
-		free(tr);
+		mtran_free(tr);
 		return;
 	}
 	else if (IS_ERR(tr->m)) {
 		fprintf(stderr, "bar_cb: send error %d\n", PTR_ERR(tr->m));
-		free(tr);
+		mtran_free(tr);
 		abort();
 	}
 	m = (struct mmm_test1*)tr->m;
@@ -174,8 +174,10 @@ static int send_foo_tr(struct msgr* msgr, uint32_t i)
 	if (!tr)
 		return -ENOMEM;
 	mout = calloc_msg(MMM_TEST1, sizeof(struct mmm_test1));
-	if (!mout)
+	if (!mout) {
+		mtran_free(tr);
 		return -ENOMEM;
+	}
 	pack_to_be32(&mout->i, i);
 	tr->priv = (void*)(uintptr_t)i;
 	mtran_send(msgr, tr, g_localhost,
