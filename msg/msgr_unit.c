@@ -170,6 +170,8 @@ static int msgr_test_init_shutdown(int start)
 	}
 	msgr_shutdown(foo_msgr);
 	msgr_shutdown(bar_msgr);
+	msgr_free(foo_msgr);
+	msgr_free(bar_msgr);
 	return 0;
 
 handle_error:
@@ -232,6 +234,8 @@ static int msgr_test_simple_send(int num_sends)
 
 	msgr_shutdown(foo_msgr);
 	msgr_shutdown(bar_msgr);
+	msgr_free(foo_msgr);
+	msgr_free(bar_msgr);
 	return 0;
 
 handle_error:
@@ -239,25 +243,45 @@ handle_error:
 	return 1;
 }
 
-static sem_t g_msgr_test_conn_timeout_sem;
+static sem_t g_msgr_test_baz_sem;
 
 void baz_cb(struct mconn *conn, struct mtran *tr)
 {
-	//fprintf(stderr, "invoking tr %p\n", tr);
-	if (tr->m == NULL) {
-		mtran_recv_next(conn, tr);
-		return;
-	}
-	else if (IS_ERR(tr->m)) {
-		if (PTR_ERR(tr->m) == ETIMEDOUT) {
-			mtran_free(tr);
-			sem_post(&g_msgr_test_conn_timeout_sem);
+	uint32_t ex;
+
+	if (tr->state == MTRAN_STATE_SENT) {
+		if (!tr->m) {
+			mtran_recv_next(conn, tr);
 			return;
 		}
-		fprintf(stderr, "baz_cb: unexpected send error %d\n",
-				PTR_ERR(tr->m));
+		ex = (uint32_t)(uintptr_t)tr->priv;
+		if (PTR_ERR(tr->m) == (int)ex) {
+			mtran_free(tr);
+			sem_post(&g_msgr_test_baz_sem);
+			return;
+		}
+		fprintf(stderr, "baz_cb: got unexpected send error %d.\n",
+			PTR_ERR(tr->m));
 		abort();
 	}
+	else if (tr->state != MTRAN_STATE_RECV) {
+		fprintf(stderr, "baz_cb: mtran in unexpected state %s\n",
+			mtran_state_to_str(tr->state));
+		abort();
+	}
+	if (IS_ERR(tr->m)) {
+		ex = (uint32_t)(uintptr_t)tr->priv;
+		if (PTR_ERR(tr->m) == (int)ex) {
+			mtran_free(tr);
+			sem_post(&g_msgr_test_baz_sem);
+			return;
+		}
+		fprintf(stderr, "baz_cb: MTRAN_STATE_RECV error %d.  We"
+			"expected error %d instead.\n", PTR_ERR(tr->m), ex);
+		abort();
+	}
+	/* We don't send a response here.  That's what allows us to test
+	 * timeouts, etc. */
 	mtran_free(tr);
 }
 
@@ -268,7 +292,7 @@ static int msgr_test_conn_timeout(void)
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 
-	EXPECT_ZERO(sem_init(&g_msgr_test_conn_timeout_sem, 0, 0));
+	EXPECT_ZERO(sem_init(&g_msgr_test_baz_sem, 0, 0));
 
 	baz1_msgr = msgr_init(err, err_len, 10, 10,
 				baz_cb, 1, 1, g_fast_log_mgr);
@@ -287,16 +311,61 @@ static int msgr_test_conn_timeout(void)
 	msgr_start(baz2_msgr, err, err_len);
 	if (err[0])
 		goto handle_error;
-	EXPECT_ZERO(send_foo_tr(baz1_msgr, 101));
-	RETRY_ON_EINTR(res, sem_wait(&g_msgr_test_conn_timeout_sem));
-	EXPECT_ZERO(sem_destroy(&g_msgr_test_conn_timeout_sem));
+	EXPECT_ZERO(send_foo_tr(baz1_msgr, ETIMEDOUT));
+	RETRY_ON_EINTR(res, sem_wait(&g_msgr_test_baz_sem));
+	EXPECT_ZERO(sem_destroy(&g_msgr_test_baz_sem));
 
 	msgr_shutdown(baz1_msgr);
 	msgr_shutdown(baz2_msgr);
+	msgr_free(baz1_msgr);
+	msgr_free(baz2_msgr);
 	return 0;
 
 handle_error:
 	fprintf(stderr, "msgr_test_conn_timeout: got error %s\n", err);
+	return 1;
+}
+
+static int msgr_test_conn_cancel(void)
+{
+	int res;
+	struct msgr *baz1_msgr, *baz2_msgr;
+	char err[512] = { 0 };
+	size_t err_len = sizeof(err);
+
+	EXPECT_ZERO(sem_init(&g_msgr_test_baz_sem, 0, 0));
+
+	baz1_msgr = msgr_init(err, err_len, 10, 10,
+				baz_cb, 1, 1, g_fast_log_mgr);
+	if (err[0])
+		goto handle_error;
+	baz2_msgr = msgr_init(err, err_len, 10, 10,
+				baz_cb, 1, 1, g_fast_log_mgr);
+	if (err[0])
+		goto handle_error;
+	msgr_listen(baz2_msgr, MSGR_UNIT_PORT, err, err_len);
+	if (err[0])
+		goto handle_error;
+	msgr_start(baz1_msgr, err, err_len);
+	if (err[0])
+		goto handle_error;
+	msgr_start(baz2_msgr, err, err_len);
+	if (err[0])
+		goto handle_error;
+	EXPECT_ZERO(send_foo_tr(baz1_msgr, ECANCELED));
+	msgr_shutdown(baz1_msgr);
+	EXPECT_ZERO(send_foo_tr(baz1_msgr, ECANCELED));
+	RETRY_ON_EINTR(res, sem_wait(&g_msgr_test_baz_sem));
+	RETRY_ON_EINTR(res, sem_wait(&g_msgr_test_baz_sem));
+	EXPECT_ZERO(sem_destroy(&g_msgr_test_baz_sem));
+
+	msgr_shutdown(baz2_msgr);
+	msgr_free(baz1_msgr);
+	msgr_free(baz2_msgr);
+	return 0;
+
+handle_error:
+	fprintf(stderr, "msgr_test_conn_cancel: got error %s\n", err);
 	return 1;
 }
 
@@ -309,6 +378,7 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 	EXPECT_ZERO(msgr_test_simple_send(1));
 	EXPECT_ZERO(msgr_test_simple_send(100));
 	EXPECT_ZERO(msgr_test_conn_timeout());
+	EXPECT_ZERO(msgr_test_conn_cancel());
 	process_ctx_shutdown();
 
 	return EXIT_SUCCESS;

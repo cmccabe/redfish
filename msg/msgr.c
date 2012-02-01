@@ -50,6 +50,7 @@ static void run_msgr_timeout_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 static void run_msgr_notify_cb(struct ev_loop *loop, struct ev_async *w,
 		int revents);
 static void mconn_next_state_logic(struct mconn *conn);
+static void mtran_deliver_cancel(struct msgr *msgr, struct mtran *tr);
 
 /****************************** types ********************************/
 enum mconn_state_t {
@@ -226,6 +227,17 @@ void mtran_send(struct msgr *msgr, struct mtran *tr,
 	m->rem_trid = htobe32(tr->trid);
 	m->trid = htobe32(tr->rem_trid);
 	pthread_spin_lock(&msgr->lock);
+	if (msgr->state == MSGR_STATE_THREAD_STOPPING) {
+		/* Once the messenger is in shutdown, we don't want to add any
+		 * new transactors to the pending queue.
+		 */
+		pthread_spin_unlock(&msgr->lock);
+		mtran_deliver_cancel(msgr, tr);
+		return;
+	}
+	/* Add our transactor to the pending queue and poke the messenger
+	 * thread.  It will decide which connection (mconn) to give the
+	 * transactor to. */
 	STAILQ_INSERT_TAIL(&msgr->pending_tr_head, tr, u.pending_entry);
 	pthread_spin_unlock(&msgr->lock);
 	ev_async_send(msgr->loop, &msgr->w_notify);
@@ -233,6 +245,10 @@ void mtran_send(struct msgr *msgr, struct mtran *tr,
 
 void mtran_send_next(struct mconn *conn, struct mtran *tr, struct msg *m)
 {
+	/* There is no need for any locks in this function.  mtran_send_next can
+	 * only be invoked from the context of a callback made by the messenger
+	 * thread itself.  Since all modifications to struct mconn are made from
+	 * that same messenger thread, there is no concurrency hazard. */
 	tr->state = MTRAN_STATE_SENDING;
 	tr->m = m;
 	m->rem_trid = htobe32(tr->trid);
@@ -259,7 +275,19 @@ static void mtran_deliver_netfail(struct mconn *conn,
 	if (!IS_ERR(tr->m))
 		free(tr->m);
 	tr->m = ERR_PTR(FORCE_POSITIVE(err));
-	conn->msgr->cb(conn, tr);
+	conn->msgr->cb(NULL, tr);
+}
+
+static void mtran_deliver_cancel(struct msgr *msgr, struct mtran *tr)
+{
+	if (tr->state == MTRAN_STATE_SENDING)
+		tr->state = MTRAN_STATE_SENT;
+	else
+		tr->state = MTRAN_STATE_RECV;
+	if (!IS_ERR(tr->m))
+		free(tr->m);
+	tr->m = ERR_PTR(ECANCELED);
+	msgr->cb(NULL, tr);
 }
 
 /****************************** mconn ********************************/
@@ -770,7 +798,7 @@ struct msgr *msgr_init(char *err, size_t err_len,
 
 void msgr_shutdown(struct msgr *msgr)
 {
-	int res, need_join = 0;
+	int need_join = 0;
 	struct mconn *conn, *conn_tmp;
 
 	pthread_spin_lock(&msgr->lock);
@@ -785,8 +813,14 @@ void msgr_shutdown(struct msgr *msgr)
 	}
 	RB_FOREACH_SAFE(conn, msgr_conn, &msgr->conn_head, conn_tmp) {
 		RB_REMOVE(msgr_conn, &msgr->conn_head, conn);
-		mconn_teardown(conn, ESHUTDOWN);
+		mconn_teardown(conn, ECANCELED);
 	}
+}
+
+void msgr_free(struct msgr *msgr)
+{
+	int res;
+
 	pthread_spin_destroy(&msgr->lock);
 	ev_io_stop(msgr->loop, &msgr->w_listen_fd);
 	ev_async_stop(msgr->loop, &msgr->w_notify);
@@ -940,6 +974,20 @@ static void run_msgr_setup_pending(struct msgr *msgr, struct mtran *tr)
 	mconn_next_state_logic(conn);
 }
 
+static void msgr_cancel_pending_tr(struct msgr *msgr)
+{
+	struct mtran *tr;
+
+	while (1) {
+		tr = STAILQ_FIRST(&msgr->pending_tr_head);
+		if (!tr)
+			break;
+		STAILQ_REMOVE_HEAD(&msgr->pending_tr_head,
+				u.pending_entry);
+		mtran_deliver_cancel(msgr, tr);
+	}
+}
+
 static void run_msgr_notify_cb(struct ev_loop *loop, struct ev_async *w,
 					POSSIBLY_UNUSED(int revents))
 {
@@ -947,7 +995,6 @@ static void run_msgr_notify_cb(struct ev_loop *loop, struct ev_async *w,
 	struct mtran *tr;
 	enum msgr_state_t new_state;
 
-	//fprintf(stderr, "in run_msgr_notify_cb\n");
 	while (1) {
 		pthread_spin_lock(&msgr->lock);
 		tr = STAILQ_FIRST(&msgr->pending_tr_head);
@@ -959,6 +1006,16 @@ static void run_msgr_notify_cb(struct ev_loop *loop, struct ev_async *w,
 		pthread_spin_unlock(&msgr->lock);
 
 		if (new_state == MSGR_STATE_THREAD_STOPPING) {
+			/* We don't need to take the msgr->lock here.  The other
+			 * place where msgr->pending_tr_head could be modified,
+			 * in mtran_send, will never touch the queue when we're
+			 * in state MSGR_STATE_THREAD_STOPPING.
+			 */
+			if (tr) {
+				STAILQ_INSERT_TAIL(&msgr->pending_tr_head,
+						tr, u.pending_entry);
+			}
+			msgr_cancel_pending_tr(msgr);
 			ev_unloop(loop, EVUNLOOP_ALL);
 			return;
 		}

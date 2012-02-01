@@ -54,15 +54,9 @@ struct mtran;
 /** Transactor callback. This is called whenever a message is sent or received
  * by the messenger.
  *
- * Receive event: 'tr->m' will be the message that was just received. The message
- * was allocated with malloc and you are responsible for freeing it.
- * Call mtran_send_next if you want to send a reply to what you heard.
- *
- * Send success event: 'tr->m' will be NULL.
- * Call mtran_recv_next if you want to listen for a reply to what you sent.
- *
- * Send failure event: 'tr->m' will be an error ptr containing the errno failure
- * code.  See util/error.h for details about error pointers.
+ * On a receive completed event, tr->state == MTRAN_STATE_RECV.
+ * On a send completed event, tr->state == MTRAN_STATE_SENT.
+ * See msg/msg.h for a description of the tr->m field.
  *
  * If you don't call mtran_*_next, the messenger doesn't have anything more to
  * do with your tranactor. You should probably either free it with mtran_free,
@@ -173,10 +167,25 @@ extern void mtran_send_next(struct mconn *conn, struct mtran *tr,
  */
 extern void mtran_recv_next(struct mconn *conn, struct mtran *tr);
 
-/** Shutdown a messenger
+/** Shut down a messenger.
+ *
+ * Shutdown will close all open connections and join the messenger thread.
+ * Currently pending messages will receive ECANCELED.  Further attempts to send
+ * messages through the messenger will result in ECANCELED getting delivered
+ * immediately.
  *
  * @param msgr		The messenger
  */
 extern void msgr_shutdown(struct msgr *msgr);
+
+/** Free the memory associated with a messenger.
+ *
+ * You can only free messengers that have been shut down.  Before you free a
+ * messenger, you must make absolutely sure that no threads are referencing it.
+ * Most likely this means you will need to join those threads.
+ *
+ * @param msgr		The messenger
+ */
+extern void msgr_free(struct msgr *msgr);
 
 #endif
