@@ -17,13 +17,13 @@
 #ifndef REDFISH_MSG_MSGR_DOT_H
 #define REDFISH_MSG_MSGR_DOT_H
 
+#include "msg/msg.h" /* for msgr_cb_t */
+
 #include <stdint.h> /* for uint32_t, etc. */
 #include <unistd.h> /* for size_t */
 
 struct mconn;
-struct msg;
 struct msgr;
-struct mtran;
 
 /* The messenger
  *
@@ -50,20 +50,6 @@ struct mtran;
  * with an error pointer set to the errno code.
  */
 
-
-/** Transactor callback. This is called whenever a message is sent or received
- * by the messenger.
- *
- * On a receive completed event, tr->state == MTRAN_STATE_RECV.
- * On a send completed event, tr->state == MTRAN_STATE_SENT.
- * See msg/msg.h for a description of the tr->m field.
- *
- * If you don't call mtran_*_next, the messenger doesn't have anything more to
- * do with your tranactor. You should probably either free it with mtran_free,
- * or pass it to some other subsystem that cares about it.
- */
-typedef void (*msgr_cb_t)(struct mconn *conn, struct mtran *tr);
-
 /** Initialize the messenger.
  *
  * @param err			(out param) error buffer
@@ -71,8 +57,6 @@ typedef void (*msgr_cb_t)(struct mconn *conn, struct mtran *tr);
  * @param max_conn		Maximum number of connections to allow.
  * @param max_tran		Maximum number of simultaneous transactors to
  *				allow
- * @param cb			Callback to invoke when a complete message is
- *				sent or received.
  * @param timeout_period	Timeout period in seconds
  * @param timeout_cnt_max	Number of timeout periods to allow to expire
  *				before timing out a connection or transactor.
@@ -82,20 +66,24 @@ typedef void (*msgr_cb_t)(struct mconn *conn, struct mtran *tr);
  */
 extern struct msgr *msgr_init(char *err, size_t err_len,
 		int max_conn, int max_tran,
-		msgr_cb_t cb, int timeout_period, int timeout_cnt_max,
+		int timeout_period, int timeout_cnt_max,
 		struct fast_log_mgr *mgr);
 
 /** Configure the messenger to listen on a given TCP port.
  *
  * @param msgr		the messenger
  * @param port		TCP port to listen on
+ * @param cb		Callback to invoke when a complete message is
+ *			received.
+ * @param priv		Value to put into 'priv' for the newly created
+ *			transactors
  * @param err		(out param) error buffer
  * @param err_len	length of err
  *
  * @return		the messenger on success; NULL otherwise
  */
-extern void msgr_listen(struct msgr *msgr, uint16_t port,
-		char *err, size_t err_len);
+extern void msgr_listen(struct msgr *msgr, uint16_t port, msgr_cb_t cb,
+		void *priv, char *err, size_t err_len);
 
 /** Start the messenger.
  *
@@ -138,12 +126,15 @@ extern void mtran_free(struct mtran *tr);
  * @param tr		the transactor
  * @param addr		Remote IP address
  * @param port		Remote port
+ * @param cb		Callback to invoke when a complete message is sent.
+ * @param priv		Private data for transactor
  * @param m		The message to send.
  * 			This must be dynamically allocated. The messenger will
  * 			take ownership of this pointer and free it later.
  */
 extern void mtran_send(struct msgr *msgr, struct mtran *tr,
-		uint32_t addr, uint16_t port, struct msg *m);
+		uint32_t addr, uint16_t port,
+		msgr_cb_t cb, void *priv, struct msg *m);
 
 /** Queue a message for sending on a currently open connection
  *

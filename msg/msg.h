@@ -24,6 +24,9 @@
 #include <stdint.h> /* for uint32_t */
 #include <unistd.h> /* for size_t */
 
+struct mconn;
+struct mtran;
+
 /** Represents a message sent or received over the network */
 PACKED(
 struct msg {
@@ -34,6 +37,19 @@ struct msg {
 	uint16_t pad;
 	char data[0];
 });
+
+/** Transactor callback. This is called whenever a message is sent or received
+ * by the messenger.
+ *
+ * On a receive completed event, tr->state == MTRAN_STATE_RECV.
+ * On a send completed event, tr->state == MTRAN_STATE_SENT.
+ * See msg/msg.h for a description of the tr->m field.
+ *
+ * If you don't call mtran_*_next, the messenger doesn't have anything more to
+ * do with your tranactor. You should probably either free it with mtran_free,
+ * or pass it to some other subsystem that cares about it.
+ */
+typedef void (*msgr_cb_t)(struct mconn *conn, struct mtran *tr);
 
 enum mtran_state {
 	MTRAN_STATE_IDLE = 0,
@@ -77,6 +93,8 @@ struct mtran {
 	 * the response message that was received.
 	 */
 	struct msg *m;
+	/** Callback invoked when a message is sent or received */
+	msgr_cb_t cb;
 	/** Messenger transactor ID-- used to distinguish between simltaneous
 	 * transactions occuring on the same TCP connection */
 	uint32_t trid;
@@ -90,8 +108,7 @@ struct mtran {
 	uint16_t port;
 	/** transactor state */
 	uint16_t state;
-	/** private data.  This will start out as NULL on newly allocated
-	 * transactors (like those you get back from msgr_listen) */
+	/** private data. */
 	void *priv;
 };
 

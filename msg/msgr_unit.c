@@ -75,6 +75,11 @@ void foo_cb(struct mconn *conn, struct mtran *tr)
 			mtran_state_to_str(tr->state));
 		abort();
 	}
+	if (IS_ERR(tr->m)) {
+		fprintf(stderr, "foo_cb: got unexpected error %d\n",
+			PTR_ERR(tr->m));
+		abort();
+	}
 	ty = unpack_from_be16(&tr->m->ty);
 	if (ty != MMM_TEST2) {
 		fprintf(stderr, "foo_cb: expected type %d, got type %d\n",
@@ -153,11 +158,11 @@ static int msgr_test_init_shutdown(int start)
 	size_t err_len = sizeof(err);
 
 	foo_msgr = msgr_init(err, err_len, 10, 10,
-			foo_cb, 60, 5, g_fast_log_mgr);
+			60, 5, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
 	bar_msgr = msgr_init(err, err_len, 10, 10,
-			bar_cb, 60, 5, g_fast_log_mgr);
+			60, 5, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
 	if (start) {
@@ -179,7 +184,7 @@ handle_error:
 	return 1;
 }
 
-static int send_foo_tr(struct msgr* msgr, uint32_t i)
+static int send_foo_tr(struct msgr* msgr, msgr_cb_t cb, uint32_t i)
 {
 	struct mtran *tr;
 	struct mmm_test1 *mout;
@@ -192,9 +197,8 @@ static int send_foo_tr(struct msgr* msgr, uint32_t i)
 		return -ENOMEM;
 	}
 	pack_to_be32(&mout->i, i);
-	tr->priv = (void*)(uintptr_t)i;
-	mtran_send(msgr, tr, g_localhost,
-		MSGR_UNIT_PORT, (struct msg*)mout);
+	mtran_send(msgr, tr, g_localhost, MSGR_UNIT_PORT,
+		cb, (void*)(uintptr_t)i, (struct msg*)mout);
 	return 0;
 }
 
@@ -208,14 +212,14 @@ static int msgr_test_simple_send(int num_sends)
 	EXPECT_ZERO(sem_init(&g_msgr_test_simple_send_sem, 0, 0));
 
 	foo_msgr = msgr_init(err, err_len, 10, 10,
-				foo_cb, 60, 5, g_fast_log_mgr);
+				60, 5, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
 	bar_msgr = msgr_init(err, err_len, 10, 10,
-				bar_cb, 60, 5, g_fast_log_mgr);
+				60, 5, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
-	msgr_listen(bar_msgr, MSGR_UNIT_PORT, err, err_len);
+	msgr_listen(bar_msgr, MSGR_UNIT_PORT, bar_cb, NULL, err, err_len);
 	if (err[0])
 		goto handle_error;
 	msgr_start(foo_msgr, err, err_len);
@@ -225,7 +229,7 @@ static int msgr_test_simple_send(int num_sends)
 	if (err[0])
 		goto handle_error;
 	for (i = 0; i < num_sends; ++i) {
-		EXPECT_ZERO(send_foo_tr(foo_msgr, i + 1));
+		EXPECT_ZERO(send_foo_tr(foo_msgr, foo_cb, i + 1));
 	}
 	for (i = 0; i < num_sends; ++i) {
 		RETRY_ON_EINTR(res, sem_wait(&g_msgr_test_simple_send_sem));
@@ -295,14 +299,14 @@ static int msgr_test_conn_timeout(void)
 	EXPECT_ZERO(sem_init(&g_msgr_test_baz_sem, 0, 0));
 
 	baz1_msgr = msgr_init(err, err_len, 10, 10,
-				baz_cb, 1, 1, g_fast_log_mgr);
+				1, 1, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
 	baz2_msgr = msgr_init(err, err_len, 10, 10,
-				baz_cb, 1, 1, g_fast_log_mgr);
+				1, 1, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
-	msgr_listen(baz2_msgr, MSGR_UNIT_PORT, err, err_len);
+	msgr_listen(baz2_msgr, MSGR_UNIT_PORT, baz_cb, NULL, err, err_len);
 	if (err[0])
 		goto handle_error;
 	msgr_start(baz1_msgr, err, err_len);
@@ -311,7 +315,7 @@ static int msgr_test_conn_timeout(void)
 	msgr_start(baz2_msgr, err, err_len);
 	if (err[0])
 		goto handle_error;
-	EXPECT_ZERO(send_foo_tr(baz1_msgr, ETIMEDOUT));
+	EXPECT_ZERO(send_foo_tr(baz1_msgr, baz_cb, ETIMEDOUT));
 	RETRY_ON_EINTR(res, sem_wait(&g_msgr_test_baz_sem));
 	EXPECT_ZERO(sem_destroy(&g_msgr_test_baz_sem));
 
@@ -336,14 +340,14 @@ static int msgr_test_conn_cancel(void)
 	EXPECT_ZERO(sem_init(&g_msgr_test_baz_sem, 0, 0));
 
 	baz1_msgr = msgr_init(err, err_len, 10, 10,
-				baz_cb, 1, 1, g_fast_log_mgr);
+				1, 1, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
 	baz2_msgr = msgr_init(err, err_len, 10, 10,
-				baz_cb, 1, 1, g_fast_log_mgr);
+				1, 1, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
-	msgr_listen(baz2_msgr, MSGR_UNIT_PORT, err, err_len);
+	msgr_listen(baz2_msgr, MSGR_UNIT_PORT, baz_cb, NULL, err, err_len);
 	if (err[0])
 		goto handle_error;
 	msgr_start(baz1_msgr, err, err_len);
@@ -352,9 +356,9 @@ static int msgr_test_conn_cancel(void)
 	msgr_start(baz2_msgr, err, err_len);
 	if (err[0])
 		goto handle_error;
-	EXPECT_ZERO(send_foo_tr(baz1_msgr, ECANCELED));
+	EXPECT_ZERO(send_foo_tr(baz1_msgr, baz_cb, ECANCELED));
 	msgr_shutdown(baz1_msgr);
-	EXPECT_ZERO(send_foo_tr(baz1_msgr, ECANCELED));
+	EXPECT_ZERO(send_foo_tr(baz1_msgr, baz_cb, ECANCELED));
 	RETRY_ON_EINTR(res, sem_wait(&g_msgr_test_baz_sem));
 	RETRY_ON_EINTR(res, sem_wait(&g_msgr_test_baz_sem));
 	EXPECT_ZERO(sem_destroy(&g_msgr_test_baz_sem));

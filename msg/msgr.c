@@ -50,7 +50,7 @@ static void run_msgr_timeout_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 static void run_msgr_notify_cb(struct ev_loop *loop, struct ev_async *w,
 		int revents);
 static void mconn_next_state_logic(struct mconn *conn);
-static void mtran_deliver_cancel(struct msgr *msgr, struct mtran *tr);
+static void mtran_deliver_netfail(struct mtran *tr, int err);
 
 /****************************** types ********************************/
 enum mconn_state_t {
@@ -122,8 +122,10 @@ struct msgr {
 	int listen_fd;
 	/** Port we're listening on, if any */
 	uint16_t listen_port;
-	/** Callback to invoke when transactions receive messages */
-	msgr_cb_t cb;
+	/** Callback to use for incoming transactors */
+	msgr_cb_t listen_cb;
+	/** private data to use for incoming transactors */
+	void *listen_priv;
 	/** Next transaction ID that will be given out */
 	uint32_t next_trid;
 	/** Current number of transactions we're tracking */
@@ -217,12 +219,14 @@ static struct mtran *mtran_lookup_by_id(struct mconn *conn, uint32_t trid)
 	return RB_FIND(active_tr, &conn->active_head, &exemplar);
 }
 
-void mtran_send(struct msgr *msgr, struct mtran *tr,
-		uint32_t ip, uint16_t port, struct msg *m)
+void mtran_send(struct msgr *msgr, struct mtran *tr, uint32_t ip,
+		uint16_t port, msgr_cb_t cb, void *priv, struct msg *m)
 {
 	tr->state = MTRAN_STATE_SENDING;
 	tr->ip = ip;
 	tr->port = port;
+	tr->cb = cb;
+	tr->priv = priv;
 	tr->m = m;
 	m->rem_trid = htobe32(tr->trid);
 	m->trid = htobe32(tr->rem_trid);
@@ -232,7 +236,7 @@ void mtran_send(struct msgr *msgr, struct mtran *tr,
 		 * new transactors to the pending queue.
 		 */
 		pthread_spin_unlock(&msgr->lock);
-		mtran_deliver_cancel(msgr, tr);
+		mtran_deliver_netfail(tr, ECANCELED);
 		return;
 	}
 	/* Add our transactor to the pending queue and poke the messenger
@@ -265,8 +269,7 @@ void mtran_recv_next(struct mconn *conn, struct mtran *tr)
 	RB_INSERT(active_tr, &conn->active_head, tr);
 }
 
-static void mtran_deliver_netfail(struct mconn *conn,
-		struct mtran *tr, int err)
+static void mtran_deliver_netfail(struct mtran *tr, int err)
 {
 	if (tr->state == MTRAN_STATE_SENDING)
 		tr->state = MTRAN_STATE_SENT;
@@ -275,19 +278,7 @@ static void mtran_deliver_netfail(struct mconn *conn,
 	if (!IS_ERR(tr->m))
 		free(tr->m);
 	tr->m = ERR_PTR(FORCE_POSITIVE(err));
-	conn->msgr->cb(NULL, tr);
-}
-
-static void mtran_deliver_cancel(struct msgr *msgr, struct mtran *tr)
-{
-	if (tr->state == MTRAN_STATE_SENDING)
-		tr->state = MTRAN_STATE_SENT;
-	else
-		tr->state = MTRAN_STATE_RECV;
-	if (!IS_ERR(tr->m))
-		free(tr->m);
-	tr->m = ERR_PTR(ECANCELED);
-	msgr->cb(NULL, tr);
+	tr->cb(NULL, tr);
 }
 
 /****************************** mconn ********************************/
@@ -402,13 +393,13 @@ static void mconn_teardown(struct mconn *conn, int failcode)
 		if (!tr)
 			break;
 		STAILQ_REMOVE_HEAD(&conn->pending_head, u.pending_entry);
-		mtran_deliver_netfail(conn, tr, failcode);
+		mtran_deliver_netfail(tr, failcode);
 		++num_failed;
 	}
 	/* Deliver a failure message to all active transactors */
 	RB_FOREACH_SAFE(tr, active_tr, &conn->active_head, tr_tmp) {
 		RB_REMOVE(active_tr, &conn->active_head, tr);
-		mtran_deliver_netfail(conn, tr, failcode);
+		mtran_deliver_netfail(tr, failcode);
 		++num_failed;
 	}
 	if (failcode == ETIMEDOUT) {
@@ -589,7 +580,7 @@ static void mconn_writable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			free(tr->m);
 			tr->m = NULL;
 			tr->state = MTRAN_STATE_SENT;
-			msgr->cb(conn, tr);
+			tr->cb(conn, tr);
 			mconn_next_state_logic(conn);
 		}
 		return;
@@ -685,6 +676,8 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			conn->inbound_msg->trid = htobe32(tr->trid);
 			tr->rem_trid = be32toh(conn->inbound_msg->rem_trid);
 			tr->state = MTRAN_STATE_ACTIVE;
+			tr->cb = msgr->listen_cb;
+			tr->priv = msgr->listen_priv;
 			RB_INSERT(active_tr, &conn->active_head, tr);
 		}
 		else {
@@ -737,7 +730,7 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		conn->inbound_tr = NULL;
 		tr->m = m;
 		tr->state = MTRAN_STATE_RECV;
-		msgr->cb(conn, tr);
+		tr->cb(conn, tr);
 		mconn_next_state_logic(conn);
 		return;
 	default:
@@ -749,7 +742,7 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 
 /****************************** msgr ********************************/
 struct msgr *msgr_init(char *err, size_t err_len,
-		int max_conn, int max_tran, msgr_cb_t cb,
+		int max_conn, int max_tran,
 		int timeout_period, int timeout_cnt_max,
 		struct fast_log_mgr *fb_mgr)
 {
@@ -768,7 +761,6 @@ struct msgr *msgr_init(char *err, size_t err_len,
 	}
 	msgr->state = MSGR_STATE_INIT;
 	msgr->listen_fd = -1;
-	msgr->cb = cb;
 	msgr->next_trid = random();
 	if (msgr->next_trid == 0)
 		msgr->next_trid++;
@@ -831,7 +823,8 @@ void msgr_free(struct msgr *msgr)
 	free(msgr);
 }
 
-void msgr_listen(struct msgr *msgr, uint16_t port, char *err, size_t err_len)
+void msgr_listen(struct msgr *msgr, uint16_t port, msgr_cb_t cb, void *priv,
+		char *err, size_t err_len)
 {
 	struct sockaddr_in addr;
 	socklen_t addr_len;
@@ -876,6 +869,8 @@ void msgr_listen(struct msgr *msgr, uint16_t port, char *err, size_t err_len)
 	}
 	msgr->listen_fd = fd;
 	msgr->listen_port = port;
+	msgr->listen_cb = cb;
+	msgr->listen_priv = priv;
 }
 
 static void run_msgr_timeout_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
@@ -984,7 +979,7 @@ static void msgr_cancel_pending_tr(struct msgr *msgr)
 			break;
 		STAILQ_REMOVE_HEAD(&msgr->pending_tr_head,
 				u.pending_entry);
-		mtran_deliver_cancel(msgr, tr);
+		mtran_deliver_netfail(tr, ECANCELED);
 	}
 }
 
