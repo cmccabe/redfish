@@ -22,8 +22,19 @@
 #include <stdint.h> /* for uint32_t, etc. */
 #include <unistd.h> /* for size_t */
 
+struct fast_log_mgr;
 struct mconn;
 struct msgr;
+
+/** Information about a port we are listening on */
+struct listen_info {
+	/** Callback to invoke on sent/recv */
+	msgr_cb_t cb;
+	/** Private data to store in transactor */
+	void *priv;
+	/** TCP port number */
+	uint16_t port;
+};
 
 /* The messenger
  *
@@ -72,18 +83,14 @@ extern struct msgr *msgr_init(char *err, size_t err_len,
 /** Configure the messenger to listen on a given TCP port.
  *
  * @param msgr		the messenger
- * @param port		TCP port to listen on
- * @param cb		Callback to invoke when a complete message is
- *			received.
- * @param priv		Value to put into 'priv' for the newly created
- *			transactors
+ * @param linfo		information about the port to listen on
  * @param err		(out param) error buffer
  * @param err_len	length of err
  *
  * @return		the messenger on success; NULL otherwise
  */
-extern void msgr_listen(struct msgr *msgr, uint16_t port, msgr_cb_t cb,
-		void *priv, char *err, size_t err_len);
+extern void msgr_listen(struct msgr *msgr, const struct listen_info *linfo,
+		char *err, size_t err_len);
 
 /** Start the messenger.
  *

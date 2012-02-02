@@ -29,7 +29,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/socket.h>
+#include <string.h>
 
 #define MSGR_UNIT_PORT 9095
 
@@ -54,7 +54,7 @@ uint32_t g_localhost = INADDR_NONE;
 
 static sem_t g_msgr_test_simple_send_sem;
 
-void foo_cb(struct mconn *conn, struct mtran *tr)
+static void foo_cb(struct mconn *conn, struct mtran *tr)
 {
 	struct mmm_test2 *mm;
 	uint16_t ty;
@@ -98,7 +98,7 @@ void foo_cb(struct mconn *conn, struct mtran *tr)
 	mtran_free(tr);
 }
 
-void bar_cb(struct mconn *conn, struct mtran *tr)
+static void bar_cb(struct mconn *conn, struct mtran *tr)
 {
 	struct mmm_test1 *m;
 	struct mmm_test2 *mout;
@@ -208,6 +208,7 @@ static int msgr_test_simple_send(int num_sends)
 	struct msgr *foo_msgr, *bar_msgr;
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
+	struct listen_info linfo;
 
 	EXPECT_ZERO(sem_init(&g_msgr_test_simple_send_sem, 0, 0));
 
@@ -219,7 +220,11 @@ static int msgr_test_simple_send(int num_sends)
 				60, 5, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
-	msgr_listen(bar_msgr, MSGR_UNIT_PORT, bar_cb, NULL, err, err_len);
+	memset(&linfo, 0, sizeof(linfo));
+	linfo.cb = bar_cb;
+	linfo.priv = NULL;
+	linfo.port = MSGR_UNIT_PORT;
+	msgr_listen(bar_msgr, &linfo, err, err_len);
 	if (err[0])
 		goto handle_error;
 	msgr_start(foo_msgr, err, err_len);
@@ -249,7 +254,7 @@ handle_error:
 
 static sem_t g_msgr_test_baz_sem;
 
-void baz_cb(struct mconn *conn, struct mtran *tr)
+static void baz_cb(struct mconn *conn, struct mtran *tr)
 {
 	uint32_t ex;
 
@@ -295,6 +300,7 @@ static int msgr_test_conn_timeout(void)
 	struct msgr *baz1_msgr, *baz2_msgr;
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
+	struct listen_info linfo;
 
 	EXPECT_ZERO(sem_init(&g_msgr_test_baz_sem, 0, 0));
 
@@ -306,7 +312,11 @@ static int msgr_test_conn_timeout(void)
 				1, 1, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
-	msgr_listen(baz2_msgr, MSGR_UNIT_PORT, baz_cb, NULL, err, err_len);
+	memset(&linfo, 0, sizeof(linfo));
+	linfo.cb = baz_cb;
+	linfo.priv = NULL;
+	linfo.port = MSGR_UNIT_PORT;
+	msgr_listen(baz2_msgr, &linfo, err, err_len);
 	if (err[0])
 		goto handle_error;
 	msgr_start(baz1_msgr, err, err_len);
@@ -336,6 +346,7 @@ static int msgr_test_conn_cancel(void)
 	struct msgr *baz1_msgr, *baz2_msgr;
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
+	struct listen_info linfo;
 
 	EXPECT_ZERO(sem_init(&g_msgr_test_baz_sem, 0, 0));
 
@@ -347,7 +358,11 @@ static int msgr_test_conn_cancel(void)
 				1, 1, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
-	msgr_listen(baz2_msgr, MSGR_UNIT_PORT, baz_cb, NULL, err, err_len);
+	memset(&linfo, 0, sizeof(linfo));
+	linfo.cb = baz_cb;
+	linfo.priv = NULL;
+	linfo.port = MSGR_UNIT_PORT;
+	msgr_listen(baz2_msgr, &linfo, err, err_len);
 	if (err[0])
 		goto handle_error;
 	msgr_start(baz1_msgr, err, err_len);

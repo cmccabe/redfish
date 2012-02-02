@@ -69,6 +69,17 @@ STAILQ_HEAD(pending_tr, mtran);
 RB_HEAD(active_tr, mtran);
 RB_GENERATE(active_tr, mtran, u.active_entry, mtran_compare);
 
+struct mlisten {
+	/** Callback to invoke on sent/recv */
+	msgr_cb_t cb;
+	/** Private data to store in transactor */
+	void *priv;
+	/** File descriptor */
+	int fd;
+	/** TCP port number */
+	uint16_t port;
+};
+
 struct mconn {
 	RB_ENTRY(mconn) entry;
 	/** The messenger this connection is associated with */
@@ -117,15 +128,10 @@ struct msgr {
 	struct redfish_thread rt;
 	/** Main loop */
 	struct ev_loop *loop;
-	/** Socket we're listening on, or -1 if we're not listening on any
-	 * sockets */
-	int listen_fd;
-	/** Port we're listening on, if any */
-	uint16_t listen_port;
-	/** Callback to use for incoming transactors */
-	msgr_cb_t listen_cb;
-	/** private data to use for incoming transactors */
-	void *listen_priv;
+	/** Listener */
+	struct mlisten listen;
+	/** Watches listen_fd */
+	struct ev_io w_listen_fd;
 	/** Next transaction ID that will be given out */
 	uint32_t next_trid;
 	/** Current number of transactions we're tracking */
@@ -138,8 +144,6 @@ struct msgr {
 	int max_conn;
 	/** TCP connections. Keyed on remote IP address */
 	struct msgr_conn conn_head;
-	/** Watches listen_fd */
-	struct ev_io w_listen_fd;
 	/** Async watcher. Lets us know that another thread asked us to shut
 	 * down or send a message. */
 	struct ev_async w_notify;
@@ -676,8 +680,8 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			conn->inbound_msg->trid = htobe32(tr->trid);
 			tr->rem_trid = be32toh(conn->inbound_msg->rem_trid);
 			tr->state = MTRAN_STATE_ACTIVE;
-			tr->cb = msgr->listen_cb;
-			tr->priv = msgr->listen_priv;
+			tr->cb = msgr->listen.cb;
+			tr->priv = msgr->listen.priv;
 			RB_INSERT(active_tr, &conn->active_head, tr);
 		}
 		else {
@@ -760,7 +764,7 @@ struct msgr *msgr_init(char *err, size_t err_len,
 		return NULL;
 	}
 	msgr->state = MSGR_STATE_INIT;
-	msgr->listen_fd = -1;
+	msgr->listen.fd = -1;
 	msgr->next_trid = random();
 	if (msgr->next_trid == 0)
 		msgr->next_trid++;
@@ -818,12 +822,12 @@ void msgr_free(struct msgr *msgr)
 	ev_async_stop(msgr->loop, &msgr->w_notify);
 	ev_timer_stop(msgr->loop, &msgr->w_timeout);
 	ev_loop_destroy(msgr->loop);
-	if (msgr->listen_fd > 0)
-		RETRY_ON_EINTR(res, close(msgr->listen_fd));
+	if (msgr->listen.fd > 0)
+		RETRY_ON_EINTR(res, close(msgr->listen.fd));
 	free(msgr);
 }
 
-void msgr_listen(struct msgr *msgr, uint16_t port, msgr_cb_t cb, void *priv,
+void msgr_listen(struct msgr *msgr, const struct listen_info *linfo,
 		char *err, size_t err_len)
 {
 	struct sockaddr_in addr;
@@ -835,7 +839,7 @@ void msgr_listen(struct msgr *msgr, uint16_t port, msgr_cb_t cb, void *priv,
 			"msgr_listen before starting the messenger thread.");
 		return;
 	}
-	if (msgr->listen_fd > 0) {
+	if (msgr->listen.fd > 0) {
 		snprintf(err, err_len, "msgr_listen: programmer error: "
 			"current implementation can only listen on one port "
 			"at once, but multiple were requested.");
@@ -851,7 +855,7 @@ void msgr_listen(struct msgr *msgr, uint16_t port, msgr_cb_t cb, void *priv,
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	addr.sin_port = htons(port);
+	addr.sin_port = htons(linfo->port);
 	addr_len = sizeof(addr);
 	ret = bind(fd, (struct sockaddr*)&addr, addr_len);
 	if (ret) {
@@ -867,10 +871,11 @@ void msgr_listen(struct msgr *msgr, uint16_t port, msgr_cb_t cb, void *priv,
 		RETRY_ON_EINTR(res, close(fd));
 		return;
 	}
-	msgr->listen_fd = fd;
-	msgr->listen_port = port;
-	msgr->listen_cb = cb;
-	msgr->listen_priv = priv;
+	fprintf(stderr, "msgr_listen: listening on port %d\n", linfo->port);
+	msgr->listen.fd = fd;
+	msgr->listen.port = linfo->port;
+	msgr->listen.cb = linfo->cb;
+	msgr->listen.priv = linfo->priv;
 }
 
 static void run_msgr_timeout_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
@@ -913,7 +918,7 @@ static void run_msgr_listen_fd_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			0, FLME_NO_EV_READ, 0);
 		return;
 	}
-	fd = do_accept(msgr->listen_fd, (struct sockaddr*)&remote,
+	fd = do_accept(msgr->listen.fd, (struct sockaddr*)&remote,
 		sizeof(remote), WANT_O_CLOEXEC | WANT_O_NONBLOCK);
 	if (fd < 0) {
 		if (is_temporary_socket_error(-fd))
@@ -1027,9 +1032,9 @@ static int run_msgr(struct redfish_thread *rt)
 
 	fast_log_msgr(msgr, FAST_LOG_MSGR_INFO, 0,
 		0, 0, 0, FLME_MSGR_INIT, cram_into_u16(rt->thread_id));
-	if (msgr->listen_fd > 0) {
+	if (msgr->listen.fd > 0) {
 		fast_log_msgr(msgr, FAST_LOG_MSGR_INFO, 0,
-			0, 0, 0, FLME_LISTENING, msgr->listen_port);
+			0, 0, 0, FLME_LISTENING, msgr->listen.port);
 	}
 	ev_loop(msgr->loop, 0);
 	fast_log_msgr(msgr, FAST_LOG_MSGR_INFO, 0,
@@ -1046,9 +1051,9 @@ void msgr_start(struct msgr *msgr, char *err, size_t err_len)
 			 "started!");
 		return;
 	}
-	if (msgr->listen_fd > 0) {
+	if (msgr->listen.fd > 0) {
 		ev_io_init(&msgr->w_listen_fd, run_msgr_listen_fd_cb,
-			msgr->listen_fd, EV_WRITE | EV_READ);
+			msgr->listen.fd, EV_WRITE | EV_READ);
 		ev_io_start(msgr->loop, &msgr->w_listen_fd);
 	}
 	ret = redfish_thread_create(msgr->fb_mgr, &msgr->rt,
