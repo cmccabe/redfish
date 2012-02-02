@@ -113,6 +113,16 @@ static void bsend_test_cb(struct mconn *conn, struct mtran *tr)
 	free(m);
 }
 
+static void bsend_test_cb_noresp(POSSIBLY_UNUSED(struct mconn *conn),
+				struct mtran *tr)
+{
+	if (tr->state == MTRAN_STATE_RECV) {
+		mtran_free(tr);
+		return;
+	}
+	abort();
+}
+
 static int bsend_test30(struct bsend *ctx, struct msgr *msgr, int flags,
 			int x, int y, int ex)
 {
@@ -129,7 +139,7 @@ static int bsend_test30(struct bsend *ctx, struct msgr *msgr, int flags,
 }
 
 static int bsend_test_setup(struct msgr **foo_msgr, struct msgr **bar_msgr,
-			struct bsend **ctx, int simult)
+			struct bsend **ctx, int simult, int resp)
 {
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
@@ -142,7 +152,7 @@ static int bsend_test_setup(struct msgr **foo_msgr, struct msgr **bar_msgr,
 			60, 5, g_fast_log_mgr);
 	EXPECT_ZERO(err[0]);
 	memset(&linfo, 0, sizeof(linfo));
-	linfo.cb = bsend_test_cb;
+	linfo.cb = resp ? bsend_test_cb : bsend_test_cb_noresp;
 	linfo.priv = NULL;
 	linfo.port = MSGR_UNIT_PORT;
 	msgr_listen(*bar_msgr, &linfo, err, err_len);
@@ -166,16 +176,18 @@ static void bsend_test_teardown(struct msgr *foo_msgr, struct msgr *bar_msgr,
 	msgr_free(bar_msgr);
 }
 
-static int bsend_test_send(int simult, int max_iter)
+static int bsend_test_send(int simult, int max_iter, int resp)
 {
 	int i, iter;
 	struct bsend *ctx;
 	struct msgr *foo_msgr, *bar_msgr;
 
-	EXPECT_ZERO(bsend_test_setup(&foo_msgr, &bar_msgr, &ctx, simult));
+	EXPECT_ZERO(bsend_test_setup(&foo_msgr, &bar_msgr, &ctx,
+				simult, resp));
 	for (iter = 0; iter < max_iter; ++iter) {
 		for (i = 0; i < simult; ++i) {
-			EXPECT_ZERO(bsend_test30(ctx, foo_msgr, BSF_RESP,
+			uint8_t flags = resp ? BSF_RESP : 0;
+			EXPECT_ZERO(bsend_test30(ctx, foo_msgr, flags,
 						 i, 1, 0));
 		}
 		EXPECT_EQ(bsend_join(ctx), simult);
@@ -187,6 +199,10 @@ static int bsend_test_send(int simult, int max_iter)
 
 			tr = bsend_get_mtran(ctx, i);
 			EXPECT_NOT_ERRPTR(tr);
+			if (!resp) {
+				EXPECT_EQ(tr->m, NULL);
+				continue;
+			}
 			m = (struct mmm_test31*)tr->m;
 			EXPECT_NOT_ERRPTR(m);
 			ty = unpack_from_be16(&m->base.ty);
@@ -217,7 +233,8 @@ static int bsend_test_cancel(int simult)
 	struct bsend *ctx;
 	struct msgr *foo_msgr, *bar_msgr;
 
-	EXPECT_ZERO(bsend_test_setup(&foo_msgr, &bar_msgr, &ctx, simult));
+	EXPECT_ZERO(bsend_test_setup(&foo_msgr, &bar_msgr, &ctx,
+			simult, 1));
 	bsend_cancel(ctx);
 	for (i = 0; i < simult; ++i) {
 		EXPECT_ZERO(bsend_test30(ctx, foo_msgr, BSF_RESP, i, 1,
@@ -234,10 +251,12 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 	EXPECT_ZERO(utility_ctx_init(argv[0]));
 	EXPECT_ZERO(init_g_localhost());
 	bsend_test_init_shutdown();
-	EXPECT_ZERO(bsend_test_send(1, 1));
-	EXPECT_ZERO(bsend_test_send(5, 1));
-	EXPECT_ZERO(bsend_test_send(1, 2));
-	EXPECT_ZERO(bsend_test_send(10, 5));
+	EXPECT_ZERO(bsend_test_send(1, 1, 1));
+	EXPECT_ZERO(bsend_test_send(5, 1, 1));
+	EXPECT_ZERO(bsend_test_send(1, 2, 1));
+	EXPECT_ZERO(bsend_test_send(10, 5, 1));
+	EXPECT_ZERO(bsend_test_send(1, 1, 0));
+	EXPECT_ZERO(bsend_test_send(10, 5, 0));
 	EXPECT_ZERO(bsend_test_cancel(10));
 	process_ctx_shutdown();
 

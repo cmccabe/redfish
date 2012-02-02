@@ -94,6 +94,15 @@ error:
 	return ERR_PTR(FORCE_POSITIVE(ret));
 }
 
+static void bsend_cb_complete(struct bsend *ctx)
+{
+	pthread_mutex_lock(&ctx->lock);
+	++ctx->num_finished;
+	if (ctx->num_finished == ctx->num_tr)
+		pthread_cond_signal(&ctx->cond);
+	pthread_mutex_unlock(&ctx->lock);
+}
+
 static void bsend_cb(struct mconn *conn, struct mtran *tr)
 {
 	struct bsend_mtran *btr = (struct bsend_mtran *)tr->priv;
@@ -101,23 +110,30 @@ static void bsend_cb(struct mconn *conn, struct mtran *tr)
 
 //	fprintf(stderr, "bsend_cb in state %s\n",
 //		mtran_state_to_str(tr->state)); 
-	if (tr->state == MTRAN_STATE_SENT) {
-		if ((tr->m == NULL) && (btr->flags & BSF_RESP)) {
-			mtran_recv_next(conn, tr);
+	if (btr->flags & BSF_RESP) {
+		/* Let's get the response */
+		if (tr->state == MTRAN_STATE_SENT) {
+			if (tr->m == NULL)
+				mtran_recv_next(conn, tr);
+			return;
 		}
-		return;
-	}
-	else if (tr->state == MTRAN_STATE_RECV) {
-		pthread_mutex_lock(&ctx->lock);
-		++ctx->num_finished;
-		if (ctx->num_finished == ctx->num_tr) {
-			pthread_cond_signal(&ctx->cond);
+		else if (tr->state == MTRAN_STATE_RECV) {
+			bsend_cb_complete(ctx);
+			return;
 		}
-		pthread_mutex_unlock(&ctx->lock);
-		return;
+		else {
+			abort();
+		}
 	}
 	else {
-		abort();
+		/* We don't expect a response */
+		if (tr->state == MTRAN_STATE_SENT) {
+			bsend_cb_complete(ctx);
+			return;
+		}
+		else {
+			abort();
+		}
 	}
 }
 
