@@ -227,7 +227,7 @@ static int bsend_test_send(int simult, int max_iter, int resp)
 	return 0;
 }
 
-static int bsend_test_cancel(int simult)
+static int bsend_test_cancel(int simult, int cancel)
 {
 	int i;
 	struct bsend *ctx;
@@ -237,8 +237,11 @@ static int bsend_test_cancel(int simult)
 			simult, 1));
 	bsend_cancel(ctx);
 	for (i = 0; i < simult; ++i) {
+		int c = (simult >= cancel);
+		if (simult == cancel)
+			bsend_cancel(ctx);
 		EXPECT_ZERO(bsend_test30(ctx, foo_msgr, BSF_RESP, i, 1,
-				-ECANCELED));
+				c ? -ECANCELED : 0));
 	}
 	EXPECT_EQ(bsend_join(ctx), -ECANCELED);
 	bsend_reset(ctx);
@@ -257,7 +260,8 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 	EXPECT_ZERO(bsend_test_send(10, 5, 1));
 	EXPECT_ZERO(bsend_test_send(1, 1, 0));
 	EXPECT_ZERO(bsend_test_send(10, 5, 0));
-	EXPECT_ZERO(bsend_test_cancel(10));
+	EXPECT_ZERO(bsend_test_cancel(10, 0));
+	EXPECT_ZERO(bsend_test_cancel(10, 5));
 	process_ctx_shutdown();
 
 	return EXIT_SUCCESS;
