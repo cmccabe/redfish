@@ -25,6 +25,8 @@
 #include "util/thread.h" /* for struct redfish_thread */
 
 struct fast_log_buf;
+struct mtran;
+struct msgr;
 struct recv_pool;
 
 typedef int (*recv_pool_handler_fn_t)(struct redfish_thread *rt,
