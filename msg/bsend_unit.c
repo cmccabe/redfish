@@ -233,13 +233,11 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 {
 	EXPECT_ZERO(utility_ctx_init(argv[0]));
 	EXPECT_ZERO(init_g_localhost());
-	if (0) {
 	bsend_test_init_shutdown();
 	EXPECT_ZERO(bsend_test_send(1, 1));
 	EXPECT_ZERO(bsend_test_send(5, 1));
 	EXPECT_ZERO(bsend_test_send(1, 2));
 	EXPECT_ZERO(bsend_test_send(10, 5));
-	}
 	EXPECT_ZERO(bsend_test_cancel(10));
 	process_ctx_shutdown();
 
