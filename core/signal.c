@@ -110,6 +110,9 @@ static void handle_fatal_signal(int sig, siginfo_t *siginfo, void *ctx)
 	delete_pid_file();
 	/* dump fast logs */
 	fast_log_mgr_dump_all(g_fast_log_mgr, g_fast_log_fd);
+	snprintf(buf, sizeof(bentries), "END_FAST_LOG_DUMP\n");
+	res = write(g_crash_log_fd, buf, strlen(buf));
+	fsync(g_crash_log_fd);
 	/* Call the previously install signal handler.
 	 * Probably, this will dump core. */
 	g_prev_handlers[sig](sig, siginfo, ctx);
