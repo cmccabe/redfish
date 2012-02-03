@@ -21,6 +21,8 @@
 #include "core/process_ctx.h"
 #include "jorm/json.h"
 #include "mds/net.h"
+#include "util/error.h"
+#include "util/fast_log.h"
 #include "util/str_to_int.h"
 #include "util/string.h"
 
@@ -112,6 +114,7 @@ static struct mdsc *get_mds_conf(struct unitaryc *conf, int ident)
 
 int main(int argc, char **argv)
 {
+	struct fast_log_buf *fb = NULL;
 	int ret, ident = -1, daemonize = 1;
 	const char *cfname = NULL;
 	struct unitaryc *conf;
@@ -132,7 +135,16 @@ int main(int argc, char **argv)
 	}
 	if (process_ctx_init(argv[0], daemonize, mconf->lc))
 		return EXIT_FAILURE;
+	fb = fast_log_create(g_fast_log_mgr, "mds_main");
+	if (IS_ERR(fb)) {
+		ret = PTR_ERR(fb);
+		goto done;
+	}
+	mds_net_init(fb, conf, mconf);
 	ret = mds_main_loop();
+done:
+	if (!IS_ERR(fb))
+		fast_log_free(fb);
 	process_ctx_shutdown();
 	free_unitary_conf_file(conf);
 	return ret;

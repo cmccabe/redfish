@@ -10,6 +10,7 @@ target_link_libraries(fishmds
     ${LIBEV_LIBRARIES}
     core
     jorm
+    msgr
 )
 
 add_executable(str_range_lock_unit str_range_lock_unit.c str_range_lock.c)

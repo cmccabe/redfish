@@ -17,6 +17,19 @@
 #ifndef REDFISH_MDS_NET_DOT_H
 #define REDFISH_MDS_NET_DOT_H
 
+struct fast_log_buf;
+struct mdsc;
+struct unitaryc;
+
+/** Initialize mds networking stuff
+ *
+ * @param fb		The fast_log_buf to use
+ * @param conf		The unitary Redfish configuration
+ * @param mconf		The MDS configuration
+ */
+void mds_net_init(struct fast_log_buf *fb, struct unitaryc *conf,
+		struct mdsc *mconf);
+
 /** Runs the main metadata server loop
  *
  * @return	0 on successful exit; error code otherwise
