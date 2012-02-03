@@ -202,11 +202,11 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 	fb = fast_log_create(g_fast_log_mgr, "recv_pool_unit_main");
 	EXPECT_NOT_ERRPTR(fb);
 	EXPECT_ZERO(init_g_localhost());
-	if (0)
 	EXPECT_ZERO(recv_pool_test_init_shutdown(fb));
 	EXPECT_ZERO(recv_pool_test_recv(fb, 1, 1));
 	EXPECT_ZERO(recv_pool_test_recv(fb, 3, 1));
 	EXPECT_ZERO(recv_pool_test_recv(fb, 10, 5));
+	fast_log_free(fb);
 	process_ctx_shutdown();
 
 	return EXIT_SUCCESS;
