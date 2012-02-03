@@ -19,5 +19,6 @@ JORM_CONTAINER_BEGIN(mdsc)
 	JORM_EMBEDDED(mc, mstorc)
 	JORM_INT(cli_port)
 	JORM_INT(mds_port)
+	JORM_INT(osd_port)
 	JORM_STR(host)
 JORM_CONTAINER_END
