@@ -17,13 +17,17 @@
 #include "msg/generic.h"
 #include "msg/msg.h"
 #include "util/packed.h"
+#include "util/macro.h"
 
+#include <arpa/inet.h>
 #include <errno.h>
+#include <netinet/in.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 
 void *calloc_msg(uint32_t ty, uint32_t len)
 {
@@ -88,4 +92,17 @@ const char *mtran_state_to_str(uint16_t state)
 		break;
 	}
 	return "(unknown)";
+}
+
+BUILD_BUG_ON(sizeof(in_addr_t) != sizeof(uint32_t));
+
+int get_localhost_ipv4(uint32_t *lh)
+{
+	in_addr_t res;
+
+	res = inet_addr("127.0.0.1");
+	if (res == INADDR_NONE)
+		return -ENOENT;
+	*lh = ntohl(res);
+	return 0;
 }

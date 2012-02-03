@@ -127,6 +127,14 @@ extern struct msg *copy_msg(const struct msg *m);
 
 extern void dump_msg_hdr(struct msg *msg, char *buf, size_t buf_len);
 
+/** Get ipv4 address of localhost
+ *
+ * @param lh		(out param) The ipv4 address of localhost
+ *
+ * @return		0 on success; error code otherwise
+ */
+extern int get_localhost_ipv4(uint32_t *lh);
+
 /** A typecast that returns NULL if the message is not long enough
  *
  * This only validates that we can access the fixed-offset fields, of course.

@@ -50,7 +50,7 @@ struct mmm_test2 {
 	uint32_t i;
 });
 
-uint32_t g_localhost = INADDR_NONE;
+static uint32_t g_localhost;
 
 static sem_t g_msgr_test_simple_send_sem;
 
@@ -136,19 +136,6 @@ static void bar_cb(struct mconn *conn, struct mtran *tr)
 	pack_to_be32(&mout->i, i + 1);
 	mtran_send_next(conn, tr, (struct msg*)mout);
 	free(m);
-}
-
-BUILD_BUG_ON(sizeof(in_addr_t) != sizeof(uint32_t));
-
-static int init_g_localhost(void)
-{
-	g_localhost = inet_addr("127.0.0.1");
-	if (g_localhost == INADDR_NONE) {
-		fprintf(stderr, "failed to get IP address for localhost\n");
-		return 1;
-	}
-	g_localhost = ntohl(g_localhost);
-	return 0;
 }
 
 static int msgr_test_init_shutdown(int start)
@@ -391,7 +378,7 @@ handle_error:
 int main(POSSIBLY_UNUSED(int argc), char **argv)
 {
 	EXPECT_ZERO(utility_ctx_init(argv[0]));
-	EXPECT_ZERO(init_g_localhost());
+	EXPECT_ZERO(get_localhost_ipv4(&g_localhost));
 	EXPECT_ZERO(msgr_test_init_shutdown(0));
 	EXPECT_ZERO(msgr_test_init_shutdown(1));
 	EXPECT_ZERO(msgr_test_simple_send(1));

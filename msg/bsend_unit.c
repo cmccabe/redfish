@@ -52,20 +52,7 @@ struct mmm_test31 {
 	uint32_t z;
 });
 
-uint32_t g_localhost = INADDR_NONE;
-
-BUILD_BUG_ON(sizeof(in_addr_t) != sizeof(uint32_t));
-
-static int init_g_localhost(void)
-{
-	g_localhost = inet_addr("127.0.0.1");
-	if (g_localhost == INADDR_NONE) {
-		fprintf(stderr, "failed to get IP address for localhost\n");
-		return 1;
-	}
-	g_localhost = ntohl(g_localhost);
-	return 0;
-}
+static uint32_t g_localhost;
 
 static void bsend_test_init_shutdown(void)
 {
@@ -252,7 +239,7 @@ static int bsend_test_cancel(int simult, int cancel)
 int main(POSSIBLY_UNUSED(int argc), char **argv)
 {
 	EXPECT_ZERO(utility_ctx_init(argv[0]));
-	EXPECT_ZERO(init_g_localhost());
+	EXPECT_ZERO(get_localhost_ipv4(&g_localhost));
 	bsend_test_init_shutdown();
 	EXPECT_ZERO(bsend_test_send(1, 1, 1));
 	EXPECT_ZERO(bsend_test_send(5, 1, 1));

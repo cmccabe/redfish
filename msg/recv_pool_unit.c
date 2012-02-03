@@ -47,20 +47,7 @@ struct mmm_test40 {
 	uint32_t q;
 });
 
-uint32_t g_localhost = INADDR_NONE;
-
-BUILD_BUG_ON(sizeof(in_addr_t) != sizeof(uint32_t));
-
-static int init_g_localhost(void)
-{
-	g_localhost = inet_addr("127.0.0.1");
-	if (g_localhost == INADDR_NONE) {
-		fprintf(stderr, "failed to get IP address for localhost\n");
-		return 1;
-	}
-	g_localhost = ntohl(g_localhost);
-	return 0;
-}
+static uint32_t g_localhost;
 
 static int recv_pool_test_init_shutdown(struct fast_log_buf *fb)
 {
@@ -201,7 +188,7 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 	EXPECT_ZERO(utility_ctx_init(argv[0]));
 	fb = fast_log_create(g_fast_log_mgr, "recv_pool_unit_main");
 	EXPECT_NOT_ERRPTR(fb);
-	EXPECT_ZERO(init_g_localhost());
+	EXPECT_ZERO(get_localhost_ipv4(&g_localhost));
 	EXPECT_ZERO(recv_pool_test_init_shutdown(fb));
 	EXPECT_ZERO(recv_pool_test_recv(fb, 1, 1));
 	EXPECT_ZERO(recv_pool_test_recv(fb, 3, 1));
