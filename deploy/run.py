@@ -24,8 +24,10 @@ parser = OptionParser()
 parser.add_option("-c", "--cluster-config", dest="cluster_conf")
 (opts, args) = parser.parse_args()
 if opts.cluster_conf == None:
-    sys.stderr.write("you must give a Redfish cluster configuration file\n")
-    sys.exit(1)
+    opts.cluster_conf = os.getenv("REDFISH_CONF")
+    if opts.cluster_conf == None:
+        sys.stderr.write("you must give a Redfish cluster configuration file\n")
+        sys.exit(1)
 
 jo = load_conf_file(opts.cluster_conf)
 
