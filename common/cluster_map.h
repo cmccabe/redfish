@@ -100,7 +100,15 @@ extern char *cmap_to_buffer(const struct cmap *cmap, size_t *buf_len);
  * @return		0 on success, -ENAMETOOLONG if there wasn't enough
  *			space.
  */
-int cmap_to_str(const struct cmap *cmap, char *buf, size_t buf_len);
+extern int cmap_to_str(const struct cmap *cmap, char *buf, size_t buf_len);
+
+/** Determine the metadata server which is the leader
+ *
+ * @param cmap		The cluster map
+ *
+ * @return		the leader mid, or -1 if there are no remaining MDSes
+ */
+extern int cmap_get_leader_mid(const struct cmap *cmap);
 
 /** Free a cluster map
  *

@@ -67,9 +67,11 @@ static int test_cmap_from_conf(const char *tdir)
 	EXPECT_EQ(cmap->epoch, 1);
 	EXPECT_EQ(cmap->oinfo[0].ip, localhost);
 	EXPECT_EQ(cmap->oinfo[0].port, 9001);
+	EXPECT_EQ(cmap->oinfo[0].in, 1);
 	EXPECT_EQ(cmap->num_mds, 1);
 	EXPECT_EQ(cmap->minfo[0].ip, localhost);
 	EXPECT_EQ(cmap->minfo[0].port, 9000);
+	EXPECT_EQ(cmap->minfo[0].in, 1);
 	cmap_free(cmap);
 	free_unitary_conf_file(conf);
 	return 0;
@@ -122,13 +124,17 @@ static int test_cmap_round_trip_1(void)
 	localhost = inet_addr("127.0.0.1");
 	cmap->oinfo[0].ip = localhost;
 	cmap->oinfo[0].port = 8080;
+	cmap->oinfo[0].in = 1;
 	cmap->oinfo[1].ip = localhost;
 	cmap->oinfo[1].port = 8081;
+	cmap->oinfo[1].in = 1;
 	cmap->minfo[0].ip = localhost;
 	cmap->minfo[0].port = 9080;
+	cmap->minfo[0].in = 0;
 	cmap->minfo[1].ip = localhost;
 	cmap->minfo[1].port = 9081;
-	
+	cmap->minfo[1].in = 1;
+	EXPECT_EQ(cmap_get_leader_mid(cmap), 1);
 	EXPECT_ZERO(test_cmap_round_trip(cmap));
 	cmap_free(cmap);
 
@@ -152,11 +158,14 @@ static int test_cmap_round_trip_2(void)
 	localhost = inet_addr("127.0.0.1");
 	cmap->oinfo[0].ip = localhost;
 	cmap->oinfo[0].port = 8080;
+	cmap->oinfo[0].in = 1;
 	cmap->minfo[0].ip = localhost;
 	cmap->minfo[0].port = 9080;
+	cmap->minfo[0].in = 1;
 	cmap->minfo[1].ip = localhost;
 	cmap->minfo[1].port = 9081;
-	
+	cmap->minfo[1].in = 1;
+	EXPECT_EQ(cmap_get_leader_mid(cmap), 0);
 	EXPECT_ZERO(test_cmap_round_trip(cmap));
 	cmap_free(cmap);
 

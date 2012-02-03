@@ -257,6 +257,18 @@ char *cmap_to_buffer(const struct cmap *cmap, size_t *buf_len)
 	return buf;
 }
 
+int cmap_get_leader_mid(const struct cmap *cmap)
+{
+	int i, num_mds;
+
+	num_mds = cmap->num_mds;
+	for (i = 0; i < num_mds; ++i) {
+		if (cmap->minfo[i].in)
+			return i;
+	}
+	return -1;
+}
+
 void cmap_free(struct cmap *cmap)
 {
 	if (!cmap)
