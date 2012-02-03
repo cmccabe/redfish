@@ -44,6 +44,8 @@ static void usage(int exitstatus)
 "    Set the mds configuration file.",
 "-f",
 "    Run in the foreground (do not daemonize)",
+"-k <mds-id>",
+"    Set the mds ID.",
 "-h",
 "    Show this help message",
 NULL
