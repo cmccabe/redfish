@@ -51,6 +51,8 @@ static void run_msgr_notify_cb(struct ev_loop *loop, struct ev_async *w,
 		int revents);
 static void mconn_next_state_logic(struct mconn *conn);
 static void mtran_deliver_netfail(struct mtran *tr, int err);
+static int mtran_compare(struct mtran *tr_a, struct mtran *tr_b) PURE;
+static int mconn_compare(struct mconn *a, struct mconn *b) PURE;
 
 /****************************** types ********************************/
 enum mconn_state_t {

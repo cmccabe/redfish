@@ -33,6 +33,7 @@
 #define POSSIBLY_UNUSED(x)
 #define WARN_UNUSED_RES
 #define PRINTF_FORMAT(x, y)
+#define PURE
 
 #elif __GNUC__ /* GCC */
 #define PACKED(D) D __attribute__((__packed__))
@@ -44,6 +45,7 @@
 #define WARN_UNUSED_RES __attribute__((warn_unused_result))
 #define PRINTF_FORMAT(x, y) __attribute__((format(printf, x, y)))
 #define WEAK_SYMBOL(x) x __attribute__((weak))
+#define PURE __attribute__((pure))
 
 #else /* Unknown */
 #error "sorry, I can't figure out what compiler you are using."

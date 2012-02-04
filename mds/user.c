@@ -58,6 +58,9 @@ struct packed_group {
 	char data[0];
 });
 
+static int user_compare(struct user *a, struct user *b) PURE;
+static int group_compare(struct group *a, struct group *b) PURE;
+
 static int user_compare(struct user *a, struct user *b)
 {
 	return strcmp(a->name, b->name);
