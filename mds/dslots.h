@@ -38,18 +38,18 @@ extern struct dslots *dslots_init(int num_dslots);
  *
  * @return		0 on success; error code otherwise
  */
-extern int dslots_add(struct dslots *dslots, struct delegation **dg,
-		int dg_len);
+extern int dslots_add(struct dslots *dslots, struct delegation **dgs,
+		int num_dgs);
 
 /** Remove delegation(s)
  *
  * @param dslots	The bank of dslots
- * @param dg		Array of delegation IDs to delete
+ * @param dgids		Array of delegation IDs to delete
  * @param dg_len	Number of delegations to delete
  *
  * @return		The number of delegations removed
  */
-extern int dslots_remove(struct dslots *dslots, uint64_t *dgids, int dg_len);
+extern int dslots_remove(struct dslots *dslots, uint64_t *dgids, int num_dgs);
 
 /** Lock and retrieve a delegation
  *

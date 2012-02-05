@@ -31,6 +31,10 @@ add_executable(user_unit user_unit.c user.c)
 target_link_libraries(user_unit core ${LEVELDB_LIBRARIES} util utest)
 add_test(user_unit ${CMAKE_CURRENT_BINARY_DIR}/user_unit user_unit)
 
+add_executable(dslots_unit dslots_unit.c delegation.c dslots.c)
+target_link_libraries(dslots_unit core util utest)
+add_test(user_unit ${CMAKE_CURRENT_BINARY_DIR}/dslots_unit dslots_unit)
+
 add_executable(fishmdump
     dump.c
     force_cpp.cc

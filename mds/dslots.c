@@ -113,6 +113,7 @@ int dslots_add(struct dslots *dslots, struct delegation **dgs,
 	}
 	qsort(phs, num_dgs, sizeof(struct dg_placeholder),
 			compare_dg_placeholder);
+	i = 0;
 	while (1) {
 		if (i >= num_dgs)
 			break;
@@ -151,6 +152,7 @@ int dslots_remove(struct dslots *dslots, uint64_t *dgids, int num_dgs)
 	}
 	qsort(phs, num_dgs, sizeof(struct dg_placeholder),
 			compare_dg_placeholder);
+	i = 0;
 	while (1) {
 		if (i >= num_dgs)
 			break;
