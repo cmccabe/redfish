@@ -66,4 +66,10 @@
 /** Invalid filesystem ID */
 #define RF_INVAL_FSID 0
 
+/** The root delegation ID */
+#define RF_ROOT_DGID 0ULL
+
+/** Invalid delegation ID */
+#define RF_INVAL_DGID 0xffffffffffffffffULL
+
 #endif
