@@ -59,6 +59,8 @@ enum {
 	MMM_UNLINK_TREE_REQ,
 	/** Client rename request */
 	MMM_RENAME_REQ,
+	/** Heartbeat request sent from peer */
+	MMM_MDS_HEARTBEAT,
 };
 
 /* Create file */
@@ -115,32 +117,37 @@ struct mmm_list_directory_req {
 PACKED(
 struct mmm_stat_req {
 	struct msg base;
-	struct mmm_path path;
+	uint16_t path_len;
+	char path[0];
 });
 PACKED(
 struct mmm_chmod_req {
 	struct msg base;
 	uint16_t mode;
-	struct mmm_path path;
+	uint16_t path_len;
+	char path[0];
 });
 PACKED(
 struct mmm_chown_req {
 	struct msg base;
 	uint16_t user;
 	uint16_t group;
-	struct mmm_path path;
+	uint16_t path_len;
+	char path[0];
 });
 PACKED(
 struct mmm_utimes_req {
 	struct msg base;
 	int64_t atime;
 	int64_t mtime;
-	struct mmm_path path;
+	uint16_t path_len;
+	char path[0];
 });
 PACKED(
 struct mmm_unlink_req {
 	struct msg base;
-	struct mmm_path path;
+	uint16_t path_len;
+	char path[0];
 });
 PACKED(
 struct mmm_rename_req {
@@ -154,6 +161,11 @@ PACKED(
 struct mmm_close_rfile_req {
 	struct msg base;
 	int32_t rfile;
+});
+PACKED(
+struct mmm_mds_heartbeat {
+	struct msg base;
+	uint16_t mid;
 });
 
 #endif
