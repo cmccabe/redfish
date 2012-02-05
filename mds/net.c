@@ -20,8 +20,12 @@
 #include "core/glitch_log.h"
 #include "core/process_ctx.h"
 #include "jorm/jorm_const.h"
-#include "msg/bsend.h"
+#include "mds/delegation.h"
+#include "mds/dmap.h"
+#include "mds/dslots.h"
 #include "mds/limits.h"
+#include "msg/bsend.h"
+#include "msg/mds.h"
 #include "msg/msg.h"
 #include "msg/msgr.h"
 #include "msg/recv_pool.h"
@@ -29,6 +33,7 @@
 #include "util/error.h"
 #include "util/fast_log.h"
 #include "util/fast_log_types.h"
+#include "util/packed.h"
 #include "util/string.h"
 #include "util/thread.h"
 #include "util/time.h"
@@ -54,6 +59,8 @@
 #define DEFAULT_MDS_OSD_PORT 9001
 
 #define DEFAULT_MDS_CLI_PORT 9002
+
+#define NUM_DSLOTS 32
 
 /** Maximum number of simultaneous transactors to allow. */
 #define RF_MAX_TRAN 16384
@@ -89,6 +96,12 @@ struct maint_thread {
 
 /** Current cluster map */
 struct cmap *g_cmap;
+
+/** Current delegation map */
+struct dmap *g_dmap;
+
+/** Delegation locks */
+struct dslots *g_dslots;
 
 /** Messenger listening for connections from other MDSes */
 struct msgr *g_mds_msgr;
@@ -160,12 +173,28 @@ static void mds_net_msgr_init(struct recv_pool **rpool, struct msgr **msgr,
 static int mds_net_handle_mds_tr(POSSIBLY_UNUSED(struct redfish_thread *rt),
 			POSSIBLY_UNUSED(struct mtran *tr))
 {
+	uint16_t ty;
+
 	// Identify source MDS ... based on MDS ID embedded in message
 	// Can't use IP address because there might be more than one MDS at that
 	// IP (although possibly we should check IP?)
 
 	// Update 'last message received at' for that MDS
 
+	if (IS_ERR(tr->m)) {
+		glitch_log("mds_net_handle_mds_tr: got error %d\n",
+			PTR_ERR(tr->m));
+		return 0;
+	}
+	ty = unpack_from_be16(&tr->m->ty);
+	switch (ty) {
+	case MMM_MDS_HEARTBEAT:
+		break;
+	default:
+		glitch_log("mds_net_handle_mds_tr: unhandled message "
+			   "type %d\n", ty);
+		return 0;
+	}
 	// Handle message (something like a switch statement based on type)
 	//
 	// case MMM_MDS_HEARTBEAT:
@@ -247,6 +276,33 @@ static int mds_net_maintenance_thread(struct redfish_thread *rt)
 }
 #endif
 
+static void mds_net_root_delegation_setup(void)
+{
+	int i, primary;
+	struct delegation *dg;
+	struct daemon_info *di;
+	struct dg_mds_info *mi;
+
+	dg = dslots_lock(g_dslots, RF_ROOT_DGID);
+	if (IS_ERR(dg)) {
+		glitch_log("mds_net_root_delegation_setup: failed to locate "
+			"root delegation!  Error %d\n", PTR_ERR(dg));
+		abort();
+	}
+	primary = 1;
+	for (i = 0; i < g_cmap->num_mds; ++i) {
+		di = &g_cmap->minfo[i];
+		if (!di->in)
+			continue;
+		mi = delegation_alloc_mds(dg, i, primary);
+		if (IS_ERR(mi))
+			abort();
+		primary = 0;
+		mi->addr = di->ip;
+		mi->port = di->port;
+	}
+}
+
 void mds_net_init(struct fast_log_buf *fb, struct unitaryc *conf,
 		struct mdsc *mconf)
 {
@@ -259,6 +315,19 @@ void mds_net_init(struct fast_log_buf *fb, struct unitaryc *conf,
 			"from configuration: error %s\n", err);
 		abort();
 	}
+	g_dmap = dmap_alloc();
+	if (IS_ERR(g_dmap)) {
+		glitch_log("mds_net_init: failed to allocate dmap: "
+			"error %d\n", PTR_ERR(g_dmap));
+		abort();
+	}
+	g_dslots = dslots_init(NUM_DSLOTS);
+	if (IS_ERR(g_dslots)) {
+		glitch_log("mds_net_init: failed to allocate dslots: "
+			"error %d\n", PTR_ERR(g_dslots));
+		abort();
+	}
+	mds_net_root_delegation_setup();
 	mds_net_msgr_init(&g_mds_rpool, &g_mds_msgr,
 		(struct recv_pool_thread *)g_mds_rts, sizeof(g_mds_rts[0]),
 		fb, RF_MAX_MDS, mds_net_handle_mds_tr,

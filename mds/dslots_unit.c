@@ -48,10 +48,9 @@ static struct delegation **make_some_delegations(int num_dgs)
 	if (!dgs)
 		return ERR_PTR(ENOMEM);
 	for (i = 0; i < num_dgs; ++i) {
-		dg = calloc(1, sizeof(struct delegation));
-		if (!dg)
+		dg = delegation_alloc(i);
+		if (IS_ERR(dg))
 			goto error;
-		dg->dgid = i;
 		dgs[i] = dg;
 	}
 	return dgs;
