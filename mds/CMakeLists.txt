@@ -33,7 +33,11 @@ add_test(user_unit ${CMAKE_CURRENT_BINARY_DIR}/user_unit user_unit)
 
 add_executable(dslots_unit dslots_unit.c delegation.c dslots.c)
 target_link_libraries(dslots_unit core util utest)
-add_test(user_unit ${CMAKE_CURRENT_BINARY_DIR}/dslots_unit dslots_unit)
+add_test(dslots_unit ${CMAKE_CURRENT_BINARY_DIR}/dslots_unit dslots_unit)
+
+add_executable(dmap_unit dmap_unit.c dmap.c)
+target_link_libraries(dmap_unit core util utest)
+add_test(dmap_unit ${CMAKE_CURRENT_BINARY_DIR}/dmap_unit dmap_unit)
 
 add_executable(fishmdump
     dump.c
