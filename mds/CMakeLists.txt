@@ -1,4 +1,6 @@
 add_executable(fishmds
+    delegation.c
+    dslots.c
     force_cpp.cc
     main.c
     mstor.c
