@@ -57,8 +57,8 @@ void mt_msleep(int milli)
 	struct timespec ts, rts;
 
 	memset(&ts, 0, sizeof(ts));
-	sec = milli / 1000000;
-	milli -= (sec * 1000000);
+	sec = milli / 1000;
+	milli -= (sec * 1000);
 	ts.tv_sec = sec;
 	ts.tv_nsec = milli * 1000;
 	memset(&rts, 0, sizeof(rts));
