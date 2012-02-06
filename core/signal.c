@@ -45,7 +45,7 @@ typedef void (*sa_sigaction_t)(int, siginfo_t *, void *);
 static sa_sigaction_t g_prev_handlers[_NSIG];
 
 static const int FATAL_SIGNALS[] = { SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT,
-	SIGTERM, SIGXCPU, SIGXFSZ, SIGSYS, SIGINT };
+	SIGTERM, SIGXCPU, SIGXFSZ, SIGSYS, SIGINT, SIGALRM };
 static const int NUM_FATAL_SIGNALS =
 	( sizeof(FATAL_SIGNALS) / sizeof(FATAL_SIGNALS[0]) );
 
@@ -75,6 +75,11 @@ static void handle_fatal_signal(int sig, siginfo_t *siginfo, void *ctx)
 	}
 	if (g_fatal_signal_cb)
 		g_fatal_signal_cb(sig);
+	if (sig == SIGALRM) {
+		snprintf(buf, sizeof(bentries), "%s ALARM EXPIRED\n",
+			 (const char*)siginfo->si_value.sival_ptr);
+		res = write(g_crash_log_fd, buf, strlen(buf));
+	}
 	snprintf(buf, sizeof(bentries), "HANDLE_FATAL_SIGNAL(sig=%d, "
 			"name=%s)\n", sig, sys_siglist[sig]);
 	res = write(g_crash_log_fd, buf, strlen(buf));
@@ -144,8 +149,7 @@ static void signal_set_dispositions(char *err, size_t err_len)
 	struct sigaction sigact;
 	memset(&sigact, 0, sizeof(sigact));
 	sigact.sa_sigaction = handle_fatal_signal;
-	/* TODO: support/use SA_SIGINFO? */
-	sigact.sa_flags = SA_RESETHAND | SA_ONSTACK;
+	sigact.sa_flags = SA_SIGINFO | SA_RESETHAND | SA_ONSTACK;
 
 	for (i = 0; i < NUM_FATAL_SIGNALS; i++) {
 		if (FATAL_SIGNALS[i] >= _NSIG) {
