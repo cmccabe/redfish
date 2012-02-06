@@ -17,7 +17,9 @@
 #ifndef REDFISH_MSG_MDS_DOT_H
 #define REDFISH_MSG_MDS_DOT_H
 
+#include "mds/limits.h" /* for RF_MAX_MDS */
 #include "msg/generic.h"
+#include "util/bitfield.h" /* for BITFIELD_DECL */
 #include "util/compiler.h"
 
 #include <stdint.h>
@@ -61,6 +63,14 @@ enum {
 	MMM_RENAME_REQ,
 	/** Heartbeat request sent from peer */
 	MMM_MDS_HEARTBEAT,
+	/** Propose kicking metadata server(s) out of the cluster */
+	MMM_PROPOSE_MDS_KICK,
+	/** Response to a kick proposal */
+	MMM_MDS_KICK_RESP,
+	/** Commit a proposed MDS kick */
+	MMM_COMMIT_MDS_KICK,
+	/** Abort a proposed MDS kick */
+	MMM_ABANDON_MDS_KICK,
 };
 
 /* Create file */
@@ -166,6 +176,29 @@ PACKED(
 struct mmm_mds_heartbeat {
 	struct msg base;
 	uint16_t mid;
+});
+PACKED(
+struct mmm_propose_mds_kick {
+	struct msg base;
+	uint64_t cookie;
+	BITFIELD_DECL(kicked_peers, RF_MAX_MDS);
+	uint16_t mid;
+});
+PACKED(
+struct mmm_mds_kick_resp {
+	struct msg base;
+	uint64_t cookie;
+	uint16_t resp;
+});
+PACKED(
+struct mmm_commit_mds_kick {
+	struct msg base;
+	uint64_t cookie;
+});
+PACKED(
+struct mmm_abandon_mds_kick {
+	struct msg base;
+	uint64_t cookie;
 });
 
 #endif
