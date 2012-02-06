@@ -36,7 +36,7 @@ static int alarm_unit_setup_disarm(void)
 	timer_t timer;
 
 	cur = mt_time();
-	EXPECT_ZERO(mt_set_alarm(cur + 10000, TO_STR(__LINE__), &timer));
+	EXPECT_ZERO(mt_set_alarm(cur + 10000, TO_STR2(__LINE__), &timer));
 	EXPECT_ZERO(mt_deactivate_alarm(timer));
 	return 0;
 }
@@ -64,8 +64,8 @@ static int alarm_unit_test2(void)
 	timer_t timer, timer2;
 
 	cur = mt_time();
-	EXPECT_ZERO(mt_set_alarm(cur + 1, TO_STR(__LINE__), &timer));
-	EXPECT_ZERO(mt_set_alarm(cur + 10000, TO_STR(__LINE__), &timer2));
+	EXPECT_ZERO(mt_set_alarm(cur + 1, TO_STR2(__LINE__), &timer));
+	EXPECT_ZERO(mt_set_alarm(cur + 10000, TO_STR2(__LINE__), &timer2));
 	EXPECT_ZERO(mt_deactivate_alarm(timer2));
 	EXPECT_ZERO(safe_read_exact(g_alarm_unit_pipefd[PIPE_READ], buf, 1));
 	return 0;
