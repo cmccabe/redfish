@@ -186,7 +186,6 @@ struct cmap *cmap_from_buffer(const char *buf, size_t buf_len,
 		oinfo[i].ip = unpack_from_be32(&pa->ip);
 		oinfo[i].port = unpack_from_be16(&pa->port);
 		oinfo[i].in = unpack_from_be16(&pa->in);
-		oinfo[i].send_time = 0;
 		oinfo[i].recv_time = 0;
 		buf_len -= sizeof(struct packed_addr);
 		buf += sizeof(struct packed_addr);
@@ -201,7 +200,6 @@ struct cmap *cmap_from_buffer(const char *buf, size_t buf_len,
 		minfo[i].ip = unpack_from_be32(&pa->ip);
 		minfo[i].port = unpack_from_be16(&pa->port);
 		minfo[i].in = unpack_from_be16(&pa->in);
-		minfo[i].send_time = 0;
 		minfo[i].recv_time = 0;
 		buf_len -= sizeof(struct packed_addr);
 		buf += sizeof(struct packed_addr);

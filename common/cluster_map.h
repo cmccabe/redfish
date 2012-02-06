@@ -36,8 +36,6 @@ struct daemon_info {
 	uint16_t port;
 	/** In or out? */
 	uint16_t in;
-	/** Last time we sent a message to this mds (not serialized) */
-	time_t send_time;
 	/** Last time we received a message from this mds (not serialized) */
 	time_t recv_time;
 };
