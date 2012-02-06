@@ -53,10 +53,13 @@ void mt_sleep_until(time_t until)
 
 void mt_msleep(int milli)
 {
-	int res;
+	int sec, res;
 	struct timespec ts, rts;
 
 	memset(&ts, 0, sizeof(ts));
+	sec = milli / 1000000;
+	milli -= (sec * 1000000);
+	ts.tv_sec = sec;
 	ts.tv_nsec = milli * 1000;
 	memset(&rts, 0, sizeof(rts));
 	while (1) {
