@@ -756,11 +756,11 @@ struct msgr *msgr_init(char *err, size_t err_len,
 
 	msgr = calloc(1, sizeof(struct msgr));
 	if (!msgr) {
-		snprintf(err, err_len, "init_msgr: out of memory\n");
+		snprintf(err, err_len, "msgr_init: out of memory\n");
 		return NULL;
 	}
 	if (pthread_spin_init(&msgr->lock, 0)) {
-		snprintf(err, err_len, "init_msgr: failed to initialize "
+		snprintf(err, err_len, "msgr_init: failed to initialize "
 			"spinlock\n");
 		free(msgr);
 		return NULL;
@@ -784,7 +784,7 @@ struct msgr *msgr_init(char *err, size_t err_len,
 		msgr->timeout_period, msgr->timeout_period);
 	msgr->loop = ev_loop_new(0);
 	if (!msgr->loop) {
-		snprintf(err, err_len, "init_msgr: ev_loop_new failed.");
+		snprintf(err, err_len, "msgr_init: ev_loop_new failed.");
 		msgr_shutdown(msgr);
 		return NULL;
 	}
