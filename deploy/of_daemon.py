@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
 from __future__ import with_statement
-from of_util import *
 import json
+import of_util
 import string
 import subprocess
 import sys
@@ -106,7 +106,7 @@ class DaemonIter(object):
                     raise StopIteration
             if has_label(darr[self.idx], self.label):
                 return Daemon(self.jo, darr[self.idx],
-                        DaemonId(self.ty, self.idx + 1))
+                        DaemonId(self.ty, self.idx))
 
 """ Represents a Redfish daemon.
 FIXME: this code doesn't yet handle goofy filenames correctly
@@ -119,7 +119,7 @@ class Daemon(object):
         self.id = id
     """ Run a command on this daemon and give output. Throws an exception on failure. """
     def run_with_output(self, cmd):
-        return subprocess_check_output([ "ssh", "-o",
+        return of_util.subprocess_check_output([ "ssh", "-o",
             "PasswordAuthentication=no", "-x", self.jd["host"], cmd])
     """ Run a command on this daemon. Throws an exception on failure. """
     def run(self, cmd):

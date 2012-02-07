@@ -9,10 +9,6 @@ from of_daemon import *
 from of_util import *
 from optparse import OptionParser
 
-if sys.version < '2.5':
-    sys.stderr.write("You need Python 2.5 or newer.)\n")
-    sys.exit(1)
-
 def process_is_running(pid):
     try:
         subprocess_check_output(["ps", "-p", str(pid)])
@@ -20,19 +16,13 @@ def process_is_running(pid):
     except:
         return False
 
+check_python_version()
 parser = OptionParser()
-parser.add_option("-c", "--cluster-config", dest="cluster_conf")
-(opts, args) = parser.parse_args()
-if opts.cluster_conf == None:
-    opts.cluster_conf = os.getenv("REDFISH_CONF")
-    if opts.cluster_conf == None:
-        sys.stderr.write("you must give a Redfish cluster configuration file\n")
-        sys.exit(1)
-
+(opts, args, jo) = parse_deploy_opts(parser)
 jo = load_conf_file(opts.cluster_conf)
 
 diter = DaemonIter.from_conf_object(jo, None)
-i = 0
+i = -1
 for d in diter:
     i = i + 1
     print "processing daemon %d" % i

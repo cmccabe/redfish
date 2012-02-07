@@ -9,21 +9,10 @@ from of_daemon import *
 from of_util import *
 from optparse import OptionParser
 
-if sys.version < '2.5':
-    sys.stderr.write("You need Python 2.5 or newer.)\n")
-    sys.exit(1)
-
+check_python_version()
 parser = OptionParser()
-parser.add_option("-c", "--cluster-config", dest="cluster_conf")
 parser.add_option("-9", "--kill-9", action="store_true", dest="kill9")
-(opts, args) = parser.parse_args()
-if opts.cluster_conf == None:
-    opts.cluster_conf = os.getenv("REDFISH_CONF")
-    if opts.cluster_conf == None:
-        sys.stderr.write("you must give a Redfish cluster configuration file\n")
-        sys.exit(1)
-
-jo = load_conf_file(opts.cluster_conf)
+(opts, args, jo) = parse_deploy_opts(parser)
 
 diter = DaemonIter.from_conf_object(jo, None)
 i = 0

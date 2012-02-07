@@ -1,3 +1,6 @@
-./install.py -c ../conf/twofer.conf -b /home/cmccabe/tmp/redfish
-./run.py -c ../conf/twofer.conf 
-./killall.py -c ../conf/local.conf
+# An example of using the deployment scripts:
+
+export REDFISH_CONF="/media/fish/redfish/conf/twofer.conf"
+./install.py -b /home/cmccabe/tmp/redfish
+./run.py
+./killall.py

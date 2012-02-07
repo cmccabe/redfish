@@ -9,31 +9,18 @@ from of_daemon import *
 from of_util import *
 from optparse import OptionParser
 
-if sys.version < '2.5':
-    sys.stderr.write("You need Python 2.5 or newer.)\n")
-    sys.exit(1)
-
+check_python_version()
 parser = OptionParser()
-parser.add_option("-c", "--cluster-config", dest="cluster_conf")
 parser.add_option("-b", "--redfish-build-directory", dest="bld_dir")
-(opts, args) = parser.parse_args()
-if opts.cluster_conf == None:
-    opts.cluster_conf = os.getenv("REDFISH_CONF")
-    if opts.cluster_conf == None:
-        sys.stderr.write("you must give a Redfish cluster configuration file\n")
-        sys.exit(1)
+(opts, args, jo) = parse_deploy_opts(parser)
 if opts.bld_dir == None:
     sys.stderr.write("you must give a Redfish build directory\n")
     sys.exit(1)
-
-jo = load_conf_file(opts.cluster_conf)
-
-#os.path.join(sys.path[0], sys.argv[0])
-bdir = os.path.join(tempfile.gettempdir(), str(os.getpid()))
-bdir = bdir + "/"
-os.mkdir(bdir)
+install_dir = os.path.join(tempfile.gettempdir(), str(os.getpid()))
+install_dir = install_dir + "/"
+os.mkdir(install_dir)
 os.chdir(opts.bld_dir)
-subprocess.check_call(["make", "install", ("DESTDIR=" + bdir)])
+subprocess.check_call(["make", "install", ("DESTDIR=" + install_dir)])
 
 diter = DaemonIter.from_conf_object(jo, None)
 i = 0
@@ -49,4 +36,4 @@ for d in diter:
         f.flush()
         d.upload(f.name, d.get_conf_file())
     # upload system binaries
-    d.upload(bdir, d.get_base_dir())
+    d.upload(install_dir, d.get_base_dir())
