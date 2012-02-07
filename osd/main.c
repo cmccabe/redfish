@@ -44,8 +44,8 @@ static void usage(int exitstatus)
 "fishosd usage:",
 "-c <osd-configuration-file>",
 "    Set the osd configuration file.",
-"-k <cluster-identity>",
-"    The ID number of this OSD..  This is an index into the array of ",
+"-k <osd ID>",
+"    The ID number of this OSD.  This is an index into the array of ",
 "    OSDs in the configuration file.",
 "-f",
 "    Run in the foreground (do not daemonize)",
@@ -58,7 +58,7 @@ NULL
 }
 
 static void parse_argv(int argc, char **argv, int *daemonize,
-		int *ident, const char **config_file)
+		int *oid, const char **config_file)
 {
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
@@ -73,9 +73,9 @@ static void parse_argv(int argc, char **argv, int *daemonize,
 			*daemonize = 0;
 			break;
 		case 'k':
-			str_to_int(optarg, 10, ident, err, err_len);
+			str_to_int(optarg, 10, oid, err, err_len);
 			if (err[0]) {
-				glitch_log("Error parsing identity: %s\n", err);
+				glitch_log("Error parsing OSD ID: %s\n", err);
 				usage(EXIT_FAILURE);
 			}
 			break;
@@ -95,23 +95,19 @@ static void parse_argv(int argc, char **argv, int *daemonize,
 			"file with -c.\n\n");
 		usage(EXIT_FAILURE);
 	}
-	if (*ident == 0) {
-		glitch_log("0 is not a valid OSD identity.\n");
-		usage(EXIT_FAILURE);
-	}
-	if (*ident < 0) {
-		glitch_log("You must specify an OSD identity with -k.\n");
+	if (*oid < 0) {
+		glitch_log("You must specify an OSD ID with -k.\n");
 		usage(EXIT_FAILURE);
 	}
 }
 
-static struct osdc *get_osd_conf(struct unitaryc *conf, int ident)
+static struct osdc *get_osd_conf(struct unitaryc *conf, int oid)
 {
 	int i;
 	struct osdc **o;
 
 	o = conf->osd;
-	for (i = 1; (i < ident) && (*o); ++i, o++) {
+	for (i = 0; (i < oid) && (*o); ++i, o++) {
 		;
 	}
 	return *o;
@@ -121,22 +117,22 @@ int main(int argc, char **argv)
 {
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
-	int ret, ident = -1, daemonize = 1;
+	int ret, oid = -1, daemonize = 1;
 	const char *cfname = NULL;
 	struct unitaryc *conf;
 	struct osdc *oconf;
 
-	parse_argv(argc, argv, &daemonize, &ident, &cfname);
+	parse_argv(argc, argv, &daemonize, &oid, &cfname);
 	conf = parse_unitary_conf_file(cfname, err, err_len);
 	if (err[0]) {
 		glitch_log("%s\n", err);
 		ret = EXIT_FAILURE;
 		goto done;
 	}
-	oconf = get_osd_conf(conf, ident);
+	oconf = get_osd_conf(conf, oid);
 	if (!oconf) {
 		glitch_log("Failed to find OSD %d in the configuration file\n",
-			ident);
+			oid);
 		ret = EXIT_FAILURE;
 		goto done;
 	}

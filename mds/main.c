@@ -74,7 +74,8 @@ static void parse_argv(int argc, char **argv, int *daemonize,
 		case 'k':
 			str_to_int(optarg, 10, mid, err, err_len);
 			if (err[0]) {
-				glitch_log("Error parsing identity: %s\n", err);
+				glitch_log("Error parsing metadata server "
+					"ID: %s\n", err);
 				usage(EXIT_FAILURE);
 			}
 			break;
