@@ -71,6 +71,14 @@ STAILQ_HEAD(pending_tr, mtran);
 RB_HEAD(active_tr, mtran);
 RB_GENERATE(active_tr, mtran, u.active_entry, mtran_compare);
 
+struct conn_cancel {
+	SLIST_ENTRY(conn_cancel) entry;
+	uint32_t addr;
+	uint16_t port;
+};
+
+SLIST_HEAD(conn_cancels, conn_cancel);
+
 struct mlisten {
 	/** Callback to invoke on sent/recv */
 	msgr_cb_t cb;
@@ -122,7 +130,8 @@ RB_HEAD(msgr_conn, mconn);
 RB_GENERATE(msgr_conn, mconn, entry, mconn_compare);
 
 struct msgr {
-	/** lock that protects thread state and pending_head */
+	/** lock that protects thread state, pending_head, and
+	 * conn_cancels_head */
 	pthread_spinlock_t lock;
 	/** thread state */
 	enum msgr_state_t state;
@@ -134,6 +143,8 @@ struct msgr {
 	struct mlisten listen;
 	/** Watches listen_fd */
 	struct ev_io w_listen_fd;
+	/** connections to cancel */
+	struct conn_cancels conn_cancels_head;
 	/** Next transaction ID that will be given out */
 	uint32_t next_trid;
 	/** Current number of transactions we're tracking */
@@ -273,6 +284,26 @@ void mtran_recv_next(struct mconn *conn, struct mtran *tr)
 {
 	tr->state = MTRAN_STATE_ACTIVE;
 	RB_INSERT(active_tr, &conn->active_head, tr);
+}
+
+int mconn_cancel(struct msgr *msgr, uint32_t addr, uint16_t port)
+{
+	struct conn_cancel *cancel;
+
+	cancel = calloc(1, sizeof(struct conn_cancel));
+	if (!cancel)
+		return -ENOMEM;
+	cancel->addr = addr;
+	cancel->port = port;
+	pthread_spin_lock(&msgr->lock);
+	if (msgr->state == MSGR_STATE_THREAD_STOPPING) {
+		pthread_spin_unlock(&msgr->lock);
+		return -ECANCELED;
+	}
+	SLIST_INSERT_HEAD(&msgr->conn_cancels_head, cancel, entry);
+	pthread_spin_unlock(&msgr->lock);
+	ev_async_send(msgr->loop, &msgr->w_notify);
+	return 0;
 }
 
 static void mtran_deliver_netfail(struct mtran *tr, int err)
@@ -996,6 +1027,10 @@ static void run_msgr_notify_cb(struct ev_loop *loop, struct ev_async *w,
 	struct msgr *msgr = GET_OUTER(w, struct msgr, w_notify);
 	struct mtran *tr;
 	enum msgr_state_t new_state;
+	struct conn_cancels conn_cancels_head =
+		SLIST_HEAD_INITIALIZER(conn_cancels_head);
+	struct conn_cancel *cancel;
+	struct mconn exemplar, *conn;
 
 	while (1) {
 		pthread_spin_lock(&msgr->lock);
@@ -1005,9 +1040,20 @@ static void run_msgr_notify_cb(struct ev_loop *loop, struct ev_async *w,
 				u.pending_entry);
 		}
 		new_state = msgr->state;
+		SLIST_SWAP(&msgr->conn_cancels_head, &conn_cancels_head,
+			conn_cancel);
 		pthread_spin_unlock(&msgr->lock);
 
 		if (new_state == MSGR_STATE_THREAD_STOPPING) {
+			/* Free all pending cancellations.  They're irrelevant
+			 * now because soon everything will be cancelled. */
+			while (1) {
+				cancel = SLIST_FIRST(&conn_cancels_head);
+				if (!cancel)
+					break;
+				free(cancel);
+				SLIST_REMOVE_HEAD(&conn_cancels_head, entry);
+			}
 			/* We don't need to take the msgr->lock here.  The other
 			 * place where msgr->pending_tr_head could be modified,
 			 * in mtran_send, will never touch the queue when we're
@@ -1020,6 +1066,22 @@ static void run_msgr_notify_cb(struct ev_loop *loop, struct ev_async *w,
 			msgr_cancel_pending_tr(msgr);
 			ev_unloop(loop, EVUNLOOP_ALL);
 			return;
+		}
+		/* Execute all pending cancellations. */
+		while (1) {
+			cancel = SLIST_FIRST(&conn_cancels_head);
+			if (!cancel)
+				break;
+			memset(&exemplar, 0, sizeof(exemplar));
+			exemplar.ip = cancel->addr;
+			exemplar.port = cancel->port;
+			conn = RB_FIND(msgr_conn, &msgr->conn_head, &exemplar);
+			if (!conn) {
+				continue;
+			}
+			mconn_teardown(conn, ECANCELED);
+			free(cancel);
+			SLIST_REMOVE_HEAD(&conn_cancels_head, entry);
 		}
 		if (tr == NULL) {
 			return;

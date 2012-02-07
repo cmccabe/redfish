@@ -165,6 +165,17 @@ extern void mtran_send_next(struct mconn *conn, struct mtran *tr,
  */
 extern void mtran_recv_next(struct mconn *conn, struct mtran *tr);
 
+/** Cancel all connections to a particular endpoint
+ *
+ * This must be called from the context of a msgr_cb_t function.
+ *
+ * @param conn		the connection that the transactor is associated with
+ * @param tr		the transactor
+ *
+ * @return		0 on success; -ENOMEM on OOM
+ */
+extern int mconn_cancel(struct msgr *msgr, uint32_t addr, uint16_t port);
+
 /** Shut down a messenger.
  *
  * Shutdown will close all open connections and join the messenger thread.
