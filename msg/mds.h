@@ -31,8 +31,12 @@
 /* Network messages that can be sent to the metadata server */
 
 enum {
+	/** Debug message: get current MDS status */
+	MMMD_GET_MDS_STATUS = 3000,
+	/** Debug respose: current MDS status */
+	MMMD_MDS_STATUS,
 	/** Client request to create a new file */
-	MMM_CREATE_RFILE_REQ = 3000,
+	MMM_CREATE_RFILE_REQ,
 	/** Client request to open a new file */
 	MMM_OPEN_RFILE_REQ,
 	/** Response to a chunk examination message */
@@ -73,6 +77,15 @@ enum {
 	MMM_ABANDON_MDS_KICK,
 };
 
+PACKED(
+struct mmmd_get_mds_status {
+	struct msg base;
+});
+PACKED(
+struct mmmd_mds_status {
+	struct msg base;
+	uint16_t mid;
+});
 /* Create file */
 PACKED(
 struct mmm_create_rfile_req {

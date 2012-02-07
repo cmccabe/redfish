@@ -236,12 +236,10 @@ static struct mtran *mtran_lookup_by_id(struct mconn *conn, uint32_t trid)
 	return RB_FIND(active_tr, &conn->active_head, &exemplar);
 }
 
-void mtran_send(struct msgr *msgr, struct mtran *tr, uint32_t ip,
-		uint16_t port, msgr_cb_t cb, void *priv, struct msg *m)
+void mtran_send(struct msgr *msgr, struct mtran *tr,
+		msgr_cb_t cb, void *priv, struct msg *m)
 {
 	tr->state = MTRAN_STATE_SENDING;
-	tr->ip = ip;
-	tr->port = port;
 	tr->cb = cb;
 	tr->priv = priv;
 	tr->m = m;

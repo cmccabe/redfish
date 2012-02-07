@@ -184,8 +184,9 @@ static int send_foo_tr(struct msgr* msgr, msgr_cb_t cb, uint32_t i)
 		return -ENOMEM;
 	}
 	pack_to_be32(&mout->i, i);
-	mtran_send(msgr, tr, g_localhost, MSGR_UNIT_PORT,
-		cb, (void*)(uintptr_t)i, (struct msg*)mout);
+	tr->ip = g_localhost;
+	tr->port = MSGR_UNIT_PORT;
+	mtran_send(msgr, tr, cb, (void*)(uintptr_t)i, (struct msg*)mout);
 	return 0;
 }
 

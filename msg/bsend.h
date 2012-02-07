@@ -26,6 +26,7 @@
 
 struct msg;
 struct msgr;
+struct mtran;
 struct bsend;
 
 /** Blocking RPC flag: listen for a response to this message */
@@ -43,6 +44,8 @@ extern struct bsend *bsend_init(int max_tr, int timeout);
 
 /** Send out an RPC message
  *
+ * This function will allocate a transactor for you.
+ *
  * @param ctx		The blocking RPC context
  * @param msgr		Messenger to send the message on
  * @param flags		Flags to use
@@ -54,6 +57,22 @@ extern struct bsend *bsend_init(int max_tr, int timeout);
  */
 extern int bsend_add(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
 		struct msg *msg, uint32_t addr, uint16_t port);
+
+/** Send out an RPC message
+ *
+ * This function takes as a parameter an existing transactor.
+ * If the add fails, the transactor will be freed using mtran_free.
+ *
+ * @param ctx		The blocking RPC context
+ * @param msgr		Messenger to send the message on
+ * @param flags		Flags to use
+ * @param msg		The message
+ * @param addr		The transactor to use
+ *
+ * @return		0 on success; error code otherwise
+ */
+extern int bsend_add_tr_or_free(struct bsend *ctx, struct msgr *msgr,
+		uint8_t flags, struct msg *msg, struct mtran *tr);
 
 /** Block until all the RPC calls have been made.
  *

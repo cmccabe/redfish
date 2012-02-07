@@ -55,7 +55,7 @@ NULL
 }
 
 static void parse_argv(int argc, char **argv, int *daemonize,
-		int *ident, const char **config_file)
+		int *mid, const char **config_file)
 {
 	int c;
 	char err[512] = { 0 };
@@ -72,7 +72,7 @@ static void parse_argv(int argc, char **argv, int *daemonize,
 		case 'h':
 			usage(EXIT_SUCCESS);
 		case 'k':
-			str_to_int(optarg, 10, ident, err, err_len);
+			str_to_int(optarg, 10, mid, err, err_len);
 			if (err[0]) {
 				glitch_log("Error parsing identity: %s\n", err);
 				usage(EXIT_FAILURE);
@@ -92,23 +92,20 @@ static void parse_argv(int argc, char **argv, int *daemonize,
 			"file with -c.\n\n");
 		usage(EXIT_FAILURE);
 	}
-	if (*ident == 0) {
-		glitch_log("0 is not a valid identity\n");
-		usage(EXIT_FAILURE);
-	}
-	if (*ident < 0) {
-		glitch_log("You must supply an identity with -k\n");
+	if (*mid < 0) {
+		glitch_log("You must supply a metadata server ID "
+			"for this server with -k\n");
 		usage(EXIT_FAILURE);
 	}
 }
 
-static struct mdsc *get_mds_conf(struct unitaryc *conf, int ident)
+static struct mdsc *get_mds_conf(struct unitaryc *conf, int mid)
 {
 	int i;
 	struct mdsc **m;
 
 	m = conf->mds;
-	for (i = 1; (i < ident) && (*m); ++i, m++) {
+	for (i = 0; (i < mid) && (*m); ++i, m++) {
 		;
 	}
 	return *m;
@@ -117,22 +114,22 @@ static struct mdsc *get_mds_conf(struct unitaryc *conf, int ident)
 int main(int argc, char **argv)
 {
 	struct fast_log_buf *fb = NULL;
-	int ret, ident = -1, daemonize = 1;
+	int ret, mid = -1, daemonize = 1;
 	const char *cfname = NULL;
 	struct unitaryc *conf;
 	struct mdsc *mconf;
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 
-	parse_argv(argc, argv, &daemonize, &ident, &cfname);
+	parse_argv(argc, argv, &daemonize, &mid, &cfname);
 	conf = parse_unitary_conf_file(cfname, err, err_len);
 	if (err[0]) {
 		glitch_log("%s\n", err);
 		return EXIT_FAILURE;
 	}
-	mconf = get_mds_conf(conf, ident);
+	mconf = get_mds_conf(conf, mid);
 	if (!mconf) {
-		glitch_log("no MDS found in config file with id %d\n", ident);
+		glitch_log("no MDS found in config file with id %d\n", mid);
 		return EXIT_FAILURE;
 	}
 	if (process_ctx_init(argv[0], daemonize, mconf->lc))
@@ -142,7 +139,7 @@ int main(int argc, char **argv)
 		ret = PTR_ERR(fb);
 		goto done;
 	}
-	mds_net_init(fb, conf, mconf);
+	mds_net_init(fb, conf, mconf, mid);
 	ret = mds_main_loop();
 done:
 	if (!IS_ERR(fb))

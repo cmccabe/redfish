@@ -141,13 +141,24 @@ int bsend_add(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
 		struct msg *msg, uint32_t addr, uint16_t port)
 {
 	struct mtran *tr;
-	struct bsend_mtran *btr;
 
-	if (ctx->num_tr >= ctx->max_tr)
-		return -EMFILE;
 	tr = mtran_alloc(msgr);
 	if (!tr)
 		return -ENOMEM;
+	tr->ip = addr;
+	tr->port = port;
+	return bsend_add_tr_or_free(ctx, msgr, flags, msg, tr);
+}
+
+int bsend_add_tr_or_free(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
+		struct msg *msg, struct mtran *tr)
+{
+	struct bsend_mtran *btr;
+
+	if (ctx->num_tr >= ctx->max_tr) {
+		mtran_free(tr);
+		return -EMFILE;
+	}
 	btr = &ctx->btrs[ctx->num_tr];
 	btr->tr = tr;
 	btr->ctx = ctx;
@@ -160,7 +171,7 @@ int bsend_add(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
 	}
 	pthread_mutex_unlock(&ctx->lock);
 	ctx->num_tr++;
-	mtran_send(msgr, tr, addr, port, bsend_cb, btr, msg);
+	mtran_send(msgr, tr, bsend_cb, btr, msg);
 	return 0;
 }
 

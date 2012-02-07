@@ -26,9 +26,10 @@ struct unitaryc;
  * @param fb		The fast_log_buf to use
  * @param conf		The unitary Redfish configuration
  * @param mconf		The MDS configuration
+ * @param mid		The MDS server ID of this metadata server
  */
 void mds_net_init(struct fast_log_buf *fb, struct unitaryc *conf,
-		struct mdsc *mconf);
+		struct mdsc *mconf, uint16_t mid);
 
 /** Runs the main metadata server loop
  *

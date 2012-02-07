@@ -131,8 +131,6 @@ extern void mtran_free(struct mtran *tr);
  *
  * @param msgr		the messenger
  * @param tr		the transactor
- * @param addr		Remote IP address
- * @param port		Remote port
  * @param cb		Callback to invoke when a complete message is sent.
  * @param priv		Private data for transactor
  * @param m		The message to send.
@@ -140,7 +138,6 @@ extern void mtran_free(struct mtran *tr);
  * 			take ownership of this pointer and free it later.
  */
 extern void mtran_send(struct msgr *msgr, struct mtran *tr,
-		uint32_t addr, uint16_t port,
 		msgr_cb_t cb, void *priv, struct msg *m);
 
 /** Queue a message for sending on a currently open connection

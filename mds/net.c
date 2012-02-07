@@ -46,6 +46,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define MDS_NET_MAX_BSEND_TR 100000
+
+#define MDS_NET_BSEND_TIMEO 120
+
 #define DEFAULT_MDS_TR_THREADS 8
 
 #define DEFAULT_OSD_TR_THREADS 8
@@ -94,6 +98,9 @@ struct maint_thread {
 	struct recv_pool_thread base;
 };
 
+/** The metadata server ID for this server */
+uint16_t g_mid;
+
 /** Current cluster map */
 struct cmap *g_cmap;
 
@@ -133,10 +140,17 @@ static void mds_net_msgr_init(struct recv_pool **rpool, struct msgr **msgr,
 	size_t err_len = sizeof(err);
 	int i, ret;
 	struct recv_pool_thread *rt;
+	struct bsend *ctx;
 
 	if (nthreads > MAX_TR_THREADS) {
 		glitch_log("mds_net_msgr_init: compile-time limit violated: "
 			   "nthreads > %d\n", MAX_TR_THREADS);
+		abort();
+	}
+	ctx = bsend_init(MDS_NET_MAX_BSEND_TR, MDS_NET_BSEND_TIMEO);
+	if (IS_ERR(ctx)) {
+		glitch_log("mds_net_msgr_init: failed to create bsend context: "
+			"error %d\n", PTR_ERR(ctx));
 		abort();
 	}
 	*msgr = msgr_init(err, err_len, max_conn, RF_MAX_TRAN,
@@ -155,7 +169,7 @@ static void mds_net_msgr_init(struct recv_pool **rpool, struct msgr **msgr,
 	for (i = 0; i < nthreads; ++i) {
 		rt = (struct recv_pool_thread *)(((char*)rts) + (th_sz * i));
 		ret = recv_pool_thread_create(*rpool, g_fast_log_mgr,
-				rt, handler, NULL);
+				rt, handler, ctx);
 		if (ret) {
 			glitch_log("mds_net_msgr_init: recv_pool_thread_create"
 				"failed with error %d\n", ret);
@@ -170,16 +184,31 @@ static void mds_net_msgr_init(struct recv_pool **rpool, struct msgr **msgr,
 	}
 }
 
-static int mds_net_handle_mds_tr(POSSIBLY_UNUSED(struct redfish_thread *rt),
-			POSSIBLY_UNUSED(struct mtran *tr))
+static int handle_mmmd_get_mds_status(struct redfish_thread *rt, struct mtran *tr)
 {
+	int ret;
+	struct mmmd_mds_status *m;
+	struct bsend *ctx = rt->priv;
+
+	m = calloc_msg(MMMD_MDS_STATUS, sizeof(struct mmmd_mds_status));
+	if (!m)
+		return -ENOMEM;
+	pack_to_be16(&m->mid, g_mid);
+	ret = bsend_add_tr_or_free(ctx, g_mds_msgr, 0, (struct msg*)m, tr);
+	if (ret)
+		return ret;
+	ret = bsend_join(ctx);
+	if (ret)
+		return ret;
+	bsend_reset(ctx);
+
+	return 0;
+}
+
+static int mds_net_handle_mds_tr(struct redfish_thread *rt, struct mtran *tr)
+{
+	int ret;
 	uint16_t ty;
-
-	// Identify source MDS ... based on MDS ID embedded in message
-	// Can't use IP address because there might be more than one MDS at that
-	// IP (although possibly we should check IP?)
-
-	// Update 'last message received at' for that MDS
 
 	if (IS_ERR(tr->m)) {
 		glitch_log("mds_net_handle_mds_tr: got error %d\n",
@@ -188,12 +217,18 @@ static int mds_net_handle_mds_tr(POSSIBLY_UNUSED(struct redfish_thread *rt),
 	}
 	ty = unpack_from_be16(&tr->m->ty);
 	switch (ty) {
+	case MMMD_GET_MDS_STATUS:
+		ret = handle_mmmd_get_mds_status(rt, tr);
+		break;
 	case MMM_MDS_HEARTBEAT:
+		// FIXME: record this
+		ret = 0;
 		break;
 	default:
 		glitch_log("mds_net_handle_mds_tr: unhandled message "
 			   "type %d\n", ty);
-		return 0;
+		ret = 0;
+		break;
 	}
 	// Handle message (something like a switch statement based on type)
 	//
@@ -224,6 +259,10 @@ static int mds_net_handle_mds_tr(POSSIBLY_UNUSED(struct redfish_thread *rt),
 	// 	Release the relevant shard lock.
 	// default:
 	// 	Log message and ignore.  Or abort()?
+	if (ret) {
+		glitch_log("mds_net_handle_mds_tr: error handling message of "
+			   "type %d: error %d\n", ty, ret);
+	}
 	return 0;
 }
 
@@ -304,11 +343,12 @@ static void mds_net_root_delegation_setup(void)
 }
 
 void mds_net_init(struct fast_log_buf *fb, struct unitaryc *conf,
-		struct mdsc *mconf)
+		struct mdsc *mconf, uint16_t mid)
 {
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 
+	g_mid = mid;
 	g_cmap = cmap_from_conf(conf, err, err_len);
 	if (err[0]) {
 		glitch_log("mds_net_init: failed to create cluster map "
