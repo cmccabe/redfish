@@ -327,7 +327,7 @@ handle_error:
 	return 1;
 }
 
-static int msgr_test_conn_cancel(void)
+static int msgr_test_conn_shutdown(void)
 {
 	int res;
 	struct msgr *baz1_msgr, *baz2_msgr;
@@ -371,7 +371,7 @@ static int msgr_test_conn_cancel(void)
 	return 0;
 
 handle_error:
-	fprintf(stderr, "msgr_test_conn_cancel: got error %s\n", err);
+	fprintf(stderr, "msgr_test_conn_shutdown: got error %s\n", err);
 	return 1;
 }
 
@@ -384,7 +384,7 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 	EXPECT_ZERO(msgr_test_simple_send(1));
 	EXPECT_ZERO(msgr_test_simple_send(100));
 	EXPECT_ZERO(msgr_test_conn_timeout());
-	EXPECT_ZERO(msgr_test_conn_cancel());
+	EXPECT_ZERO(msgr_test_conn_shutdown());
 	process_ctx_shutdown();
 
 	return EXIT_SUCCESS;
