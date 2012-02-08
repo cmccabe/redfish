@@ -78,6 +78,13 @@ class DaemonId(object):
             return "fishosd"
         else:
             raise Exception("unknown type " + self.ty)
+    def get_short_name(self):
+        if (self.ty == DaemonId.MDS):
+            return "mds%d" % self.idx
+        elif (self.ty == DaemonId.OSD):
+            return "osd%d" % self.idx
+        else:
+            raise Exception("unknown type " + self.ty)
 
 class DaemonIter(object):
     @staticmethod
@@ -156,6 +163,8 @@ class Daemon(object):
         return self.jd["base_dir"] + "/pid"
     def get_binary_name(self):
         return self.id.get_binary_name()
+    def get_short_name(self):
+        return self.id.get_short_name()
     def get_binary_path(self):
         return self.jd["base_dir"] + "/usr/bin/" + self.get_binary_name()
     def rf_msgr_send(self, msg):

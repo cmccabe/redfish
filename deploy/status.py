@@ -22,6 +22,6 @@ for d in diter:
     print d.jo
     try:
         pid = d.run_with_output("cat " + d.get_pid_file())
-        print "daemon " + str(i) + " is running as process " + pid
+        print d.get_short_name() + " is running as process " + pid
     except CalledProcessError, e:
-        print "daemon " + str(i) + " is NOT running."
+        print d.get_short_name() + " is NOT running."
