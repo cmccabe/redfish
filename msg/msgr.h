@@ -173,6 +173,14 @@ extern void mtran_recv_next(struct mconn *conn, struct mtran *tr);
  */
 extern int mconn_cancel(struct msgr *msgr, uint32_t addr, uint16_t port);
 
+/** Given an mconn state, return an identifying string.
+ *
+ * @param state		mconn state
+ *
+ * @return		statically allocated string
+ */
+const char *mconn_state_to_str(int state);
+
 /** Shut down a messenger.
  *
  * Shutdown will close all open connections and join the messenger thread.

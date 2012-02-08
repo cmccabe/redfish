@@ -775,6 +775,27 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 	}
 }
 
+const char *mconn_state_to_str(int state)
+{
+	switch (state) {
+	case MCONN_CONNECTING:
+		return "MCONN_CONNECTING";
+	case MCONN_QUIESCENT:
+		return "MCONN_QUIESCENT";
+	case MCONN_WRITING:
+		return "MCONN_WRITING";
+	case MCONN_AWAITING_HDR:
+		return "MCONN_AWAITING_HDR";
+	case MCONN_READING_HDR:
+		return "MCONN_READING_HDR";
+	case MCONN_READING:
+		return "MCONN_READING";
+	case MCONN_NUM_STATES:
+		return "MCONN_NUM_STATES";
+	default:
+		return "(unknown)";
+	}
+};
 /****************************** msgr ********************************/
 struct msgr *msgr_init(char *err, size_t err_len,
 		int max_conn, int max_tran,

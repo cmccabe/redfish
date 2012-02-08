@@ -169,8 +169,9 @@ void fast_log_msgr_dump(struct fast_log_msgr_entry *fe, char *buf)
 		break;
 	case FLME_MTRAN_NEW_STATE:
 		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,
-			"transitioning from state %d to state %d.\n",
-			(fe->event_data >> 4) & 0xf, fe->event_data & 0xf);
+			"transitioning from state %s to state %s.\n",
+			mconn_state_to_str((fe->event_data >> 4) & 0xf),
+			mconn_state_to_str(fe->event_data & 0xf));
 		break;
 	case FLME_EXPECTED_PENDING_TRANSACTOR:
 		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,
