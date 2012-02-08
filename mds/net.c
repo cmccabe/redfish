@@ -184,6 +184,31 @@ static void mds_net_msgr_init(struct recv_pool **rpool, struct msgr **msgr,
 	}
 }
 
+static void mds_net_msgrs_start(void)
+{
+	char err[512] = { 0 };
+	size_t err_len = sizeof(err);
+
+	msgr_start(g_osd_msgr, err, err_len);
+	if (err[0]) {
+		glitch_log("mds_net_msgr_init: failed to initialize "
+			   "g_osd_msgr: error %s", err);
+		abort();
+	}
+	msgr_start(g_mds_msgr, err, err_len);
+	if (err[0]) {
+		glitch_log("mds_net_msgr_init: failed to initialize "
+			   "g_mds_msgr: error %s", err);
+		abort();
+	}
+	msgr_start(g_cli_msgr, err, err_len);
+	if (err[0]) {
+		glitch_log("mds_net_msgr_init: failed to initialize "
+			   "g_cli_msgr: error %s", err);
+		abort();
+	}
+}
+
 static int handle_mmmd_get_mds_status(struct redfish_thread *rt, struct mtran *tr)
 {
 	int ret;
@@ -216,6 +241,7 @@ static int mds_net_handle_mds_tr(struct redfish_thread *rt, struct mtran *tr)
 		return 0;
 	}
 	ty = unpack_from_be16(&tr->m->ty);
+	glitch_log("mds_net_handle_mds_tr: incoming message of type %d\n", ty);
 	switch (ty) {
 	case MMMD_GET_MDS_STATUS:
 		ret = handle_mmmd_get_mds_status(rt, tr);
@@ -392,6 +418,8 @@ void mds_net_init(struct fast_log_buf *fb, struct unitaryc *conf,
 		DEFAULT_CLI_TR_THREADS,
 		((mconf->cli_port == JORM_INVAL_INT) ?
 		 	DEFAULT_MDS_CLI_PORT : mconf->cli_port));
+	mds_net_msgrs_start();
+	glitch_log("mds_net_init: started all messengers.\n");
 }
 
 int mds_main_loop(void)
