@@ -17,4 +17,5 @@ diter = DaemonIter.from_conf_object(jo, None)
 for d in diter:
     if d.id.ty != DaemonId.MDS:
         continue
+    print "checking status of " + d.get_short_name()
     d.check_mds_status()

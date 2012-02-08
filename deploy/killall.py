@@ -13,20 +13,14 @@ check_python_version()
 parser = OptionParser()
 parser.add_option("-9", "--kill-9", action="store_true", dest="kill9")
 (opts, args, jo) = parse_deploy_opts(parser)
-
 diter = DaemonIter.from_conf_object(jo, None)
-i = 0
 
 for d in diter:
-    i = i + 1
-    print "processing daemon %d" % i
-    print d.jo
-
+    print "processing " + d.get_short_name() 
     try:
         pid = d.run_with_output("cat " + d.get_pid_file()).rstrip()
     except subprocess.CalledProcessError, e:
         continue
-
     if (opts.kill9 == True):
         try:
             d.run_with_output("rm -f " + d.get_pid_file())

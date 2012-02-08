@@ -22,15 +22,13 @@ parser = OptionParser()
 jo = load_conf_file(opts.cluster_conf)
 
 diter = DaemonIter.from_conf_object(jo, None)
-i = -1
 for d in diter:
-    i = i + 1
-    print "processing daemon %d" % i
+    print "processing " + d.get_short_name()
     print d.jo
     try:
         pid = d.run_with_output("cat " + d.get_pid_file())
         if (process_is_running(int(pid))):
-            print "error: daemon " + str(i) + " is still running as process " + pid
+            print "error: daemon " + d.get_short_name() + " is still running as process " + pid
             continue
         else:
             os.unlink(d.get_pid_file())

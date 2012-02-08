@@ -23,11 +23,8 @@ os.chdir(opts.bld_dir)
 subprocess.check_call(["make", "install", ("DESTDIR=" + install_dir)])
 
 diter = DaemonIter.from_conf_object(jo, None)
-i = 0
 for d in diter:
-    i = i + 1
-    print "processing daemon %d" % i
-    print d.jo
+    print "processing " + d.get_short_name()
     # Create base_dir where logs and configuration will go 
     d.run("mkdir -p " + d.get_base_dir())
     # Upload daemon configuration file
