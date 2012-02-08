@@ -1,8 +1,10 @@
 #!/usr/bin/python
 
 from __future__ import with_statement
+from of_msg import *
 import json
 import of_util
+from socket import *
 import string
 import subprocess
 import sys
@@ -117,6 +119,12 @@ class Daemon(object):
         self.jo = jo
         self.jd = jd
         self.id = id
+        self.debug_port = None
+        if (self.id.ty == DaemonId.MDS):
+            if (self.jd.has_key("mds_port")):
+                self.debug_port = self.jd["mds_port"]
+            else:
+                self.debug_port = DEFAULT_MDS_MDS_PORT
     """ Run a command on this daemon and give output. Throws an exception on failure. """
     def run_with_output(self, cmd):
         return of_util.subprocess_check_output([ "ssh", "-o",
@@ -150,3 +158,51 @@ class Daemon(object):
         return self.id.get_binary_name()
     def get_binary_path(self):
         return self.jd["base_dir"] + "/usr/bin/" + self.get_binary_name()
+    def rf_msgr_send(self, msg):
+        try:
+            sock = socket(AF_INET, SOCK_STREAM)
+            sock.connect((self.jd["host"], self.debug_port))
+            (bytes, trid) = msg.serialize()
+            sock.sendall(bytes)
+        except Exception as e:
+            raise RfFailedToSendMsg(e.args)
+        sock.close()
+    def rf_msgr_send_with_resp(self, msg):
+        try:
+            sock = socket(AF_INET, SOCK_STREAM)
+            sock.connect((self.jd["host"], self.debug_port))
+            (bytes, trid) = msg.serialize()
+            sock.sendall(bytes)
+        except Exception as e:
+            raise RfFailedToSendMsg(e.args)
+        hdr = None
+        try:
+            hdr = of_util.safe_recv(sock, RF_PAYLOAD_HDR_LEN)
+        except Exception as e:
+            raise RfFailedToRecvReply(e.args)
+        (utrid, rem_trid, length, ty, pad) = struct.unpack("IIIHH", full)
+        if (length < RF_PAYLOAD_HDR_LEN):
+            raise RfFailedToRecvReply("received a message with length %d, \
+which is too short" % length)
+        if (rem_trid != trid):
+            raise RfFailedToRecvReply("received a reply message with \
+rem_trid %d, but we sent out trid %d" % (rem_trid, trid))
+        rem_length = length - RF_PAYLOAD_HDR_LEN
+        payload = ""
+        if (rem_length > 0):
+            try:
+                payload = of_util.safe_recv(sock, rem_length)
+            except Exception as e:
+                raise RfFailedToRecvReply(e.args)
+        sock.close()
+        return rf_msg_deserialize(ty, payload)
+    def check_mds_status(self):
+        if (self.id.ty != DaemonId.MDS):
+            raise RuntimeError("Can't check mds status for a non-MDS") 
+        msg = self.rf_msgr_send_with_resp(RfMsgGetMdsStatus())
+        if (not isinstance(msg, RfMsgMdsStatus)):
+            raise RuntimeError("got wrong message type response from \
+RfMsgGetMdsStatus.")
+        if (self.id.idx != msg.mid):
+            raise RuntimeError("MDS status said its mid is %d, but we \
+think it's %d" % msg.mid, self.id.idx)

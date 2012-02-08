@@ -46,3 +46,15 @@ def subprocess_check_output(*popenargs, **kwargs):
             cmd = popenargs[0]
         raise CalledProcessError(retcode, cmd)
     return output
+
+def safe_recv(sock, rem):
+    ret = ""
+    while True: 
+        res = sock.recv(rem)
+        if (res == ""):
+            raise RuntimeError("unexpected EOF on recv")
+        ret += res
+        rem -= len(ret)
+        if (rem == 0):
+            break
+    return ret
