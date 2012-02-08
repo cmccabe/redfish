@@ -223,8 +223,8 @@ static int handle_mmmd_get_mds_status(struct redfish_thread *rt, struct mtran *t
 	if (ret)
 		return ret;
 	ret = bsend_join(ctx);
-	if (ret)
-		return ret;
+	if (ret != 1)
+		return -EIO;
 	bsend_reset(ctx);
 
 	return 0;
