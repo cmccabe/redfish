@@ -14,16 +14,17 @@
  * limitations under the License.
  */
 
-#include "core/process_ctx.h"
 #include "common/config/logc.h"
 #include "core/glitch_log.h"
 #include "core/pid_file.h"
+#include "core/process_ctx.h"
 #include "core/signal.h"
+#include "jorm/jorm_const.h"
 #include "util/bitfield.h"
 #include "util/error.h"
 #include "util/fast_log.h"
-#include "util/fast_log_types.h"
 #include "util/fast_log_mgr.h"
+#include "util/fast_log_types.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -43,17 +44,15 @@ static void fast_log_to_core_log(char *buf)
 	glitch_log("%s", buf);
 }
 
-static void configure_fast_log(void)
+static void configure_fast_log(const char *redfish_log)
 {
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
-	const char *f;
 	BITFIELD_DECL(bits, FAST_LOG_TYPE_MAX);
 
 	BITFIELD_ZERO(bits);
-	f = getenv("REDFISH_LOG");
-	if (f) {
-		str_to_fast_log_bitfield(f, bits, err, err_len);
+	if (redfish_log) {
+		str_to_fast_log_bitfield(redfish_log, bits, err, err_len);
 		if (err[0]) {
 			glitch_log("configure_fast_log: %s\n", err);
 		}
@@ -76,7 +75,10 @@ static int process_ctx_init_impl(const char *argv0, int daemonize,
 		g_fast_log_mgr = NULL;
 		goto error_close_glitchlog;
 	}
-	configure_fast_log();
+	if (lc->fast_log == JORM_INVAL_STR)
+		configure_fast_log(getenv("REDFISH_LOG"));
+	else
+		configure_fast_log(lc->fast_log);
 	signal_init(argv0, err, err_len, lc, NULL);
 	if (err[0]) {
 		glitch_log("signal_init error: %s\n", err);

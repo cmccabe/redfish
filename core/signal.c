@@ -221,13 +221,13 @@ void signal_init(const char *argv0, char *err, size_t err_len,
 			 "initialized!");
 		return;
 	}
-	if (lc->crash_log) {
-		g_crash_log_fd = open(lc->crash_log,
+	if (lc->crash_log_path) {
+		g_crash_log_fd = open(lc->crash_log_path,
 			O_CREAT | O_TRUNC | O_RDWR, 0640);
 		if (g_crash_log_fd < 0) {
 			int ret = errno;
 			snprintf(err, err_len, "signal_init: open(%s) "
-				 "failed: error %d", lc->crash_log, ret);
+				 "failed: error %d", lc->crash_log_path, ret);
 			signal_shutdown();
 			return;
 		}
@@ -235,13 +235,13 @@ void signal_init(const char *argv0, char *err, size_t err_len,
 	else {
 		g_crash_log_fd = STDERR_FILENO;
 	}
-	if (lc->fast_log) {
-		g_fast_log_fd = open(lc->fast_log,
+	if (lc->fast_log_path) {
+		g_fast_log_fd = open(lc->fast_log_path,
 			O_CREAT | O_TRUNC | O_WRONLY, 0640);
 		if (g_fast_log_fd < 0) {
 			int ret = errno;
 			snprintf(err, err_len, "signal_init: open(%s) "
-				 "failed: error %d", lc->crash_log, ret);
+				 "failed: error %d", lc->crash_log_path, ret);
 			signal_shutdown();
 			return;
 		}

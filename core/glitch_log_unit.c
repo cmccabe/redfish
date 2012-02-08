@@ -51,19 +51,19 @@ static int test_stderr_output(const char *tempdir)
 	ret = dup2(fd, STDERR_FILENO);
 	if (ret == -1) {
 		int err = errno;
-		printf("dup2 err = %d\n", err);
+		fprintf(stderr, "dup2 err = %d\n", err);
 		return -err;
 	}
 	glitch_log(TEST_STR);
 	ret = simple_io_read_whole_file_zt(tempfile, buf, sizeof(buf));
 	if (ret < 0) {
-		printf("simple_io_read_whole_file_zt(%s) failed: error %d\n",
-		       tempfile, ret);
+		fprintf(stderr, "simple_io_read_whole_file_zt(%s) failed: "
+			"error %d\n", tempfile, ret);
 		return ret;
 	}
 	if (strcmp(buf, TEST_STR) != 0) {
-		printf("read '%s'; expected to find '" TEST_STR "' in "
-			"it.\n", buf);
+		fprintf(stderr, "read '%s'; expected to find '" TEST_STR
+			"' in it.\n", buf);
 		return -EDOM;
 	}
 	return 0;
@@ -79,9 +79,10 @@ static int test_log_output(const char *log)
 	/* Check the log file that should be written */
 	EXPECT_POSITIVE(simple_io_read_whole_file_zt(log, buf, sizeof(buf)));
 	snprintf(expected_buf, sizeof(expected_buf), "%s%s",
-		 TEST_STR, TEST_STR2);
+			TEST_STR, TEST_STR2);
 	if (strcmp(buf, expected_buf) != 0) {
-		printf("read '%s'; expected '%s'\n", buf, expected_buf);
+		fprintf(stderr, "read '%s'; expected '%s'\n", buf,
+				expected_buf);
 		return -EDOM;
 	}
 	return 0;
@@ -90,16 +91,17 @@ static int test_log_output(const char *log)
 int main(void)
 {
 	char tempdir[PATH_MAX];
-	char glitch_log[PATH_MAX];
+	char glitch_log_path[PATH_MAX];
 	struct logc lc;
 
 	EXPECT_ZERO(get_tempdir(tempdir, PATH_MAX, 0700));
 	EXPECT_ZERO(register_tempdir_for_cleanup(tempdir));
-	snprintf(glitch_log, sizeof(glitch_log), "%s/glitch_log.txt", tempdir);
+	snprintf(glitch_log_path, sizeof(glitch_log_path),
+			"%s/glitch_log.txt", tempdir);
 	memset(&lc, 0, sizeof(struct logc));
-	lc.glitch_log = glitch_log;
+	lc.glitch_log_path = glitch_log_path;
 	EXPECT_ZERO(test_stderr_output(tempdir));
 	configure_glitch_log(&lc);
-	EXPECT_ZERO(test_log_output(lc.glitch_log));
+	EXPECT_ZERO(test_log_output(lc.glitch_log_path));
 	return EXIT_SUCCESS;
 }

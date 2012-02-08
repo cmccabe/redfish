@@ -63,15 +63,15 @@ void harmonize_logc(struct logc *lc,
 {
 	if (lc->use_syslog == JORM_INVAL_BOOL)
 		lc->use_syslog = 0;
-	resolve_log_name("crash_log", "crash.log", &lc->crash_log,
+	resolve_log_name("crash_log_path", "crash.log", &lc->crash_log_path,
 			 lc->base_dir, err, err_len);
 	if (err[0])
 		return;
-	resolve_log_name("fast_log", "fast.log", &lc->fast_log,
+	resolve_log_name("fast_log_path", "fast.log", &lc->fast_log_path,
 			 lc->base_dir, err, err_len);
 	if (err[0])
 		return;
-	resolve_log_name("glitch_log", "glitch.log", &lc->glitch_log,
+	resolve_log_name("glitch_log_path", "glitch.log", &lc->glitch_log_path,
 			 lc->base_dir, err, err_len);
 	if (err[0])
 		return;

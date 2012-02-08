@@ -30,10 +30,10 @@ extern struct fast_log_mgr *g_fast_log_mgr;
  *
  * @param err			a buffer to write any errors to
  * @param err_len		length of the error buffer
- * @param lc			The log config. If crash_log is configured, we
- *				will open a file that will be written to when a
- *				fatal signal happens.
- * @param fatal_signal_cb	Callback that is executed after a fatal signal,
+ * @param lc			The log config. If crash_log_path is configured,
+ *				we will open a file that will be written to when
+ *				a fatal signal happens.  @param fatal_signal_cb
+ *				Callback that is executed after a fatal signal,
  *				or NULL for none.
  *
  * We write out an error message to error if signal_init fails.

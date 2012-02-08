@@ -172,15 +172,15 @@ void configure_glitch_log(const struct logc *lc)
 		return;
 	}
 	g_use_syslog = lc->use_syslog;
-	if (lc->glitch_log) {
-		RETRY_ON_EINTR(nfd, open(lc->glitch_log,
+	if (lc->glitch_log_path) {
+		RETRY_ON_EINTR(nfd, open(lc->glitch_log_path,
 			O_WRONLY | O_CREAT | O_TRUNC, 0644));
 		if (nfd == -1) {
 			char err[512];
 			ret = errno;
 			snprintf(err, sizeof(err), "configure_glitch_log: "
 				 "error opening '%s': error %d\n",
-				 lc->glitch_log, ret);
+				 lc->glitch_log_path, ret);
 			glitch_log_to_syslog_and_stderr(err, strlen(err));
 		}
 	}
@@ -197,9 +197,10 @@ void configure_glitch_log(const struct logc *lc)
 			unregister_tempdir_for_cleanup(g_glitch_log_fname);
 		}
 	}
-	if (lc->glitch_log) {
+	if (lc->glitch_log_path) {
 		g_glitch_log_fd = nfd;
-		snprintf(g_glitch_log_fname, PATH_MAX, "%s", lc->glitch_log);
+		snprintf(g_glitch_log_fname, PATH_MAX, "%s",
+				lc->glitch_log_path);
 	}
 	else {
 		g_glitch_log_fd = -1;

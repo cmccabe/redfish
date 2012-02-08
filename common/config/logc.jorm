@@ -17,10 +17,9 @@
 JORM_CONTAINER_BEGIN(logc)
 	JORM_BOOL(use_syslog)
 	JORM_STR(base_dir)
-	JORM_STR(crash_log)
+	JORM_STR(crash_log_path)
+	JORM_STR(fast_log_path)
 	JORM_STR(fast_log)
-	JORM_STR(glitch_log)
-	JORM_STR(mon_data_dir)
+	JORM_STR(glitch_log_path)
 	JORM_STR(pid_file)
-	JORM_STR(socket_path)
 JORM_CONTAINER_END

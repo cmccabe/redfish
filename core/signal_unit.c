@@ -61,8 +61,8 @@ static int test_signal_handler(const char *argv0, const char *tempdir, int sig)
 {
 	int ret, pid, status;
 	char err[512] = { 0 };
-	char crash_log[PATH_MAX];
-	snprintf(crash_log, sizeof(crash_log), "%s/crash.log.%d",
+	char crash_log_path[PATH_MAX];
+	snprintf(crash_log_path, sizeof(crash_log_path), "%s/crash.log.%d",
 		 tempdir, rand());
 	pid = fork();
 	if (pid == -1) {
@@ -72,7 +72,7 @@ static int test_signal_handler(const char *argv0, const char *tempdir, int sig)
 	else if (pid == 0) {
 		struct logc lc;
 		memset(&lc, 0, sizeof(lc));
-		lc.crash_log = crash_log;
+		lc.crash_log_path = crash_log_path;
 		signal_init(argv0, err, sizeof(err), &lc, NULL);
 		if (err[0]) {
 			fprintf(stderr, "signal_init error: %s\n", err);
@@ -83,7 +83,7 @@ static int test_signal_handler(const char *argv0, const char *tempdir, int sig)
 	}
 	RETRY_ON_EINTR(ret, waitpid(pid, &status, 0));
 
-	EXPECT_ZERO(validate_crash_log(crash_log, sig));
+	EXPECT_ZERO(validate_crash_log(crash_log_path, sig));
 	return 0;
 }
 

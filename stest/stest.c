@@ -221,16 +221,16 @@ static void stest_signal_fn(POSSIBLY_UNUSED(int signal))
 
 static void stest_init_signals(const char *argv0)
 {
-	char crash_log[PATH_MAX];
+	char crash_log_path[PATH_MAX];
 	char err[512] = { 0 };
 	struct logc lc;
 
-	if (zsnprintf(crash_log, sizeof(crash_log), "%s/crash", g_tempdir)) {
+	if (zsnprintf(crash_log_path, sizeof(crash_log_path), "%s/crash", g_tempdir)) {
 		fprintf(stderr, "start_msg buffer too short!\n");
 		exit(EXIT_FAILURE);
 	}
 	memset(&lc, 0, sizeof(lc));
-	lc.crash_log = crash_log;
+	lc.crash_log_path = crash_log_path;
 	signal_init(argv0, err, sizeof(err), &lc, stest_signal_fn);
 	if (err[0]) {
 		fprintf(stderr, "signal_init error: %s\n", err);
