@@ -22,10 +22,9 @@ def rf_msg_serialize(ty, payload):
     length = len(payload) + RF_PAYLOAD_HDR_LEN
     ty = ty
     pad = 0
-    return (struct.pack("IIIHH", trid, rem_trid, length, ty, pad), trid)
+    return (struct.pack(">IIIHH", rem_trid, trid, length, ty, pad), trid)
 
 def rf_msg_deserialize(ty, payload):
-    payload = full[RF_PAYLOAD_HDR_LEN:]
     if (ty == MMMD_GET_MDS_STATUS):
         return RfMsgGetMdsStatus.deserialize(payload)
     elif (ty == MMMD_MDS_STATUS):
@@ -46,11 +45,11 @@ class RfMsgMdsStatus(object):
     def __init__(self, mid):
         self.mid = mid
     def serialize(self, mid):
-        payload = struct.pack("I", mid)
+        payload = struct.pack(">H", mid)
         return rf_msg_serialize(MMMD_GET_MDS_STATUS, payload)
     @staticmethod
     def deserialize(payload):
-        mid = struct.unpack("I", payload)
+        mid = struct.unpack(">H", payload)[0]
         return RfMsgMdsStatus(mid)
 
 class RfFailedToSendMsg(Exception):

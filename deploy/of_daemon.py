@@ -189,13 +189,13 @@ class Daemon(object):
             hdr = of_util.safe_recv(sock, RF_PAYLOAD_HDR_LEN)
         except Exception as e:
             raise RfFailedToRecvReply(e.args)
-        (utrid, rem_trid, length, ty, pad) = struct.unpack("IIIHH", full)
+        (utrid, rem_trid, length, ty, pad) = struct.unpack(">IIIHH", hdr)
         if (length < RF_PAYLOAD_HDR_LEN):
             raise RfFailedToRecvReply("received a message with length %d, \
 which is too short" % length)
-        if (rem_trid != trid):
+        if (utrid != trid):
             raise RfFailedToRecvReply("received a reply message with \
-rem_trid %d, but we sent out trid %d" % (rem_trid, trid))
+trid %d, but we sent out trid %d" % (utrid, trid))
         rem_length = length - RF_PAYLOAD_HDR_LEN
         payload = ""
         if (rem_length > 0):
@@ -213,5 +213,6 @@ rem_trid %d, but we sent out trid %d" % (rem_trid, trid))
             raise RuntimeError("got wrong message type response from \
 RfMsgGetMdsStatus.")
         if (self.id.idx != msg.mid):
-            raise RuntimeError("MDS status said its mid is %d, but we \
-think it's %d" % msg.mid, self.id.idx)
+            raise RuntimeError("MDS status said its mid is " + str(msg.mid) + " but we \
+think it's " + str(self.id.idx))
+        return (msg.mid)

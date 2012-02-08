@@ -18,4 +18,5 @@ for d in diter:
     if d.id.ty != DaemonId.MDS:
         continue
     print "checking status of " + d.get_short_name()
-    d.check_mds_status()
+    ret = d.check_mds_status()
+    print d.get_short_name() + " has status " + str(ret)
