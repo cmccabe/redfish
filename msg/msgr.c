@@ -742,19 +742,22 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 	case MCONN_READING:
 		m_len = be32toh(conn->inbound_msg->len);
 		amt = m_len - conn->cnt;
-		res = read(conn->sock, conn->inbound_msg->data, amt);
-		if (res < 0) {
-			int ret = errno;
-			if (is_temporary_socket_error(ret))
+		if (amt > 0) {
+			res = recv(conn->sock, conn->inbound_msg->data, amt, 0);
+			if (res <= 0) {
+				int ret = errno;
+				if (is_temporary_socket_error(ret))
+					return;
+				fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR,
+					conn->port, conn->ip, 0, 0,
+					FLME_READ_ERROR, ret);
+				mconn_teardown(conn, ret);
 				return;
-			fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, conn->port,
-				conn->ip, 0, 0, FLME_READ_ERROR, ret);
-			mconn_teardown(conn, ret);
-			return;
-		}
-		conn->cnt += res;
-		if (conn->cnt != (int)m_len) {
-			return;
+			}
+			conn->cnt += res;
+			if (conn->cnt != (int)m_len) {
+				return;
+			}
 		}
 		RB_REMOVE(active_tr, &conn->active_head, conn->inbound_tr);
 		mconn_state_transition(conn, MCONN_QUIESCENT);
