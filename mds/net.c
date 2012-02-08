@@ -317,14 +317,14 @@ static int mds_net_maintenance_thread(struct redfish_thread *rt)
 
 static void mds_net_root_delegation_setup(void)
 {
-	int i, primary;
+	int ret, i, primary;
 	struct delegation *dg;
 	struct daemon_info *di;
 	struct dg_mds_info *mi;
 
-	dg = dslots_lock(g_dslots, RF_ROOT_DGID);
+	dg = delegation_alloc(RF_ROOT_DGID);
 	if (IS_ERR(dg)) {
-		glitch_log("mds_net_root_delegation_setup: failed to locate "
+		glitch_log("mds_net_root_delegation_setup: failed to allocate "
 			"root delegation!  Error %d\n", PTR_ERR(dg));
 		abort();
 	}
@@ -339,6 +339,12 @@ static void mds_net_root_delegation_setup(void)
 		primary = 0;
 		mi->addr = di->ip;
 		mi->port = di->port;
+	}
+	ret = dslots_add(g_dslots, &dg, 1);
+	if (ret) {
+		glitch_log("mds_net_root_delegation_setup: failed to add "
+			"root delegation!  Error %d\n", ret);
+		abort();
 	}
 }
 
