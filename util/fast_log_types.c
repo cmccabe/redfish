@@ -64,11 +64,28 @@ int token_to_fast_log_bitfield(const char *str, BITFIELD_DECL(bits, FAST_LOG_TYP
 		BITFIELD_SET(bits, FAST_LOG_MSGR_ERROR);
 		return 0;
 	}
+	else if (strcmp(str, "BSEND_DEBUG") == 0) {
+		BITFIELD_SET(bits, FAST_LOG_BSEND_DEBUG);
+		return 0;
+	}
+	else if (strcmp(str, "BSEND_ERROR") == 0) {
+		BITFIELD_SET(bits, FAST_LOG_BSEND_ERROR);
+		return 0;
+	}
 	/* composites */
 	else if (strcmp(str, "MSGR") == 0) {
 		BITFIELD_SET(bits, FAST_LOG_MSGR_DEBUG);
 		BITFIELD_SET(bits, FAST_LOG_MSGR_INFO);
 		BITFIELD_SET(bits, FAST_LOG_MSGR_ERROR);
+		return 0;
+	}
+	else if (strcmp(str, "BSEND") == 0) {
+		BITFIELD_SET(bits, FAST_LOG_BSEND_DEBUG);
+		BITFIELD_SET(bits, FAST_LOG_BSEND_ERROR);
+		return 0;
+	}
+	else if (strcmp(str, "ALL") == 0) {
+		BITFIELD_FILL(bits);
 		return 0;
 	}
 	return -ENOENT;
