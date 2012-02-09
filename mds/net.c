@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#define REDFISH_MDS_NET_DOT_C
+
 #include "common/cluster_map.h"
 #include "common/config/mdsc.h"
 #include "common/config/unitaryc.h"
@@ -23,7 +25,9 @@
 #include "mds/delegation.h"
 #include "mds/dmap.h"
 #include "mds/dslots.h"
+#include "mds/heartbeat.h"
 #include "mds/limits.h"
+#include "mds/net.h"
 #include "msg/bsend.h"
 #include "msg/mds.h"
 #include "msg/msg.h"
@@ -71,20 +75,19 @@
 /** Maximum number of simultaneous TCP sockets to allow for the client messenger. */
 #define RF_MAX_CLI_CONN 65536
 
-/** Send timeout period for sending messages to nodes */
-#define RF_SEND_TIMEO_PERIOD 20
-
-/** Number of send timeout periods to allow to expire before timing out a
- * connection or transactor */
-#define RF_SEND_TIMEO_CNT 3
+static const struct msgr_timeo g_mds_msgr_timeo = { .period = 5, .cnt = 3 };
 
 struct mds_tr_thread {
 	struct recv_pool_thread base;
 };
 
+static const struct msgr_timeo g_osd_msgr_timeo = { .period = 20, .cnt = 3 };
+
 struct osd_tr_thread {
 	struct recv_pool_thread base;
 };
+
+static const struct msgr_timeo g_cli_msgr_timeo = { .period = 20, .cnt = 3 };
 
 struct cli_tr_thread {
 	struct recv_pool_thread base;
@@ -94,43 +97,29 @@ struct maint_thread {
 	struct recv_pool_thread base;
 };
 
-/** The metadata server ID for this server */
-uint16_t g_mid;
-
-/** Current cluster map */
-struct cmap *g_cmap;
-
-/** Current delegation map */
-struct dmap *g_dmap;
-
-/** Delegation locks */
-struct dslots *g_dslots;
-
-/** Messenger listening for connections from other MDSes */
-struct msgr *g_mds_msgr;
 /** recv_pool listening for connections from other MDSes */
 struct recv_pool *g_mds_rpool;
 /** threads listening for connections from other MDSes */
 struct mds_tr_thread g_mds_rts[MAX_TR_THREADS];
 
-/** Messenger listening for connections from OSDs */
-struct msgr *g_osd_msgr;
 /** recv_pool listening for connections from OSDs */
 struct recv_pool *g_osd_rpool;
 /** threads listening for connections from OSDs */
 struct mds_tr_thread g_osd_rts[MAX_TR_THREADS];
 
-/** Messenger listening for connections from clients */
-struct msgr *g_cli_msgr;
 /** recv_pool listening for connections from clients */
 struct recv_pool *g_cli_rpool;
 /** threads listening for connections from clients */
 struct mds_tr_thread g_cli_rts[MAX_TR_THREADS];
 
+/** Thread that sends heartbeats */
+struct redfish_thread g_mds_send_hb_thread;
+
 static void mds_net_msgr_init(struct recv_pool **rpool, struct msgr **msgr,
 	struct recv_pool_thread *rts, size_t th_sz,
 	struct fast_log_buf *fb, int max_conn,
-	recv_pool_handler_fn_t handler, int nthreads, uint16_t port)
+	recv_pool_handler_fn_t handler, int nthreads, uint16_t port,
+	const struct msgr_timeo *timeo)
 {
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
@@ -143,7 +132,7 @@ static void mds_net_msgr_init(struct recv_pool **rpool, struct msgr **msgr,
 		abort();
 	}
 	*msgr = msgr_init(err, err_len, max_conn, RF_MAX_TRAN,
-		RF_SEND_TIMEO_PERIOD, RF_SEND_TIMEO_CNT, g_fast_log_mgr);
+			timeo, g_fast_log_mgr);
 	if (err[0]) {
 		glitch_log("mds_net_msgr_init: failed to create messenger: "
 			"error %s\n", err);
@@ -194,6 +183,20 @@ static void mds_net_msgrs_start(void)
 	if (err[0]) {
 		glitch_log("mds_net_msgr_init: failed to initialize "
 			   "g_cli_msgr: error %s", err);
+		abort();
+	}
+	glitch_log("mds_net_init: started all messengers.\n");
+}
+
+static void mds_net_heartbeat_start(void)
+{
+	int ret;
+
+	ret = redfish_thread_create(g_fast_log_mgr, &g_mds_send_hb_thread,
+			mds_send_hb_thread, NULL);
+	if (ret) {
+		glitch_log("mds_net_init: failed to create "
+			"mds_send_hb_thread: error %d\n", ret);
 		abort();
 	}
 }
@@ -394,21 +397,24 @@ void mds_net_init(struct fast_log_buf *fb, struct unitaryc *conf,
 		fb, RF_MAX_MDS, mds_net_handle_mds_tr,
 		DEFAULT_MDS_TR_THREADS,
 		((mconf->mds_port == JORM_INVAL_INT) ?
-		 	DEFAULT_MDS_MDS_PORT : mconf->mds_port));
+		 	DEFAULT_MDS_MDS_PORT : mconf->mds_port),
+		&g_mds_msgr_timeo);
 	mds_net_msgr_init(&g_osd_rpool, &g_osd_msgr,
 		(struct recv_pool_thread *)g_osd_rts, sizeof(g_osd_rts[0]),
 		fb, RF_MAX_OSD_CONN, mds_net_handle_osd_tr,
 		DEFAULT_OSD_TR_THREADS,
 		((mconf->osd_port == JORM_INVAL_INT) ?
-		 	DEFAULT_MDS_OSD_PORT : mconf->osd_port));
+		 	DEFAULT_MDS_OSD_PORT : mconf->osd_port),
+		&g_osd_msgr_timeo);
 	mds_net_msgr_init(&g_cli_rpool, &g_cli_msgr,
 		(struct recv_pool_thread *)g_cli_rts, sizeof(g_cli_rts[0]),
 		fb, RF_MAX_CLI_CONN, mds_net_handle_cli_tr,
 		DEFAULT_CLI_TR_THREADS,
 		((mconf->cli_port == JORM_INVAL_INT) ?
-		 	DEFAULT_MDS_CLI_PORT : mconf->cli_port));
+		 	DEFAULT_MDS_CLI_PORT : mconf->cli_port),
+		&g_cli_msgr_timeo);
 	mds_net_msgrs_start();
-	glitch_log("mds_net_init: started all messengers.\n");
+	mds_net_heartbeat_start();
 }
 
 int mds_main_loop(void)

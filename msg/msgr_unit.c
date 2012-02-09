@@ -143,13 +143,14 @@ static int msgr_test_init_shutdown(int start)
 	struct msgr *foo_msgr, *bar_msgr;
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
+	const struct msgr_timeo timeo = { 60, 5 };
 
 	foo_msgr = msgr_init(err, err_len, 10, 10,
-			60, 5, g_fast_log_mgr);
+			&timeo, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
 	bar_msgr = msgr_init(err, err_len, 10, 10,
-			60, 5, g_fast_log_mgr);
+			&timeo, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
 	if (start) {
@@ -197,15 +198,16 @@ static int msgr_test_simple_send(int num_sends)
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 	struct listen_info linfo;
+	const struct msgr_timeo timeo = { 60, 5 };
 
 	EXPECT_ZERO(sem_init(&g_msgr_test_simple_send_sem, 0, 0));
 
 	foo_msgr = msgr_init(err, err_len, 10, 10,
-				60, 5, g_fast_log_mgr);
+				&timeo, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
 	bar_msgr = msgr_init(err, err_len, 10, 10,
-				60, 5, g_fast_log_mgr);
+				&timeo, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
 	memset(&linfo, 0, sizeof(linfo));
@@ -289,15 +291,16 @@ static int msgr_test_conn_timeout(void)
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 	struct listen_info linfo;
+	const struct msgr_timeo timeo = { 1, 1 };
 
 	EXPECT_ZERO(sem_init(&g_msgr_test_baz_sem, 0, 0));
 
 	baz1_msgr = msgr_init(err, err_len, 10, 10,
-				1, 1, g_fast_log_mgr);
+				&timeo, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
 	baz2_msgr = msgr_init(err, err_len, 10, 10,
-				1, 1, g_fast_log_mgr);
+				&timeo, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
 	memset(&linfo, 0, sizeof(linfo));
@@ -335,15 +338,16 @@ static int msgr_test_conn_shutdown(void)
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 	struct listen_info linfo;
+	const struct msgr_timeo timeo = { 1, 1 };
 
 	EXPECT_ZERO(sem_init(&g_msgr_test_baz_sem, 0, 0));
 
 	baz1_msgr = msgr_init(err, err_len, 10, 10,
-				1, 1, g_fast_log_mgr);
+				&timeo, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
 	baz2_msgr = msgr_init(err, err_len, 10, 10,
-				1, 1, g_fast_log_mgr);
+				&timeo, g_fast_log_mgr);
 	if (err[0])
 		goto handle_error;
 	memset(&linfo, 0, sizeof(linfo));

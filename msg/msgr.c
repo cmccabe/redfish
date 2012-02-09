@@ -793,8 +793,7 @@ const char *mconn_state_to_str(int state)
 };
 /****************************** msgr ********************************/
 struct msgr *msgr_init(char *err, size_t err_len,
-		int max_conn, int max_tran,
-		int timeout_period, int timeout_cnt_max,
+		int max_conn, int max_tran, const struct msgr_timeo *timeo,
 		struct fast_log_mgr *fb_mgr)
 {
 	struct msgr *msgr;
@@ -819,8 +818,8 @@ struct msgr *msgr_init(char *err, size_t err_len,
 	msgr->max_tran = max_tran;
 	msgr->cur_conn = 0;
 	msgr->max_conn = max_conn;
-	msgr->timeout_period = timeout_period;
-	msgr->timeout_cnt_max = timeout_cnt_max;
+	msgr->timeout_period = timeo->period;
+	msgr->timeout_cnt_max = timeo->cnt;
 	RB_INIT(&msgr->conn_head);
 	ev_init(&msgr->w_listen_fd, NULL);
 	STAILQ_INIT(&msgr->pending_tr_head);

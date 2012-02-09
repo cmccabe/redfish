@@ -3,6 +3,7 @@ add_executable(fishmds
     dmap.c
     dslots.c
     force_cpp.cc
+    heartbeat.c
     main.c
     mstor.c
     net.c

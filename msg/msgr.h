@@ -61,6 +61,13 @@ struct listen_info {
  * with an error pointer set to the errno code.
  */
 
+struct msgr_timeo {
+	/** Timeout period in seconds */
+	int period;
+	/** Number of periods to allow to expire before the timeout triggers */
+	int cnt;
+};
+
 /** Initialize the messenger.
  *
  * @param err			(out param) error buffer
@@ -68,16 +75,13 @@ struct listen_info {
  * @param max_conn		Maximum number of connections to allow.
  * @param max_tran		Maximum number of simultaneous transactors to
  *				allow
- * @param timeout_period	Timeout period in seconds
- * @param timeout_cnt_max	Number of timeout periods to allow to expire
- *				before timing out a connection or transactor.
+ * @param timeo			The timeout on outgoing and incoming messages.
  * @param mgr			Fast log manager to use for fast logs
  *
  * @return			the messenger on success; NULL otherwise
  */
 extern struct msgr *msgr_init(char *err, size_t err_len,
-		int max_conn, int max_tran,
-		int timeout_period, int timeout_cnt_max,
+		int max_conn, int max_tran, const struct msgr_timeo *timeo,
 		struct fast_log_mgr *mgr);
 
 /** Configure the messenger to listen on a given TCP port.

@@ -17,9 +17,42 @@
 #ifndef REDFISH_MDS_NET_DOT_H
 #define REDFISH_MDS_NET_DOT_H
 
+#include <pthread.h> /* for pthread_mutex_t */
+#include <stdint.h> /* for uint16_t, etc. */
+
 struct fast_log_buf;
 struct mdsc;
 struct unitaryc;
+
+#ifdef REDFISH_MDS_NET_DOT_C
+#define EXTERN
+#else
+#define EXTERN extern
+#endif
+
+/** Current delegation map */
+EXTERN struct dmap *g_dmap;
+
+/** Delegation locks */
+EXTERN struct dslots *g_dslots;
+
+/** The metadata server ID for this server */
+EXTERN uint16_t g_mid;
+
+/** Current cluster map */
+EXTERN struct cmap *g_cmap;
+
+/** Lock that protects the cluster map */
+EXTERN pthread_mutex_t g_cmap_lock;
+
+/** Messenger listening for connections from other MDSes */
+EXTERN struct msgr *g_mds_msgr;
+
+/** Messenger listening for connections from OSDs */
+EXTERN struct msgr *g_osd_msgr;
+
+/** Messenger listening for connections from clients */
+EXTERN struct msgr *g_cli_msgr;
 
 /** Initialize mds networking stuff
  *
