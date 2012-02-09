@@ -55,11 +55,12 @@ int mds_send_hb_thread(struct redfish_thread *rt)
 {
 	struct mtran *tr;
 	struct bsend *ctx;
-	int succ, i, num_mds, ret, first, use_timer_a;
+	int succ, i, num_mds, ret, first, use_timer_a, num_sent;
 	struct mmm_mds_heartbeat *m;
 	time_t cur_time, until;
 	timer_t timer_a, timer_b;
 	struct daemon_info *di;
+	char buf[128];
 
 	/* We want a pretty short timeout here.  If we fail to send a heartbeat
 	 * to an MDS, hopefully it will receive the next heartbeat that we send.
@@ -95,6 +96,8 @@ int mds_send_hb_thread(struct redfish_thread *rt)
 		pthread_mutex_lock(&g_cmap_lock);
 		num_mds = g_cmap->num_mds;
 		for (i = 0; i < num_mds; ++i) {
+			if (i == g_mid)
+				continue;
 			di = &g_cmap->minfo[i];
 			if (!di->in)
 				continue;
@@ -111,22 +114,23 @@ int mds_send_hb_thread(struct redfish_thread *rt)
 		}
 		pthread_mutex_unlock(&g_cmap_lock);
 
-		ret = bsend_join(ctx);
-		if (ret < 0)
-			return ret;
+		num_sent = bsend_join(ctx);
+		if (num_sent < 0)
+			return num_sent;
 		succ = 0;
-		for (i = 0; i < num_mds; ++i) {
+		for (i = 0; i < num_sent; ++i) {
 			tr = bsend_get_mtran(ctx, i);
 			if (tr->m && IS_ERR(tr->m)) {
+				mtran_ep_to_str(tr, buf, sizeof(buf));
 				glitch_log("mds_send_hb_thread: failed to "
-					"send heartbeat to mid %d: error %d\n",
-					i, PTR_ERR(tr->m));
+					"send heartbeat to %s: error %d\n",
+					buf, PTR_ERR(tr->m));
 			}
 			else
 				++succ;
 		}
 		glitch_log("mds_send_hb_thread: successfully sent %d "
-			   "heartbeats out of %d\n", succ, ret);
+			   "heartbeats out of %d\n", succ, num_sent);
 		bsend_reset(ctx);
 	}
 }
