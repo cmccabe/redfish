@@ -93,7 +93,7 @@ static pthread_cond_t g_full_set_cond;
 static pthread_mutex_t g_full_set_lock;
 static uint32_t g_current_iter_lowest;
 
-static int recv_pool_test_handler(POSSIBLY_UNUSED(struct redfish_thread *rt),
+static int recv_pool_test_handler(POSSIBLY_UNUSED(struct recv_pool_thread *rt),
 		struct mtran *tr)
 {
 	struct mmm_test40 *m = (struct mmm_test40 *)tr->m;

@@ -46,6 +46,7 @@ enum fast_log_msgr_event {
 	FLME_HDR_READ_ERROR,
 	FLME_READ_ERROR,
 	FLME_WRITE_ERROR,
+	FLME_MAX,
 };
 
 extern void fast_log_msgr_impl(struct fast_log_buf *fb, uint16_t ty,
@@ -58,5 +59,22 @@ extern void fast_log_msgr_debug_dump(struct fast_log_entry *fe, char *buf);
 extern void fast_log_msgr_info_dump(struct fast_log_entry *fe, char *buf);
 
 extern void fast_log_msgr_warn_dump(struct fast_log_entry *fe, char *buf);
+
+enum fast_log_bsend_event {
+	FLBS_INIT = 1,
+	FLBS_ADD_TR,
+	FLBS_JOIN,
+	FLBS_RESET,
+	FLBS_FREE,
+	FLBS_MAX,
+};
+
+extern void fast_log_bsend(struct fast_log_buf *fb,
+		uint16_t ty, uint8_t event, uint16_t port, uint32_t ip,
+		uint8_t flags, uint16_t err, uint32_t event_data);
+
+extern void fast_log_bsend_debug_dump(struct fast_log_entry *fe, char *buf);
+
+extern void fast_log_bsend_error_dump(struct fast_log_entry *fe, char *buf);
 
 #endif

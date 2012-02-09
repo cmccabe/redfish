@@ -15,9 +15,11 @@
  */
 
 #include "msg/bsend.h"
+#include "msg/fast_log.h"
 #include "msg/msg.h"
 #include "msg/msgr.h"
 #include "util/compiler.h"
+#include "util/cram.h"
 #include "util/error.h"
 #include "util/fast_log.h"
 #include "util/fast_log_types.h"
@@ -52,15 +54,13 @@ struct bsend {
 	int max_tr;
 	/** Current number of transactions */
 	int num_tr;
-	/** Transaction timeout, in seconds */
-	int timeout;
 	/** If nonzero, the context has been cancelled. */
 	int cancel;
 	/** Number of finished transactors */
 	int num_finished;
 };
 
-struct bsend *bsend_init(struct fast_log_buf *fb, int max_tr, int timeout)
+struct bsend *bsend_init(struct fast_log_buf *fb, int max_tr)
 {
 	int ret;
 	struct bsend *ctx;
@@ -80,14 +80,14 @@ struct bsend *bsend_init(struct fast_log_buf *fb, int max_tr, int timeout)
 	ctx->max_tr = max_tr;
 	ctx->btrs = btrs;
 	ctx->num_tr = 0;
-	ctx->timeout = timeout;
 	ret = pthread_mutex_init(&ctx->lock, NULL);
 	if (ret)
 		goto error_free_btrs;
 	ret = pthread_cond_init_mt(&ctx->cond);
 	if (ret)
 		goto error_destroy_lock;
-	fast_log_bsend(ctx->fb, initialized with max_tr = , timeout = )
+	fast_log_bsend(ctx->fb, FAST_LOG_BSEND_DEBUG, FLBS_INIT,
+			0, 0, 0, 0, max_tr);
 	return ctx;
 
 error_destroy_lock:
@@ -97,7 +97,10 @@ error_free_btrs:
 error_free_ctx:
 	free(ctx);
 error:
-	return ERR_PTR(FORCE_POSITIVE(ret));
+	ret = FORCE_POSITIVE(ret);
+	fast_log_bsend(ctx->fb, FAST_LOG_BSEND_ERROR, FLBS_INIT,
+		0, 0, 0, cram_into_u16(ret), max_tr);
+	return ERR_PTR(ret);
 }
 
 static void bsend_cb_complete(struct bsend *ctx)
@@ -150,7 +153,8 @@ int bsend_add(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
 
 	tr = mtran_alloc(msgr);
 	if (!tr) {
-		fast_log_bsend(ctx->fb, failed to add bsend to addr, port, with flags)
+		fast_log_bsend(ctx->fb, FAST_LOG_BSEND_ERROR, FLBS_ADD_TR,
+			       tr->port, tr->ip, flags, ENOMEM, ctx->num_tr);
 		return -ENOMEM;
 	}
 	tr->ip = addr;
@@ -165,7 +169,8 @@ int bsend_add_tr_or_free(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
 
 	if (ctx->num_tr >= ctx->max_tr) {
 		mtran_free(tr);
-		fast_log_bsend(ctx->fb, failed to add bsend to addr, port, with flags... too many tr)
+		fast_log_bsend(ctx->fb, FAST_LOG_BSEND_ERROR, FLBS_ADD_TR,
+			       tr->port, tr->ip, flags, EMFILE, ctx->num_tr);
 		return -EMFILE;
 	}
 	btr = &ctx->btrs[ctx->num_tr];
@@ -176,12 +181,14 @@ int bsend_add_tr_or_free(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
 	if (ctx->cancel) {
 		pthread_mutex_unlock(&ctx->lock);
 		mtran_free(tr);
-		fast_log_bsend(ctx->fb, failed to add bsend to addr, port, with flags... canceled)
+		fast_log_bsend(ctx->fb, FAST_LOG_BSEND_ERROR, FLBS_ADD_TR,
+			       tr->port, tr->ip, flags, ECANCELED, ctx->num_tr);
 		return -ECANCELED;
 	}
 	pthread_mutex_unlock(&ctx->lock);
 	ctx->num_tr++;
-	fast_log_bsend(ctx->fb, added bsend to addr, port, with flags)
+	fast_log_bsend(ctx->fb, FAST_LOG_BSEND_DEBUG, FLBS_ADD_TR,
+		       tr->port, tr->ip, flags, 0, ctx->num_tr);
 	mtran_send(msgr, tr, bsend_cb, btr, msg);
 	return 0;
 }
@@ -193,9 +200,8 @@ int bsend_join(struct bsend *ctx)
 
 	pthread_mutex_lock(&ctx->lock);
 	while (1) {
-//		printf("ctx->cancel = %d, ctx->num_finished = %d, "
-//			"ctx->num_tr = %d\n", ctx->cancel,
-//			ctx->num_finished, ctx->num_tr);
+		fast_log_bsend(ctx->fb, FAST_LOG_BSEND_DEBUG, FLBS_JOIN,
+			       0, 0, 0, 0, ctx->num_finished - ctx->num_tr);
 		if (ctx->cancel) {
 			pthread_mutex_unlock(&ctx->lock);
 			for (i = 0; i < ctx->num_tr; ++i) {
@@ -205,15 +211,16 @@ int bsend_join(struct bsend *ctx)
 				}
 				btr->tr->m = ERR_PTR(ECANCELED);
 			}
-			fast_log_bsend(ctx->fb, bsend_join canceled)
+			fast_log_bsend(ctx->fb, FAST_LOG_BSEND_ERROR,
+				FLBS_JOIN, 0, 0, 0, ECANCELED, 0);
 			return -ECANCELED;
 		}
 		if (ctx->num_finished == ctx->num_tr) {
 			pthread_mutex_unlock(&ctx->lock);
-			fast_log_bsend(ctx->fb, joined %d transactors)
+			fast_log_bsend(ctx->fb, FAST_LOG_BSEND_DEBUG, FLBS_JOIN,
+				       0, 0, 1, 0, ctx->num_finished);
 			return ctx->num_tr;
 		}
-		fast_log_bsend(ctx->fb, joined %d transactors, %d to go)
 		pthread_cond_wait(&ctx->cond, &ctx->lock);
 	}
 }
@@ -228,10 +235,20 @@ struct mtran *bsend_get_mtran(struct bsend *ctx, int ntr)
 void bsend_reset(struct bsend *ctx)
 {
 	int i;
+	int32_t diff;
 
-	fast_log_bsend(ctx->fb, bsend reset)
-	if (ctx->num_finished != ctx->num_tr)
-		abort();
+	diff = ctx->num_tr;
+	diff -= ctx->num_finished;
+	if (diff != 0) {
+		/* We should not reset a bsend context that still has unfinished
+		 * transactors. */
+		fast_log_bsend(ctx->fb, FAST_LOG_BSEND_ERROR, FLBS_RESET,
+				0, 0, 0, EINVAL, (uint32_t)diff);
+	}
+	else {
+		fast_log_bsend(ctx->fb, FAST_LOG_BSEND_DEBUG, FLBS_RESET,
+				0, 0, 0, 0, 0);
+	}
 	for (i = 0; i < ctx->num_tr; ++i) {
 		mtran_free(ctx->btrs[i].tr);
 		ctx->btrs[i].tr = NULL;
@@ -243,6 +260,8 @@ void bsend_reset(struct bsend *ctx)
 
 void bsend_cancel(struct bsend *ctx)
 {
+	/* We can't use fast_log in this function because it may not be called
+	 * from the same thread as the bsend user. */
 	pthread_mutex_lock(&ctx->lock);
 	if (ctx->cancel) {
 		pthread_mutex_unlock(&ctx->lock);
@@ -256,6 +275,8 @@ void bsend_cancel(struct bsend *ctx)
 
 void bsend_free(struct bsend *ctx)
 {
+	fast_log_bsend(ctx->fb, FAST_LOG_BSEND_DEBUG, FLBS_FREE,
+		0, 0, 0, 0, 0);
 	pthread_mutex_destroy(&ctx->lock);
 	pthread_cond_destroy(&ctx->cond);
 	free(ctx->btrs);

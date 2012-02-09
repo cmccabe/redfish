@@ -84,9 +84,13 @@ int token_to_fast_log_bitfield(const char *str, BITFIELD_DECL(bits, FAST_LOG_TYP
 STUB_FN(fast_log_msgr_debug_dump);
 STUB_FN(fast_log_msgr_info_dump);
 STUB_FN(fast_log_msgr_error_dump);
+STUB_FN(fast_log_bsend_debug_dump);
+STUB_FN(fast_log_bsend_error_dump);
 
 const fast_log_dumper_fn_t g_fast_log_dumpers[] = {
 	[FAST_LOG_MSGR_DEBUG] = fast_log_msgr_debug_dump,
 	[FAST_LOG_MSGR_INFO] = fast_log_msgr_info_dump,
 	[FAST_LOG_MSGR_ERROR] = fast_log_msgr_error_dump,
+	[FAST_LOG_BSEND_DEBUG] = fast_log_bsend_debug_dump,
+	[FAST_LOG_BSEND_ERROR] = fast_log_bsend_error_dump,
 };

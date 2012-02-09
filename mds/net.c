@@ -46,10 +46,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MDS_NET_MAX_BSEND_TR 100000
-
-#define MDS_NET_BSEND_TIMEO 120
-
 #define DEFAULT_MDS_TR_THREADS 8
 
 #define DEFAULT_OSD_TR_THREADS 8
@@ -140,17 +136,10 @@ static void mds_net_msgr_init(struct recv_pool **rpool, struct msgr **msgr,
 	size_t err_len = sizeof(err);
 	int i, ret;
 	struct recv_pool_thread *rt;
-	struct bsend *ctx;
 
 	if (nthreads > MAX_TR_THREADS) {
 		glitch_log("mds_net_msgr_init: compile-time limit violated: "
 			   "nthreads > %d\n", MAX_TR_THREADS);
-		abort();
-	}
-	ctx = bsend_init(MDS_NET_MAX_BSEND_TR, MDS_NET_BSEND_TIMEO);
-	if (IS_ERR(ctx)) {
-		glitch_log("mds_net_msgr_init: failed to create bsend context: "
-			"error %d\n", PTR_ERR(ctx));
 		abort();
 	}
 	*msgr = msgr_init(err, err_len, max_conn, RF_MAX_TRAN,
@@ -169,7 +158,7 @@ static void mds_net_msgr_init(struct recv_pool **rpool, struct msgr **msgr,
 	for (i = 0; i < nthreads; ++i) {
 		rt = (struct recv_pool_thread *)(((char*)rts) + (th_sz * i));
 		ret = recv_pool_thread_create(*rpool, g_fast_log_mgr,
-				rt, handler, ctx);
+				rt, handler, NULL);
 		if (ret) {
 			glitch_log("mds_net_msgr_init: recv_pool_thread_create"
 				"failed with error %d\n", ret);
@@ -209,11 +198,11 @@ static void mds_net_msgrs_start(void)
 	}
 }
 
-static int handle_mmmd_get_mds_status(struct redfish_thread *rt, struct mtran *tr)
+static int handle_mmmd_get_mds_status(struct recv_pool_thread *rt, struct mtran *tr)
 {
 	int ret;
 	struct mmmd_mds_status *m;
-	struct bsend *ctx = rt->priv;
+	struct bsend *ctx = rt->ctx;
 
 	m = calloc_msg(MMMD_MDS_STATUS, sizeof(struct mmmd_mds_status));
 	if (!m)
@@ -230,7 +219,7 @@ static int handle_mmmd_get_mds_status(struct redfish_thread *rt, struct mtran *t
 	return 0;
 }
 
-static int mds_net_handle_mds_tr(struct redfish_thread *rt, struct mtran *tr)
+static int mds_net_handle_mds_tr(struct recv_pool_thread *rt, struct mtran *tr)
 {
 	int ret;
 	uint16_t ty;
@@ -292,7 +281,7 @@ static int mds_net_handle_mds_tr(struct redfish_thread *rt, struct mtran *tr)
 	return 0;
 }
 
-static int mds_net_handle_osd_tr(POSSIBLY_UNUSED(struct redfish_thread *rt),
+static int mds_net_handle_osd_tr(POSSIBLY_UNUSED(struct recv_pool_thread *rt),
 				 POSSIBLY_UNUSED(struct mtran *tr))
 {
 	// Handle message (something like a switch statement based on type)
@@ -302,7 +291,7 @@ static int mds_net_handle_osd_tr(POSSIBLY_UNUSED(struct redfish_thread *rt),
 	return 0;
 }
 
-static int mds_net_handle_cli_tr(POSSIBLY_UNUSED(struct redfish_thread *rt),
+static int mds_net_handle_cli_tr(POSSIBLY_UNUSED(struct recv_pool_thread *rt),
 				 POSSIBLY_UNUSED(struct mtran *tr))
 {
 	// Handle message (something like a switch statement based on type)

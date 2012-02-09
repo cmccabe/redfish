@@ -18,6 +18,7 @@
 #include "msg/generic.h"
 #include "msg/msg.h"
 #include "msg/msgr.h"
+#include "util/cram.h"
 #include "util/error.h"
 #include "util/fast_log.h"
 #include "util/fast_log_types.h"
@@ -174,15 +175,6 @@ struct msgr {
 };
 
 /****************************** utility ********************************/
-static uint16_t cram_into_u16(int val)
-{
-	if (val > 0xfffe)
-		return 0xfffe;
-	if (val < 0)
-		return 0xffff;
-	return val;
-}
-
 static int is_temporary_socket_error(int err)
 {
 	return ((err == EAGAIN) || (err == EWOULDBLOCK) || (err == EINTR));

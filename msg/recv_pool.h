@@ -25,11 +25,12 @@
 #include "util/thread.h" /* for struct redfish_thread */
 
 struct fast_log_buf;
-struct mtran;
 struct msgr;
+struct mtran;
 struct recv_pool;
+struct recv_pool_thread;
 
-typedef int (*recv_pool_handler_fn_t)(struct redfish_thread *rt,
+typedef int (*recv_pool_handler_fn_t)(struct recv_pool_thread *rt,
 			struct mtran *tr);
 
 struct recv_pool_thread {
@@ -37,6 +38,7 @@ struct recv_pool_thread {
 	struct recv_pool *rpool;
 	STAILQ_ENTRY(recv_pool_thread) entry;
 	recv_pool_handler_fn_t handler;
+	struct bsend *ctx;
 };
 
 /** Create an RPC receive thread pool

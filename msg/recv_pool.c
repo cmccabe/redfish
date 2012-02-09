@@ -31,6 +31,8 @@
 #include <string.h>
 #include <sys/socket.h>
 
+#define RECV_POOL_MAX_BSEND_TR 100000
+
 STAILQ_HEAD(recv_pool_th, recv_pool_thread);
 STAILQ_HEAD(pending_tr, mtran);
 
@@ -108,7 +110,13 @@ static int recv_pool_thread_trampoline(struct redfish_thread *rt)
 	struct recv_pool_thread *rrt  = (struct recv_pool_thread *)rt;
 	struct recv_pool *rpool = rrt->rpool;
 	recv_pool_handler_fn_t handler = rrt->handler;
+	struct bsend *ctx;
 
+	ctx = bsend_init(rt->fb, RECV_POOL_MAX_BSEND_TR);
+	if (IS_ERR(ctx)) {
+		return PTR_ERR(ctx);
+	}
+	rrt->ctx = ctx;
 	pthread_mutex_lock(&rpool->lock);
 	while (1) {
 		if (rpool->cancel) {
@@ -123,11 +131,12 @@ static int recv_pool_thread_trampoline(struct redfish_thread *rt)
 		}
 		STAILQ_REMOVE_HEAD(&rpool->pending_head, u.pending_entry);
 		pthread_mutex_unlock(&rpool->lock);
-		ret = handler(rt, tr);
+		ret = handler(rrt, tr);
 		if (ret)
 			break;
 		pthread_mutex_lock(&rpool->lock);
 	}
+	bsend_free(ctx);
 	return ret;
 }
 

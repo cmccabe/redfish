@@ -19,6 +19,7 @@
 #include "msg/msg.h"
 #include "msg/msgr.h"
 #include "util/compiler.h"
+#include "util/fast_log.h"
 #include "util/macro.h"
 #include "util/packed.h"
 #include "util/test.h"
@@ -54,11 +55,11 @@ struct mmm_test31 {
 
 static uint32_t g_localhost;
 
-static void bsend_test_init_shutdown(void)
+static void bsend_test_init_shutdown(struct fast_log_buf *fb)
 {
 	struct bsend *ctx;
 
-	ctx = bsend_init(10, 1);
+	ctx = bsend_init(fb, 10);
 	bsend_cancel(ctx);
 	bsend_free(ctx);
 }
@@ -125,8 +126,8 @@ static int bsend_test30(struct bsend *ctx, struct msgr *msgr, int flags,
 	return 0;
 }
 
-static int bsend_test_setup(struct msgr **foo_msgr, struct msgr **bar_msgr,
-			struct bsend **ctx, int simult, int resp)
+static int bsend_test_setup(struct fast_log_buf *fb, struct msgr **foo_msgr,
+	struct msgr **bar_msgr, struct bsend **ctx, int simult, int resp)
 {
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
@@ -148,7 +149,7 @@ static int bsend_test_setup(struct msgr **foo_msgr, struct msgr **bar_msgr,
 	EXPECT_EQ(err[0], '\0');
 	msgr_start(*bar_msgr, err, err_len);
 	EXPECT_EQ(err[0], '\0');
-	*ctx = bsend_init(simult, 1);
+	*ctx = bsend_init(fb, simult);
 	return 0;
 }
 
@@ -163,13 +164,14 @@ static void bsend_test_teardown(struct msgr *foo_msgr, struct msgr *bar_msgr,
 	msgr_free(bar_msgr);
 }
 
-static int bsend_test_send(int simult, int max_iter, int resp)
+static int bsend_test_send(struct fast_log_buf *fb, int simult,
+			int max_iter, int resp)
 {
 	int i, iter;
 	struct bsend *ctx;
 	struct msgr *foo_msgr, *bar_msgr;
 
-	EXPECT_ZERO(bsend_test_setup(&foo_msgr, &bar_msgr, &ctx,
+	EXPECT_ZERO(bsend_test_setup(fb, &foo_msgr, &bar_msgr, &ctx,
 				simult, resp));
 	for (iter = 0; iter < max_iter; ++iter) {
 		for (i = 0; i < simult; ++i) {
@@ -214,14 +216,14 @@ static int bsend_test_send(int simult, int max_iter, int resp)
 	return 0;
 }
 
-static int bsend_test_cancel(int simult, int cancel)
+static int bsend_test_cancel(struct fast_log_buf *fb, int simult, int cancel)
 {
 	int i;
 	struct bsend *ctx;
 	struct msgr *foo_msgr, *bar_msgr;
 
-	EXPECT_ZERO(bsend_test_setup(&foo_msgr, &bar_msgr, &ctx,
-			simult, 1));
+	EXPECT_ZERO(bsend_test_setup(fb, &foo_msgr, &bar_msgr,
+			&ctx, simult, 1));
 	bsend_cancel(ctx);
 	for (i = 0; i < simult; ++i) {
 		int c = (simult >= cancel);
@@ -238,17 +240,21 @@ static int bsend_test_cancel(int simult, int cancel)
 
 int main(POSSIBLY_UNUSED(int argc), char **argv)
 {
+	struct fast_log_buf *fb;
+
 	EXPECT_ZERO(utility_ctx_init(argv[0]));
 	EXPECT_ZERO(get_localhost_ipv4(&g_localhost));
-	bsend_test_init_shutdown();
-	EXPECT_ZERO(bsend_test_send(1, 1, 1));
-	EXPECT_ZERO(bsend_test_send(5, 1, 1));
-	EXPECT_ZERO(bsend_test_send(1, 2, 1));
-	EXPECT_ZERO(bsend_test_send(10, 5, 1));
-	EXPECT_ZERO(bsend_test_send(1, 1, 0));
-	EXPECT_ZERO(bsend_test_send(10, 5, 0));
-	EXPECT_ZERO(bsend_test_cancel(10, 0));
-	EXPECT_ZERO(bsend_test_cancel(10, 5));
+	fb = fast_log_create(g_fast_log_mgr, "main");
+	bsend_test_init_shutdown(fb);
+	EXPECT_ZERO(bsend_test_send(fb, 1, 1, 1));
+	EXPECT_ZERO(bsend_test_send(fb, 5, 1, 1));
+	EXPECT_ZERO(bsend_test_send(fb, 1, 2, 1));
+	EXPECT_ZERO(bsend_test_send(fb, 10, 5, 1));
+	EXPECT_ZERO(bsend_test_send(fb, 1, 1, 0));
+	EXPECT_ZERO(bsend_test_send(fb, 10, 5, 0));
+	EXPECT_ZERO(bsend_test_cancel(fb, 10, 0));
+	EXPECT_ZERO(bsend_test_cancel(fb, 10, 5));
+	fast_log_free(fb);
 	process_ctx_shutdown();
 
 	return EXIT_SUCCESS;
