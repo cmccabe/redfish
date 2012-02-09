@@ -76,7 +76,7 @@ void fast_log_msgr_dump(struct fast_log_msgr_entry *fe, char *buf)
 
 	ipv4_to_str(fe->ip, addr_str, sizeof(addr_str));
 	snprintf(buf, FAST_LOG_PRETTY_PRINTED_MAX,
-		"[%s:%d] (%08x:%08x) ", addr_str, fe->port,
+		"[%s/%d] (%08x:%08x) ", addr_str, fe->port,
 		fe->trid, fe->rem_trid);
 	switch (fe->event) {
 	case FLME_MSGR_INIT:
@@ -257,7 +257,7 @@ void fast_log_bsend_dump(struct fast_log_bsend_entry *fe, char *buf)
 
 	ipv4_to_str(fe->ip, addr_str, sizeof(addr_str));
 	snprintf(buf, FAST_LOG_PRETTY_PRINTED_MAX,
-		"[%s:%d] ", addr_str, fe->port);
+		"[%s/%d] ", addr_str, fe->port);
 	switch (fe->event) {
 	case FLBS_INIT:
 		if (fe->err) {
