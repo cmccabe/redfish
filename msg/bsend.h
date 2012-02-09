@@ -34,13 +34,15 @@ struct bsend;
 
 /** Create a blocking RPC sending context
  *
+ * @param fb		Fast log buffer to use for the bsend operations
  * @param max_tr	Maximum simultaneous procedure calls that can be made at
  *			a time with this context
  * @param timeout	Timeout for RPCs
  *
  * @return		Pointer to a valid bsend_ctx, or an error pointer
  */
-extern struct bsend *bsend_init(int max_tr, int timeout);
+extern struct bsend *bsend_init(struct fast_log_buf *fb,
+		int max_tr, int timeout);
 
 /** Send out an RPC message
  *

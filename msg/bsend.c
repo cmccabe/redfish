@@ -19,6 +19,8 @@
 #include "msg/msgr.h"
 #include "util/compiler.h"
 #include "util/error.h"
+#include "util/fast_log.h"
+#include "util/fast_log_types.h"
 #include "util/macro.h"
 #include "util/thread.h"
 
@@ -42,6 +44,8 @@ struct bsend {
 	pthread_mutex_t lock;
 	/** Condition variable to wait for completion of RPCs */
 	pthread_cond_t cond;
+	/** Fast log buffer we use for operations */
+	struct fast_log_buf *fb;
 	/** Array of pointers to bsend transactors */
 	struct bsend_mtran *btrs;
 	/** Length of btrs */
@@ -56,7 +60,7 @@ struct bsend {
 	int num_finished;
 };
 
-struct bsend *bsend_init(int max_tr, int timeout)
+struct bsend *bsend_init(struct fast_log_buf *fb, int max_tr, int timeout)
 {
 	int ret;
 	struct bsend *ctx;
@@ -67,6 +71,7 @@ struct bsend *bsend_init(int max_tr, int timeout)
 		ret = ENOMEM;
 		goto error;
 	}
+	ctx->fb = fb;
 	btrs = calloc(max_tr, sizeof(struct bsend_mtran));
 	if (!btrs) {
 		ret = ENOMEM;
@@ -82,6 +87,7 @@ struct bsend *bsend_init(int max_tr, int timeout)
 	ret = pthread_cond_init_mt(&ctx->cond);
 	if (ret)
 		goto error_destroy_lock;
+	fast_log_bsend(ctx->fb, initialized with max_tr = , timeout = )
 	return ctx;
 
 error_destroy_lock:
@@ -143,8 +149,10 @@ int bsend_add(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
 	struct mtran *tr;
 
 	tr = mtran_alloc(msgr);
-	if (!tr)
+	if (!tr) {
+		fast_log_bsend(ctx->fb, failed to add bsend to addr, port, with flags)
 		return -ENOMEM;
+	}
 	tr->ip = addr;
 	tr->port = port;
 	return bsend_add_tr_or_free(ctx, msgr, flags, msg, tr);
@@ -157,6 +165,7 @@ int bsend_add_tr_or_free(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
 
 	if (ctx->num_tr >= ctx->max_tr) {
 		mtran_free(tr);
+		fast_log_bsend(ctx->fb, failed to add bsend to addr, port, with flags... too many tr)
 		return -EMFILE;
 	}
 	btr = &ctx->btrs[ctx->num_tr];
@@ -167,10 +176,12 @@ int bsend_add_tr_or_free(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
 	if (ctx->cancel) {
 		pthread_mutex_unlock(&ctx->lock);
 		mtran_free(tr);
+		fast_log_bsend(ctx->fb, failed to add bsend to addr, port, with flags... canceled)
 		return -ECANCELED;
 	}
 	pthread_mutex_unlock(&ctx->lock);
 	ctx->num_tr++;
+	fast_log_bsend(ctx->fb, added bsend to addr, port, with flags)
 	mtran_send(msgr, tr, bsend_cb, btr, msg);
 	return 0;
 }
@@ -194,12 +205,15 @@ int bsend_join(struct bsend *ctx)
 				}
 				btr->tr->m = ERR_PTR(ECANCELED);
 			}
+			fast_log_bsend(ctx->fb, bsend_join canceled)
 			return -ECANCELED;
 		}
 		if (ctx->num_finished == ctx->num_tr) {
 			pthread_mutex_unlock(&ctx->lock);
+			fast_log_bsend(ctx->fb, joined %d transactors)
 			return ctx->num_tr;
 		}
+		fast_log_bsend(ctx->fb, joined %d transactors, %d to go)
 		pthread_cond_wait(&ctx->cond, &ctx->lock);
 	}
 }
@@ -215,6 +229,7 @@ void bsend_reset(struct bsend *ctx)
 {
 	int i;
 
+	fast_log_bsend(ctx->fb, bsend reset)
 	if (ctx->num_finished != ctx->num_tr)
 		abort();
 	for (i = 0; i < ctx->num_tr; ++i) {
