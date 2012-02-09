@@ -17,17 +17,4 @@ diter = DaemonIter.from_conf_object(jo, None)
 
 for d in diter:
     print "processing " + d.get_short_name() 
-    try:
-        pid = d.run_with_output("cat " + d.get_pid_file()).rstrip()
-    except subprocess.CalledProcessError, e:
-        continue
-    if (opts.kill9 == True):
-        try:
-            d.run_with_output("rm -f " + d.get_pid_file())
-            d.run("kill -9 " + str(pid))
-            d.run("rm -f " + d.get_pid_file())
-        except subprocess.CalledProcessError, e:
-            pass
-    else:
-        d.run("kill " + str(pid))
-        d.run("rm -f " + d.get_pid_file())
+    d.kill(opts.kill9 == True)

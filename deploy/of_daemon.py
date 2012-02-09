@@ -167,6 +167,21 @@ class Daemon(object):
         return self.id.get_short_name()
     def get_binary_path(self):
         return self.jd["base_dir"] + "/usr/bin/" + self.get_binary_name()
+    def kill(self, kill9):
+        try:
+            pid = self.run_with_output("cat " + self.get_pid_file()).rstrip()
+        except subprocess.CalledProcessError, e:
+            return False
+        if (kill9 == True):
+            try:
+                self.run_with_output("rm -f " + self.get_pid_file())
+                self.run("kill -9 " + str(pid))
+                self.run("rm -f " + self.get_pid_file())
+            except subprocess.CalledProcessError, e:
+                return
+        else:
+            self.run("kill " + str(pid))
+            self.run("rm -f " + self.get_pid_file())
     def rf_msgr_send(self, msg):
         try:
             sock = socket(AF_INET, SOCK_STREAM)

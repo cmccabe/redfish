@@ -16,8 +16,6 @@ jo = load_conf_file(opts.cluster_conf)
 
 diter = DaemonIter.from_conf_object(jo, None)
 for d in diter:
-    print "processing " + d.get_short_name()
-    print d.jo
     try:
         pid = d.run_with_output("cat " + d.get_pid_file())
         print d.get_short_name() + " is running as process " + pid
