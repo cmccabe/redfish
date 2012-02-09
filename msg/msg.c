@@ -18,6 +18,7 @@
 #include "msg/msg.h"
 #include "util/packed.h"
 #include "util/macro.h"
+#include "util/net.h"
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -28,6 +29,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+
+void mtran_ep_to_str(const struct mtran *tr, char *buf, size_t buf_len)
+{
+	char addr_str[INET_ADDRSTRLEN];
+
+	ipv4_to_str(tr->ip, addr_str, sizeof(addr_str));
+	snprintf(buf, buf_len, "[%s/%d]", addr_str, tr->port);
+}
 
 void *calloc_msg(uint32_t ty, uint32_t len)
 {

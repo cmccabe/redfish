@@ -121,6 +121,14 @@ struct mtran {
  */
 extern const char *mtran_state_to_str(uint16_t state);
 
+/** Convert an mtran endpoint to a string
+ *
+ * @param tr		The mtran
+ * @param buf		(out param) the buffer to fill
+ * @param buf_len	length of output buffer
+ */
+extern void mtran_ep_to_str(const struct mtran *tr, char *buf, size_t buf_len);
+
 extern void *calloc_msg(uint32_t ty, uint32_t len);
 
 extern struct msg *copy_msg(const struct msg *m);
