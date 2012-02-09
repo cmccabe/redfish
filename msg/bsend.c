@@ -201,7 +201,7 @@ int bsend_join(struct bsend *ctx)
 	pthread_mutex_lock(&ctx->lock);
 	while (1) {
 		fast_log_bsend(ctx->fb, FAST_LOG_BSEND_DEBUG, FLBS_JOIN,
-			       0, 0, 0, 0, ctx->num_finished - ctx->num_tr);
+			       0, 0, 0, 0, ctx->num_tr - ctx->num_finished);
 		if (ctx->cancel) {
 			pthread_mutex_unlock(&ctx->lock);
 			for (i = 0; i < ctx->num_tr; ++i) {
