@@ -188,7 +188,7 @@ static int is_temporary_socket_error(int err)
 	return ((err == EAGAIN) || (err == EWOULDBLOCK) || (err == EINTR));
 }
 
-void fast_log_msgr(struct msgr *msgr, uint32_t ty,
+void fast_log_msgr(struct msgr *msgr, uint16_t ty,
 		uint16_t port, uint32_t ip,
 		uint32_t trid, uint32_t rem_trid, uint16_t event,
 		uint16_t event_data)
