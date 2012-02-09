@@ -20,3 +20,22 @@ for d in diter:
     print "checking status of " + d.get_short_name()
     ret = d.check_mds_status()
     print d.get_short_name() + " has status " + str(ret)
+
+diter = DaemonIter.from_conf_object(jo, None)
+for d in diter:
+    if d.id.ty != DaemonId.MDS:
+        continue
+    d.kill(False) 
+
+diter = DaemonIter.from_conf_object(jo, None)
+for d in diter:
+    if d.id.ty != DaemonId.MDS:
+        continue
+    print "verifying that " + d.get_short_name() + " is dead..."
+    try:
+        ret = d.check_mds_status()
+        raise RuntimeError(d.get_short_name() + " is still alive!")
+    except Exception as e:
+        pass
+
+print "All MDSes have been killed."
