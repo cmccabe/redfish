@@ -90,7 +90,7 @@ int mds_send_hb_thread(struct redfish_thread *rt)
 			abort();
 		}
 		if (!first)
-			mt_deactivate_alarm(use_timer_a ? &timer_b : &timer_a);
+			mt_deactivate_alarm(use_timer_a ? timer_b : timer_a);
 		first = 0;
 		use_timer_a = !use_timer_a;
 		pthread_mutex_lock(&g_cmap_lock);
@@ -113,6 +113,7 @@ int mds_send_hb_thread(struct redfish_thread *rt)
 			bsend_add(ctx, g_mds_msgr, 0, (struct msg*)m, di->ip, di->port);
 		}
 		pthread_mutex_unlock(&g_cmap_lock);
+
 
 		num_sent = bsend_join(ctx);
 		if (num_sent < 0)
