@@ -137,7 +137,8 @@ static int rsem_post_impl(struct rsem_client *rcli, const char *name)
 	}
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = get_first_ipv4_addr(rcli->srv_host, err, err_len);
+	addr.sin_addr.s_addr = htonl(get_first_ipv4_addr(rcli->srv_host,
+				err, err_len));
 	if (err[0]) {
 		/* couldn't resolve hostname */
 		ret = -EIO;
@@ -309,8 +310,8 @@ int rsem_wait(struct rsem_client *rcli, const char *name)
 	}
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = get_first_ipv4_addr(rcli->srv_host,
-						err, err_len);
+	addr.sin_addr.s_addr = htonl(get_first_ipv4_addr(rcli->srv_host,
+						err, err_len));
 	if (err[0]) {
 		/* couldn't resolve hostname */
 		ret = EIO;

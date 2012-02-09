@@ -167,5 +167,5 @@ uint32_t get_first_ipv4_addr(const char *host, char *err, size_t err_len)
 		 "found!", host);
 done:
 	freeaddrinfo(res);
-	return a;
+	return ntohl(a);
 }
