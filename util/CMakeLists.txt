@@ -3,6 +3,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 
 add_library(util
     config.c
+    cram.c
     dir.c
     fast_log.c
     fast_log_mgr.c
