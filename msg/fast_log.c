@@ -118,6 +118,11 @@ void fast_log_msgr_dump(struct fast_log_msgr_entry *fe, char *buf)
 			"created new outbound connection for msg of type %d\n",
 			fe->event_data);
 		break;
+	case FLME_READING_MSG_HEADER:
+		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,
+			"reading message header (recv_cnt = %d)\n",
+			fe->event_data);
+		break;
 	case FLME_CONN_ESTABLISHED:
 		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,
 			"connect(2) operation succeeded %s\n",
@@ -169,17 +174,11 @@ void fast_log_msgr_dump(struct fast_log_msgr_entry *fe, char *buf)
 		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,
 			"No such transactor ID.\n");
 		break;
-	case FLME_MTRAN_NEW_STATE:
-		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,
-			"transitioning from state %s to state %s.\n",
-			mconn_state_to_str((fe->event_data >> 4) & 0xf),
-			mconn_state_to_str(fe->event_data & 0xf));
-		break;
 	case FLME_EXPECTED_PENDING_TRANSACTOR:
 		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,
-			"mconn_writable_cb: internal error: in state "
-			"MCONN_WRITING, but there is no transactor "
-			"pending?\n");
+			"mconn_writable_cb: internal error: the writable "
+			"callback was activated, but there was nothing "
+			"pending.\n");
 		break;
 	case FLME_HDR_READ_ERROR:
 		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,
