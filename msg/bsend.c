@@ -119,10 +119,8 @@ static void bsend_cb(struct mconn *conn, struct mtran *tr)
 	struct bsend_mtran *btr = (struct bsend_mtran *)tr->priv;
 	struct bsend *ctx = btr->ctx;
 
-	glitch_log("bsend_cb: tr->state = %s, tr->m = %p\n",
-		mtran_state_to_str(tr->state), tr->m);
-//	fprintf(stderr, "bsend_cb in state %s\n",
-//		mtran_state_to_str(tr->state)); 
+//	glitch_log("bsend_cb: tr->state = %s, tr->m = %p\n",
+//		mtran_state_to_str(tr->state), tr->m);
 	if (btr->flags & BSF_RESP) {
 		/* Let's get the response */
 		if (tr->state == MTRAN_STATE_SENT) {
