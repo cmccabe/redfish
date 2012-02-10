@@ -325,15 +325,15 @@ void fast_log_bsend_dump(struct fast_log_bsend_entry *fe, char *buf)
 				"transactors.\n", fe->event_data);
 		}
 		else {
-			snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX, "bsend_reset");
+			snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX, "bsend_reset\n");
 		}
 		break;
 	case FLBS_FREE:
-		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX, "bsend_free");
+		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX, "bsend_free\n");
 		break;
 	default:
 		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,
-			 "(unknown event %d\n)", fe->event);
+			 "(unknown event %d)\n", fe->event);
 		break;
 	}
 }
