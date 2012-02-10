@@ -146,11 +146,11 @@ static int msgr_test_init_shutdown(int start)
 	const struct msgr_timeo timeo = { 60, 5 };
 
 	foo_msgr = msgr_init(err, err_len, 10, 10,
-			&timeo, g_fast_log_mgr);
+			&timeo, g_fast_log_mgr, "foo_msgr");
 	if (err[0])
 		goto handle_error;
 	bar_msgr = msgr_init(err, err_len, 10, 10,
-			&timeo, g_fast_log_mgr);
+			&timeo, g_fast_log_mgr, "bar_msgr");
 	if (err[0])
 		goto handle_error;
 	if (start) {
@@ -203,11 +203,11 @@ static int msgr_test_simple_send(int num_sends)
 	EXPECT_ZERO(sem_init(&g_msgr_test_simple_send_sem, 0, 0));
 
 	foo_msgr = msgr_init(err, err_len, 10, 10,
-				&timeo, g_fast_log_mgr);
+				&timeo, g_fast_log_mgr, "foo_msgr");
 	if (err[0])
 		goto handle_error;
 	bar_msgr = msgr_init(err, err_len, 10, 10,
-				&timeo, g_fast_log_mgr);
+				&timeo, g_fast_log_mgr, "bar_msgr");
 	if (err[0])
 		goto handle_error;
 	memset(&linfo, 0, sizeof(linfo));
@@ -296,11 +296,11 @@ static int msgr_test_conn_timeout(void)
 	EXPECT_ZERO(sem_init(&g_msgr_test_baz_sem, 0, 0));
 
 	baz1_msgr = msgr_init(err, err_len, 10, 10,
-				&timeo, g_fast_log_mgr);
+				&timeo, g_fast_log_mgr, "baz1_msgr");
 	if (err[0])
 		goto handle_error;
 	baz2_msgr = msgr_init(err, err_len, 10, 10,
-				&timeo, g_fast_log_mgr);
+				&timeo, g_fast_log_mgr, "baz2_msgr");
 	if (err[0])
 		goto handle_error;
 	memset(&linfo, 0, sizeof(linfo));
@@ -343,11 +343,11 @@ static int msgr_test_conn_shutdown(void)
 	EXPECT_ZERO(sem_init(&g_msgr_test_baz_sem, 0, 0));
 
 	baz1_msgr = msgr_init(err, err_len, 10, 10,
-				&timeo, g_fast_log_mgr);
+				&timeo, g_fast_log_mgr, "baz1_msgr");
 	if (err[0])
 		goto handle_error;
 	baz2_msgr = msgr_init(err, err_len, 10, 10,
-				&timeo, g_fast_log_mgr);
+				&timeo, g_fast_log_mgr, "baz2_msgr");
 	if (err[0])
 		goto handle_error;
 	memset(&linfo, 0, sizeof(linfo));

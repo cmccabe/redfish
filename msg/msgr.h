@@ -77,12 +77,14 @@ struct msgr_timeo {
  *				allow
  * @param timeo			The timeout on outgoing and incoming messages.
  * @param mgr			Fast log manager to use for fast logs
+ * @param name			Messenger name.  The caller is responsible for
+ *				managing the lifecycle of this string.
  *
  * @return			the messenger on success; NULL otherwise
  */
 extern struct msgr *msgr_init(char *err, size_t err_len,
 		int max_conn, int max_tran, const struct msgr_timeo *timeo,
-		struct fast_log_mgr *mgr);
+		struct fast_log_mgr *mgr, const char *name);
 
 /** Configure the messenger to listen on a given TCP port.
  *

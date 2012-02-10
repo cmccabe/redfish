@@ -172,6 +172,8 @@ struct msgr {
 	/** Maximum number of timeout periods to wait for before timing out a
 	 * connection or transactor */
 	int timeout_cnt_max;
+	/** The name of this messenger */
+	const char *name;
 };
 
 /****************************** utility ********************************/
@@ -794,7 +796,7 @@ const char *mconn_state_to_str(int state)
 /****************************** msgr ********************************/
 struct msgr *msgr_init(char *err, size_t err_len,
 		int max_conn, int max_tran, const struct msgr_timeo *timeo,
-		struct fast_log_mgr *fb_mgr)
+		struct fast_log_mgr *fb_mgr, const char *name)
 {
 	struct msgr *msgr;
 
@@ -809,6 +811,7 @@ struct msgr *msgr_init(char *err, size_t err_len,
 		free(msgr);
 		return NULL;
 	}
+	msgr->name = name;
 	msgr->state = MSGR_STATE_INIT;
 	msgr->listen.fd = -1;
 	msgr->next_trid = random();
@@ -1106,6 +1109,9 @@ static void run_msgr_notify_cb(struct ev_loop *loop, struct ev_async *w,
 static int run_msgr(struct redfish_thread *rt)
 {
 	struct msgr *msgr = (struct msgr*)rt->priv;
+
+	/* Name the fast log buffer for our messenger thread */
+	fast_log_set_name(rt->fb, msgr->name);
 
 	fast_log_msgr(msgr, FAST_LOG_MSGR_INFO, 0,
 		0, 0, 0, FLME_MSGR_INIT, cram_into_u16(rt->thread_id));

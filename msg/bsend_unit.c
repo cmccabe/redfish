@@ -135,10 +135,10 @@ static int bsend_test_setup(struct fast_log_buf *fb, struct msgr **foo_msgr,
 	const struct msgr_timeo timeo = { 60, 5 };
 
 	*foo_msgr = msgr_init(err, err_len, 10, 10,
-			&timeo, g_fast_log_mgr);
+			&timeo, g_fast_log_mgr, "foo_msgr");
 	EXPECT_ZERO(err[0]);
 	*bar_msgr = msgr_init(err, err_len, 10, 10,
-			&timeo, g_fast_log_mgr);
+			&timeo, g_fast_log_mgr, "bar_msgr");
 	EXPECT_ZERO(err[0]);
 	memset(&linfo, 0, sizeof(linfo));
 	linfo.cb = resp ? bsend_test_cb : bsend_test_cb_noresp;

@@ -119,7 +119,7 @@ static void mds_net_msgr_init(struct recv_pool **rpool, struct msgr **msgr,
 	struct recv_pool_thread *rts, size_t th_sz,
 	struct fast_log_buf *fb, int max_conn,
 	recv_pool_handler_fn_t handler, int nthreads, uint16_t port,
-	const struct msgr_timeo *timeo)
+	const struct msgr_timeo *timeo, const char *name)
 {
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
@@ -132,7 +132,7 @@ static void mds_net_msgr_init(struct recv_pool **rpool, struct msgr **msgr,
 		abort();
 	}
 	*msgr = msgr_init(err, err_len, max_conn, RF_MAX_TRAN,
-			timeo, g_fast_log_mgr);
+			timeo, g_fast_log_mgr, name);
 	if (err[0]) {
 		glitch_log("mds_net_msgr_init: failed to create messenger: "
 			"error %s\n", err);
@@ -398,21 +398,21 @@ void mds_net_init(struct fast_log_buf *fb, struct unitaryc *conf,
 		DEFAULT_MDS_TR_THREADS,
 		((mconf->mds_port == JORM_INVAL_INT) ?
 		 	DEFAULT_MDS_MDS_PORT : mconf->mds_port),
-		&g_mds_msgr_timeo);
+		&g_mds_msgr_timeo, "g_mds_msgr");
 	mds_net_msgr_init(&g_osd_rpool, &g_osd_msgr,
 		(struct recv_pool_thread *)g_osd_rts, sizeof(g_osd_rts[0]),
 		fb, RF_MAX_OSD_CONN, mds_net_handle_osd_tr,
 		DEFAULT_OSD_TR_THREADS,
 		((mconf->osd_port == JORM_INVAL_INT) ?
 		 	DEFAULT_MDS_OSD_PORT : mconf->osd_port),
-		&g_osd_msgr_timeo);
+		&g_osd_msgr_timeo, "g_osd_msgr");
 	mds_net_msgr_init(&g_cli_rpool, &g_cli_msgr,
 		(struct recv_pool_thread *)g_cli_rts, sizeof(g_cli_rts[0]),
 		fb, RF_MAX_CLI_CONN, mds_net_handle_cli_tr,
 		DEFAULT_CLI_TR_THREADS,
 		((mconf->cli_port == JORM_INVAL_INT) ?
 		 	DEFAULT_MDS_CLI_PORT : mconf->cli_port),
-		&g_cli_msgr_timeo);
+		&g_cli_msgr_timeo, "g_cli_msgr");
 	mds_net_msgrs_start();
 	mds_net_heartbeat_start();
 }

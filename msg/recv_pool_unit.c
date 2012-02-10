@@ -139,10 +139,10 @@ static int recv_pool_test_recv(struct fast_log_buf *fb,
 	rpool = recv_pool_init(fb);
 	EXPECT_NOT_ERRPTR(rpool);
 	foo_msgr = msgr_init(err, err_len, 10, 10,
-			&timeo, g_fast_log_mgr);
+			&timeo, g_fast_log_mgr, "foo_msgr");
 	EXPECT_ZERO(err[0]);
 	bar_msgr = msgr_init(err, err_len, 10, 10,
-			&timeo, g_fast_log_mgr);
+			&timeo, g_fast_log_mgr, "bar_msgr");
 	EXPECT_ZERO(err[0]);
 	recv_pool_msgr_listen(rpool, bar_msgr,
 			MSGR_UNIT_PORT, err, sizeof(err));
