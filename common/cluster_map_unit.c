@@ -63,7 +63,7 @@ static int test_cmap_from_conf(const char *tdir)
 	cmap  = cmap_from_conf(conf, err, err_len);
 	EXPECT_ZERO(err[0]);
 	EXPECT_EQ(cmap->num_osd, 1);
-	localhost = inet_addr("127.0.0.1");
+	localhost = ntohl(inet_addr("127.0.0.1"));
 	EXPECT_EQ(cmap->epoch, 1);
 	EXPECT_EQ(cmap->oinfo[0].ip, localhost);
 	EXPECT_EQ(cmap->oinfo[0].port, 9001);
@@ -121,7 +121,7 @@ static int test_cmap_round_trip_1(void)
 	EXPECT_NOT_EQ(cmap->oinfo, NULL);
 	cmap->minfo = calloc(2, sizeof(struct daemon_info));
 	EXPECT_NOT_EQ(cmap->minfo, NULL);
-	localhost = inet_addr("127.0.0.1");
+	localhost = ntohl(inet_addr("127.0.0.1"));
 	cmap->oinfo[0].ip = localhost;
 	cmap->oinfo[0].port = 8080;
 	cmap->oinfo[0].in = 1;
@@ -155,7 +155,7 @@ static int test_cmap_round_trip_2(void)
 	EXPECT_NOT_EQ(cmap->oinfo, NULL);
 	cmap->minfo = calloc(2, sizeof(struct daemon_info));
 	EXPECT_NOT_EQ(cmap->minfo, NULL);
-	localhost = inet_addr("127.0.0.1");
+	localhost = ntohl(inet_addr("127.0.0.1"));
 	cmap->oinfo[0].ip = localhost;
 	cmap->oinfo[0].port = 8080;
 	cmap->oinfo[0].in = 1;
