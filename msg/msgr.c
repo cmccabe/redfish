@@ -848,7 +848,6 @@ void msgr_listen(struct msgr *msgr, const struct listen_info *linfo,
 		RETRY_ON_EINTR(res, close(fd));
 		return;
 	}
-	fprintf(stderr, "msgr_listen: listening on port %d\n", linfo->port);
 	msgr->listen.fd = fd;
 	msgr->listen.port = linfo->port;
 	msgr->listen.cb = linfo->cb;
