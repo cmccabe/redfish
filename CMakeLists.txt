@@ -33,6 +33,7 @@ SET(CMAKE_INSTALL_PREFIX /usr)
 
 set(REDFISH_CLIENT_LIB "fishc_real" CACHE STRING "For developers only. Which client library implementation to use (fishc_stub, fishc_hdfs, or fishc_real)")
 set(REDFISH_BUILD_JNI 1 CACHE BOOL "Build Hadoop JNI bindings for Redfish")
+set(REDFISH_BUILD_FUSE 1 CACHE BOOL "Build FUSE (Filesystem in Userspace) connector for Redfish")
 set(REDFISH_SO_REUSEADDR_HACK 0 CACHE BOOL "For developers only. Set to TRUE to use a hack which makes running unit tests easier.")
 
 if (REDFISH_BUILD_JNI)
@@ -41,6 +42,16 @@ endif (REDFISH_BUILD_JNI)
 if (REDFISH_SO_REUSEADDR_HACK)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DREDFISH_SO_REUSEADDR_HACK=1")
 endif (REDFISH_SO_REUSEADDR_HACK)
+
+if (REDFISH_BUILD_FUSE)
+    # Find FUSE
+    find_path(FUSE_C_INCLUDE_DIR "fuse/fuse_lowlevel.h")
+    find_library(FUSE_C_LIBRARY fuse)
+    IF(FUSE_C_INCLUDE_DIR AND FUSE_C_LIBRARY)
+    ELSE(FUSE_C_INCLUDE_DIR AND FUSE_C_LIBRARY)
+        MESSAGE(FATAL_ERROR "Failed to find FUSE.  If you don't want to build the FUSE connector, set REDFISH_BUILD_FUSE to 0.  On the other hand, to install FUSE, try installing fuse-devel with apt-get or yum.")
+    ENDIF(FUSE_C_INCLUDE_DIR AND FUSE_C_LIBRARY)
+endif (REDFISH_BUILD_FUSE)
 
 # Find libjson-c
 find_path(JSON_C_INCLUDE_DIR "json/json.h")
@@ -77,6 +88,9 @@ include_directories(
 add_subdirectory(client)
 add_subdirectory(common)
 add_subdirectory(core)
+if (REDFISH_BUILD_FUSE)
+    add_subdirectory(fuse)
+endif (REDFISH_BUILD_FUSE)
 if (REDFISH_BUILD_JNI)
     add_subdirectory(hadoop)
 endif (REDFISH_BUILD_JNI)
