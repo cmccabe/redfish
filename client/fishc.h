@@ -257,6 +257,7 @@ void redfish_free_path_status(struct redfish_stat* osa);
 
 /** Given a directory name, return a list of status objects corresponding
  * to the objects in that directory.
+ * TODO: add some kind of filtering here?
  *
  * @param cli		the Redfish client
  * @param dir		the directory to get a listing from
@@ -513,17 +514,9 @@ void redfish_free_file(struct redfish_file *ofe);
  */
 int redfish_close_and_free(struct redfish_file *ofe);
 
-/* TODO: add copy_from_local_file
- * TODO: add move_from_local_file
- * TODO: add copy_to_local_file
- * TODO: add move_to_local_file
- * TODO: implement checksumming...
- * TODO: implement getcwd / setcwd
- * TODO: implement get capacity / get used
- * TODO: implement list_dir with filtering?
- * TODO: add block size changing functionality
-int redfish_set_replication(struct redfish_client *cli, const char *path, int repl)
- * TODO: implement append / hflush / hsync
- */
+/* TODO: implement something like statvfs */
+/* TODO: implement something like truncate */
+/* TODO: implement open-for-append */
+/* TODO: implement set replication */
 
 #endif
