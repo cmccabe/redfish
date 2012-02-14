@@ -67,3 +67,34 @@ done:
 	free(buf);
 	return ret;
 }
+
+int get_user_id(const char *username, uid_t *uid)
+{
+	char buf[8192];
+	struct passwd pwd, *res;
+	int ret;
+
+	ret = getpwnam_r(username, &pwd, buf, sizeof(buf), &res);
+	if (res == NULL) {
+		if (!ret)
+			return -ENOENT;
+		return ret;
+	}
+	*uid = pwd.pw_uid;
+	return 0;
+}
+
+int get_user_name(uid_t uid, char *username, size_t username_len)
+{
+	char buf[8192];
+	struct passwd pwd, *res;
+	int ret;
+
+	ret = getpwuid_r(uid, &pwd, buf, sizeof(buf), &res);
+	if (res == NULL) {
+		if (!ret)
+			return -ENOENT;
+		return ret;
+	}
+	return zsnprintf(username, username_len, "%s", pwd.pw_name);
+}

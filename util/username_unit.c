@@ -26,7 +26,8 @@
 
 int main(void)
 {
-	char buf[512], buf2[512], *newline;
+	char buf[512], buf2[512], buf3[512], *newline;
+	uid_t uid;
 	const char *cvec[] = { "whoami", NULL };
 
 	EXPECT_EQ(get_current_username(buf, 0), -ENAMETOOLONG);
@@ -40,5 +41,8 @@ int main(void)
 			"whoami returned '%s'\n", buf, buf2);
 		return EXIT_FAILURE;
 	}
+	EXPECT_ZERO(get_user_id(buf, &uid));
+	EXPECT_ZERO(get_user_name(uid, buf3, sizeof(buf3)));
+	EXPECT_ZERO(strcmp(buf, buf3));
 	return EXIT_SUCCESS;
 }
