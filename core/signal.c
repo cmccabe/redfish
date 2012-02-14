@@ -66,7 +66,7 @@ extern void regurgitate_fd(char *line, size_t max_line, int ifd, int ofd,
  */
 static void handle_fatal_signal(int sig, siginfo_t *siginfo, void *ctx)
 {
-	int i, res, bsize;
+	int i, POSSIBLY_UNUSED(res), bsize;
 	void *bentries[128];
 	char *buf = (char*)bentries;
 

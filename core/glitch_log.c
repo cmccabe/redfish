@@ -55,8 +55,10 @@ void regurgitate_fd(char *line, size_t max_line, int ifd, int ofd,
 	memset(line, 0, max_line);
 	bidx = 0;
 	while (1) {
+		int POSSIBLY_UNUSED(res), POSSIBLY_UNUSED(tmp);
 		char b[1] = { 0 };
-		int tmp, res = read(ifd, b, 1);
+
+		res = read(ifd, b, 1);
 		if ((bidx == max_line - 2) || (res <= 0) || (b[0] == '\n')) {
 			if (use_syslog) {
 				syslog(LOG_ERR | LOG_USER, "%s", line);
@@ -79,7 +81,7 @@ void regurgitate_fd(char *line, size_t max_line, int ifd, int ofd,
 
 static void glitch_log_to_syslog_and_stderr(const char *buf, size_t buf_sz)
 {
-	int res;
+	int POSSIBLY_UNUSED(res);
 	if (g_use_syslog)
 		syslog(LOG_ERR | LOG_USER, "%s", buf);
 	res = safe_write(STDERR_FILENO, buf, buf_sz);
