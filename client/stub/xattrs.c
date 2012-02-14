@@ -170,6 +170,8 @@ int xseti(const char *epath, const char *xname, int base, int i)
 	char buf[INT_BUF_SZ];
 
 	ret = xset_fill_buf(base, i, buf, sizeof(buf));
+	if (ret)
+		return ret;
 	b_len = strlen(buf);
 	if (setxattr(epath, xname, buf, b_len, 0) < 0)
 		return -errno;
@@ -183,6 +185,8 @@ int fxseti(int fd, const char *xname, int base, int i)
 	char buf[INT_BUF_SZ];
 
 	ret = xset_fill_buf(base, i, buf, sizeof(buf));
+	if (ret)
+		return ret;
 	b_len = strlen(buf);
 	if (fsetxattr(fd, xname, buf, b_len, 0) < 0)
 		return -errno;
