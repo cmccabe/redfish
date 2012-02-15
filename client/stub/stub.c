@@ -599,6 +599,7 @@ static int get_path_status(const char *path, struct redfish_stat *zosa)
 	zosa->block_sz = REDFISH_FIXED_BLOCK_SZ;
 	zosa->mtime = sbuf.st_mtime;
 	zosa->atime = sbuf.st_atime;
+	zosa->nid = sbuf.st_ino;
 	zosa->mode = sbuf.st_mode;
 	zosa->owner = strdup("cmccabe");
 	zosa->group = strdup("cmccabe");

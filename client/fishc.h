@@ -62,6 +62,7 @@ struct redfish_stat
 	int block_sz;
 	int64_t mtime;
 	int64_t atime;
+	uint64_t nid;
 	short mode;
 	char *owner;
 	char *group;
