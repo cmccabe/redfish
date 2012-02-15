@@ -253,7 +253,7 @@ void stest_init(int argc, char **argv,
 
 void stest_set_status(int pdone)
 {
-	int res;
+	int POSSIBLY_UNUSED(res);
 	char buf[NUM_PERCENT_DIGITS + 1];
 	if (pdone > 100)
 		pdone = 100;
