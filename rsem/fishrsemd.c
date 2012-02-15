@@ -150,6 +150,7 @@ int main(int argc, char **argv)
 	while (1) {
 		mt_msleep(100000);
 	}
+	rsem_server_shutdown(rss);
 
 done_signal_shutdown:
 	signal_shutdown();

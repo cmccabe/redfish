@@ -424,7 +424,7 @@ error:
 
 void rsem_server_shutdown(struct rsem_server *rss)
 {
-	int res;
+	int POSSIBLY_UNUSED(res);
 	char buf[1] = { 0 };
 	res = safe_write(rss->event_fd[PIPE_WRITE], buf, 1);
 	pthread_join(rss->thread, NULL);

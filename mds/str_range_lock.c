@@ -81,7 +81,9 @@ done:
 
 void unlock_range(struct str_range_lock *me)
 {
-	int i, j, ret = 0;
+	int i, j, POSSIBLY_UNUSED(ret);
+		
+	ret = 0;
 	pthread_spin_lock(&g_spinlock);
 	for (i = 0; i < g_num_locks; ++i) {
 		struct str_range_lock *lock = g_locks[i];

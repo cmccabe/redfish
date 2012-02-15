@@ -168,7 +168,7 @@ int recv_pool_thread_create(struct recv_pool *rpool, struct fast_log_mgr *mgr,
 
 void recv_pool_join(struct recv_pool *rpool)
 {
-	int ret;
+	int POSSIBLY_UNUSED(ret);
 	struct recv_pool_thread *rt;
 
 	pthread_mutex_lock(&rpool->lock);

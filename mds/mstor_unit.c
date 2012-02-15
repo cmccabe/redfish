@@ -339,7 +339,6 @@ static int mstoru_do_stat(struct mstor *mstor, const char *full_path,
 	struct mreq_stat mreq;
 	char buf[16384];
 	char pcomp[RF_PCOMP_MAX];
-	uint32_t off;
 
 	memset(&mreq, 0, sizeof(mreq));
 	memset(buf, 0, sizeof(buf));
@@ -353,7 +352,6 @@ static int mstoru_do_stat(struct mstor *mstor, const char *full_path,
 		fprintf(stderr, "do_stat failed with error %d\n", ret);
 		return FORCE_NEGATIVE(ret);
 	}
-	off = 0;
 	hdr = (struct mmm_stat_hdr*)buf;
 	ret = unpack_stat_hdr(hdr, pcomp);
 	if (ret)

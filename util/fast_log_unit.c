@@ -59,7 +59,7 @@ BUILD_BUG_ON(sizeof(struct foo_bar_baz_entry) !=
 
 static void dump_foo_bar_baz(struct fast_log_entry *f, char *buf)
 {
-	int ret;
+	int POSSIBLY_UNUSED(ret);
 	struct foo_bar_baz_entry *fe = (struct foo_bar_baz_entry*)f;
 	ret = snprintf(buf, FAST_LOG_PRETTY_PRINTED_MAX,
 		"foo=0x%"PRIx64 ", bar=0x%"PRIx64
@@ -78,9 +78,8 @@ BUILD_BUG_ON(sizeof(struct gar_entry) != sizeof(struct fast_log_entry));
 
 static void dump_gar(struct fast_log_entry *f, char *buf)
 {
-	int ret;
 	struct gar_entry *fe = (struct gar_entry*)f;
-	ret = snprintf(buf, FAST_LOG_PRETTY_PRINTED_MAX,
+	snprintf(buf, FAST_LOG_PRETTY_PRINTED_MAX,
 		"%s\n", fe->gar);
 }
 

@@ -1575,7 +1575,7 @@ static int mstor_do_find_zombies(struct mstor *mstor, struct mreq *mreq)
 	int ret, num_res, max_res;
 	leveldb_iterator_t *iter = NULL;
 	const char *k;
-	const char *v;
+	const char POSSIBLY_UNUSED(*v);
 	char zkey[MZOMBIE_KEY_LEN], *err = NULL;
 	size_t klen, vlen;
 	struct mreq_find_zombies *req;
