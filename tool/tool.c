@@ -127,7 +127,6 @@ static struct fishtool_params* fishtool_parse_argv(int argc, char **argv)
 	size_t i;
 	char getopt_str[512] = "hm:u:";
 	struct fishtool_params *params;
-	const char *cpath = NULL;
 	static const char TRUE[] = "true";
 
 	params = calloc(1, sizeof(struct fishtool_params));
@@ -135,7 +134,7 @@ static struct fishtool_params* fishtool_parse_argv(int argc, char **argv)
 		fprintf(stderr, "fishtool_parse_argv: OOM\n");
 		exit(EXIT_FAILURE);
 	}
-	cpath = getenv("REDFISH_CONF");
+	params->cpath = getenv("REDFISH_CONF");
 	params->act = get_fishtool_act(argv[1]);
 	if (params->act) {
 		snappend(getopt_str, sizeof(getopt_str), "%s",
@@ -144,7 +143,7 @@ static struct fishtool_params* fishtool_parse_argv(int argc, char **argv)
 	while ((c = getopt(argc, argv, getopt_str)) != -1) {
 		switch (c) {
 		case 'c':
-			cpath = optarg;
+			params->cpath = optarg;
 			break;
 		case 'h':
 			if (params->act)
