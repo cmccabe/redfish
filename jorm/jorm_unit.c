@@ -318,7 +318,7 @@ static int test5(void)
 done:
 	if (jo)
 		json_object_put(jo);
-	return 0;
+	return ret;
 }
 
 static int test_jorm_array_manipulations(void)
