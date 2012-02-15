@@ -28,6 +28,7 @@ int main(void)
 {
 	char buf[512], buf2[512], buf3[512], *newline;
 	uid_t uid;
+	gid_t gid, gid2;
 	const char *cvec[] = { "whoami", NULL };
 
 	EXPECT_EQ(get_current_username(buf, 0), -ENAMETOOLONG);
@@ -44,5 +45,9 @@ int main(void)
 	EXPECT_ZERO(get_user_id(buf, &uid));
 	EXPECT_ZERO(get_user_name(uid, buf3, sizeof(buf3)));
 	EXPECT_ZERO(strcmp(buf, buf3));
+	gid = getgid();
+	EXPECT_ZERO(get_group_name(gid, buf3, sizeof(buf3)));
+	EXPECT_ZERO(get_group_id(buf3, &gid2));
+	EXPECT_EQ(gid, gid2);
 	return EXIT_SUCCESS;
 }

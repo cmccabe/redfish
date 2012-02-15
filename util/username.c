@@ -18,9 +18,11 @@
 #include "util/string.h"
 
 #include <errno.h>
+#include <grp.h>
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 int get_current_username(char *out, size_t out_len)
@@ -97,4 +99,35 @@ int get_user_name(uid_t uid, char *username, size_t username_len)
 		return ret;
 	}
 	return zsnprintf(username, username_len, "%s", pwd.pw_name);
+}
+
+int get_group_id(const char *groupname, gid_t *gid)
+{
+	char buf[8192];
+	struct group grp, *res;
+	int ret;
+
+	ret = getgrnam_r(groupname, &grp, buf, sizeof(buf), &res);
+	if (res == NULL) {
+		if (!ret)
+			return -ENOENT;
+		return ret;
+	}
+	*gid = grp.gr_gid;
+	return 0;
+}
+
+int get_group_name(uid_t uid, char *groupname, size_t groupname_len)
+{
+	char buf[8192];
+	struct group grp, *res;
+	int ret;
+
+	ret = getgrgid_r(uid, &grp, buf, sizeof(buf), &res);
+	if (res == NULL) {
+		if (!ret)
+			return -ENOENT;
+		return ret;
+	}
+	return zsnprintf(groupname, groupname_len, "%s", grp.gr_name);
 }

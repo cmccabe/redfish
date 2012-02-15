@@ -48,4 +48,23 @@ extern int get_user_id(const char *username, uid_t *uid);
  */
 extern int get_user_name(uid_t uid, char *username, size_t username_len);
 
+/** Get the user ID associated with a user name
+ *
+ * @param username	The group name
+ * @param gid		(out param) the group id
+ *
+ * @return		0 on success; error code otherwise
+ */
+extern int get_group_id(const char *username, gid_t *gid);
+
+/** Get the user ID associated with a user name
+ *
+ * @param gid		the group id
+ * @param groupname	(out param) The group name
+ * @param groupname_len	length of the group name buffer
+ *
+ * @return		0 on success; error code otherwise
+ */
+extern int get_group_name(uid_t uid, char *groupname, size_t groupname_len);
+
 #endif
