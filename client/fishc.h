@@ -55,7 +55,6 @@ struct redfish_file;
 /** Represents the status of a Redfish file. */
 struct redfish_stat
 {
-	char *path;
 	int64_t length;
 	short is_dir;
 	short repl;
@@ -66,6 +65,13 @@ struct redfish_stat
 	short mode;
 	char *owner;
 	char *group;
+};
+
+/** Represents an entry in a Redfish directory */
+struct redfish_dir_entry
+{
+	char *path;
+	struct redfish_stat stat;
 };
 
 struct redfish_block_host
@@ -250,6 +256,16 @@ void redfish_free_block_locs(struct redfish_block_loc **blc, int nblc);
 int redfish_get_path_status(struct redfish_client *cli, const char *path,
 				struct redfish_stat* osa);
 
+/** Given an open file, returns file status information
+ *
+ * @param ofe		the Redfish file
+ * @param osa		(out-parameter): file status
+ *
+ * @return		0 on success; error code otherwise
+ */
+int redfish_get_file_status(struct redfish_file *ofe,
+		struct redfish_stat* osa);
+
 /** Frees the status data returned by redfish_get_path_status
  *
  * @param osa		The file status
@@ -268,14 +284,14 @@ void redfish_free_path_status(struct redfish_stat* osa);
  *			error code otherwise
  */
 int redfish_list_directory(struct redfish_client *cli, const char *dir,
-			      struct redfish_stat** osa);
+			      struct redfish_dir_entry **oda);
 
-/** Frees the array of status data returned by redfish_list_directory
+/** Frees the array of directory entries returned by redfish_list_directory
  *
- * @param osa		array of file statuses
- * @param nosa		Length of osa
+ * @param oda		array of directory entries
+ * @param noda		Length of oda
  */
-void redfish_free_path_statuses(struct redfish_stat* osa, int nosa);
+void redfish_free_dir_entries(struct redfish_dir_entry* oda, int noda);
 
 /** Changes the permission bits for a file or directory.
  *

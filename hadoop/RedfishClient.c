@@ -287,7 +287,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishGetBlockLocations(
 	return jarr;
 }
 
-static jobject redfish_stat_to_file_info(JNIEnv *jenv,
+static jobject redfish_stat_to_file_info(JNIEnv *jenv, const char *path,
 		const struct redfish_stat *osa)
 {
 	jlong length;
@@ -303,7 +303,7 @@ static jobject redfish_stat_to_file_info(JNIEnv *jenv,
 	jgroup = (*jenv)->NewStringUTF(jenv, osa->group);
 	if (!jgroup)
 		goto done;
-	jpath = (*jenv)->NewStringUTF(jenv, osa->path);
+	jpath = (*jenv)->NewStringUTF(jenv, path);
 	if (!jpath)
 		goto done;
 	jpath_obj = (*jenv)->NewObject(jenv, g_cls_path,
@@ -368,7 +368,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishGetPathStatus(
 		redfish_throw(jenv, "java/io/IOException", err);
 		return NULL;
 	}
-	res = redfish_stat_to_file_info(jenv, &osa);
+	res = redfish_stat_to_file_info(jenv, cpath, &osa);
 	redfish_free_path_status(&osa);
 	if (!res) {
 		strerror_r(ENOMEM, err, err_len);
@@ -383,9 +383,9 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishListDirectory(
 	JNIEnv *jenv, jobject jobj, jstring jpath)
 {
 	jobjectArray jarr = NULL;
-	int i, nosa;
+	int i, noda;
 	struct redfish_client *cli;
-	struct redfish_stat *osa = NULL;
+	struct redfish_dir_entry *oda = NULL;
 	char cpath[RF_PATH_MAX], err[512] = { 0 };
 	size_t err_len = sizeof(err);
 
@@ -396,20 +396,21 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishListDirectory(
 	}
 	if (jstr_to_cstr(jenv, jpath, cpath, sizeof(cpath)))
 		goto done;
-	nosa = redfish_list_directory(cli, cpath, &osa);
-	if (nosa < 0) {
-		strerror_r(FORCE_POSITIVE(nosa), err, err_len);
+	noda = redfish_list_directory(cli, cpath, &oda);
+	if (noda < 0) {
+		strerror_r(FORCE_POSITIVE(noda), err, err_len);
 		goto done;
 	}
-	jarr = (*jenv)->NewObjectArray(jenv, nosa, g_cls_file_status, NULL);
+	jarr = (*jenv)->NewObjectArray(jenv, noda, g_cls_file_status, NULL);
 	if (!jarr) {
 		/* out of memory exception thrown */
 		goto done;
 	}
-	for (i = 0; i < nosa; ++i) {
+	for (i = 0; i < noda; ++i) {
 		jobject res;
 
-		res = redfish_stat_to_file_info(jenv, osa + i);
+		res = redfish_stat_to_file_info(jenv, oda[i].path,
+				&oda[i].stat);
 		if (!res) {
 			strerror_r(ENOMEM, err, err_len);
 			goto done;
@@ -419,8 +420,8 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishListDirectory(
 	}
 
 done:
-	if (osa)
-		redfish_free_path_statuses(osa, nosa);
+	if (oda)
+		redfish_free_dir_entries(oda, noda);
 	if (err[0])
 		redfish_throw(jenv, "java/io/IOException", err);
 	return jarr;

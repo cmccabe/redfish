@@ -28,6 +28,7 @@
 #include "util/run_cmd.h"
 #include "util/safe_io.h"
 #include "util/string.h"
+#include "util/username.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -586,30 +587,41 @@ error:
 	return ret;
 }
 
-static int get_path_status(const char *path, struct redfish_stat *zosa)
+static int st_buf_to_redfish_stat(const struct stat *st_buf,
+		struct redfish_stat *zosa)
 {
-	struct stat sbuf;
-	if (stat(path, &sbuf) < 0) {
-		return -errno;
-	}
-	zosa->path = strdup(path);
-	zosa->length = sbuf.st_size;
-	zosa->is_dir = !!S_ISDIR(sbuf.st_mode);
+	char owner[RF_USER_MAX], group[RF_GROUP_MAX];
+
+	zosa->length = st_buf->st_size;
+	zosa->is_dir = !!S_ISDIR(st_buf->st_mode);
 	zosa->repl = REDFISH_FIXED_REPL;
 	zosa->block_sz = REDFISH_FIXED_BLOCK_SZ;
-	zosa->mtime = sbuf.st_mtime;
-	zosa->atime = sbuf.st_atime;
-	zosa->nid = sbuf.st_ino;
-	zosa->mode = sbuf.st_mode;
-	zosa->owner = strdup("cmccabe");
-	zosa->group = strdup("cmccabe");
-	if ((!zosa->path) || (!zosa->owner) || (!zosa->group)) {
-		free(zosa->path);
-		free(zosa->owner);
+	zosa->mtime = st_buf->st_mtime;
+	zosa->atime = st_buf->st_atime;
+	zosa->nid = st_buf->st_ino;
+	zosa->mode = st_buf->st_mode;
+	if (get_user_name(st_buf->st_uid, owner, sizeof(owner)))
+		snprintf(owner, sizeof(owner), "nobody");
+	if (get_group_name(st_buf->st_gid, group, sizeof(group)))
+		snprintf(group, sizeof(group), "nobody");
+	zosa->owner = strdup(owner);
+	if (!zosa->owner)
+		return -ENOMEM;
+	zosa->group = strdup(group);
+	if (!zosa->group) {
 		free(zosa->group);
 		return -ENOMEM;
 	}
 	return 0;
+}
+
+static int get_path_status(const char *path, struct redfish_stat *zosa)
+{
+	struct stat st_buf;
+	if (stat(path, &st_buf) < 0) {
+		return -errno;
+	}
+	return st_buf_to_redfish_stat(&st_buf, zosa);
 }
 
 int redfish_get_path_status(struct redfish_client *cli, const char *path,
@@ -629,13 +641,26 @@ done:
 	return ret;
 }
 
+int redfish_get_file_status(struct redfish_file *ofe, struct redfish_stat *osa)
+{
+	int ret;
+	struct stat st_buf;
+
+	if (fstat(ofe->fd, &st_buf)) {
+		ret = -errno;
+		return ret;
+	}
+	st_buf_to_redfish_stat(&st_buf, osa);
+	return 0;
+}
+
 int redfish_list_directory(struct redfish_client *cli, const char *path,
-			      struct redfish_stat** osa)
+			      struct redfish_dir_entry** oda)
 {
 	struct redfish_dirp *dp = NULL;
 	char epath[PATH_MAX];
-	int i, ret, nosa = 0;
-	struct redfish_stat *zosa = NULL;
+	int ret, noda = 0;
+	struct redfish_dir_entry *zoda = NULL;
 
 	if (path[0] != '/')
 		return -EDOM;
@@ -652,8 +677,10 @@ int redfish_list_directory(struct redfish_client *cli, const char *path,
 		goto error;
 	while (1) {
 		char fname[PATH_MAX];
-		struct redfish_stat *xosa;
+		struct redfish_dir_entry *xoda;
 		struct dirent *de;
+		struct stat st_buf;
+
 		de = do_readdir(dp);
 		if (!de)
 			break;
@@ -661,36 +688,40 @@ int redfish_list_directory(struct redfish_client *cli, const char *path,
 			continue;
 		else if (!strcmp(de->d_name, ".."))
 			continue;
-		++nosa;
-		xosa = realloc(zosa, nosa * sizeof(struct redfish_stat));
-		if (!xosa) {
+		++noda;
+		xoda = realloc(zoda, noda * sizeof(struct redfish_dir_entry));
+		if (!xoda) {
 			ret = -ENOMEM;
 			goto error;
 		}
-		zosa = xosa;
+		zoda = xoda;
 		if (zsnprintf(fname, PATH_MAX, "%s/%s", epath, de->d_name)) {
 			ret = -ENAMETOOLONG;
 			goto error;
 		}
-		ret = get_path_status(fname, &zosa[nosa - 1]);
-		if (ret) {
-			nosa--;
+		if (stat(path, &st_buf) < 0) {
+			ret = -errno;
+			goto error;
+		}
+		ret = st_buf_to_redfish_stat(&st_buf, &zoda[noda - 1].stat);
+		if (ret)
+			goto error;
+		zoda[noda - 1].path = strdup(fname);
+		if (!zoda[noda - 1].path) {
+			ret = -ENOMEM;
+			goto error;
 		}
 	}
 	do_closedir(dp);
 	pthread_mutex_unlock(&cli->lock);
-	*osa = zosa;
-	return nosa;
+	*oda = zoda;
+	return noda;
 error:
 	if (dp != NULL)
 		do_closedir(dp);
 	pthread_mutex_unlock(&cli->lock);
-	for (i = 0; i <= nosa; ++i) {
-		free(zosa[i].path);
-		free(zosa[i].owner);
-		free(zosa[i].group);
-	}
-	free(zosa);
+	redfish_free_dir_entries(zoda, noda);
+	free(zoda);
 	return FORCE_NEGATIVE(ret);
 }
 

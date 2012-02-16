@@ -37,19 +37,20 @@ int redfish_close_and_free(struct redfish_file *ofe)
 
 void redfish_free_path_status(struct redfish_stat* osa)
 {
-	free(osa->path);
 	free(osa->owner);
 	free(osa->group);
 }
 
-void redfish_free_path_statuses(struct redfish_stat* osas, int nosa)
+void redfish_free_dir_entries(struct redfish_dir_entry* odas, int noda)
 {
 	int i;
 
-	for (i = 0; i < nosa; ++i) {
-		redfish_free_path_status(osas + i);
+	for (i = 0; i < noda; ++i) {
+		struct redfish_dir_entry *oda = odas + i;
+		free(oda->path);
+		redfish_free_path_status(&oda->stat);
 	}
-	free(osas);
+	free(odas);
 }
 
 void redfish_free_block_locs(struct redfish_block_loc **blcs, int nblc)
