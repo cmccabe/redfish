@@ -688,8 +688,8 @@ int redfish_list_directory(struct redfish_client *cli, const char *path,
 			continue;
 		else if (!strcmp(de->d_name, ".."))
 			continue;
-		++noda;
-		xoda = realloc(zoda, noda * sizeof(struct redfish_dir_entry));
+		xoda = realloc(zoda,
+			(noda + 1) * sizeof(struct redfish_dir_entry));
 		if (!xoda) {
 			ret = -ENOMEM;
 			goto error;
@@ -699,18 +699,19 @@ int redfish_list_directory(struct redfish_client *cli, const char *path,
 			ret = -ENAMETOOLONG;
 			goto error;
 		}
-		if (stat(path, &st_buf) < 0) {
+		if (stat(epath, &st_buf) < 0) {
 			ret = -errno;
 			goto error;
 		}
-		ret = st_buf_to_redfish_stat(&st_buf, &zoda[noda - 1].stat);
+		ret = st_buf_to_redfish_stat(&st_buf, &zoda[noda].stat);
 		if (ret)
 			goto error;
-		zoda[noda - 1].path = strdup(fname);
-		if (!zoda[noda - 1].path) {
+		zoda[noda].path = strdup(fname);
+		if (!zoda[noda].path) {
 			ret = -ENOMEM;
 			goto error;
 		}
+		++noda;
 	}
 	do_closedir(dp);
 	pthread_mutex_unlock(&cli->lock);
@@ -721,7 +722,6 @@ error:
 		do_closedir(dp);
 	pthread_mutex_unlock(&cli->lock);
 	redfish_free_dir_entries(zoda, noda);
-	free(zoda);
 	return FORCE_NEGATIVE(ret);
 }
 
