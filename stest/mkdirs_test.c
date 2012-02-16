@@ -16,11 +16,15 @@
 
 #include "client/fishc.h"
 #include "stest/stest.h"
+#include "util/bitfield.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#define MAX_LISTDIRS_TEST_ENTRIES 128
 
 static int mkdirs_test(struct redfish_client *cli)
 {
@@ -50,6 +54,43 @@ static int mkdirs_test(struct redfish_client *cli)
 	return 0;
 }
 
+struct listdirs_test_fn1_data {
+	BITFIELD_DECL(found, MAX_LISTDIRS_TEST_ENTRIES);
+};
+
+static int listdirs_test_fn1(const struct redfish_dir_entry *oda, void *v)
+{
+	struct listdirs_test_fn1_data *data = v;
+	int idx = -1;
+
+	if (sscanf(oda->path, "/abracadabra/%d", &idx) != 1)
+		return -EINVAL;
+	if ((idx < 0) || (idx > MAX_LISTDIRS_TEST_ENTRIES))
+		return -EINVAL;
+	BITFIELD_SET(data->found, idx);
+	return 0;
+}
+
+static int listdirs_test(struct redfish_client *cli)
+{
+	struct listdirs_test_fn1_data data;
+
+	ST_EXPECT_ZERO(redfish_mkdirs(cli, 0644, "/abracadabra"));
+	ST_EXPECT_ZERO(redfish_mkdirs(cli, 0644, "/abracadabra/0"));
+	ST_EXPECT_ZERO(redfish_mkdirs(cli, 0644, "/abracadabra/1"));
+	ST_EXPECT_ZERO(redfish_mkdirs(cli, 0644, "/abracadabra/2"));
+	memset(&data, 0, sizeof(data));
+	int foo = stest_listdir(cli, "/abracadabra", listdirs_test_fn1,
+			&data);
+	printf("foo = %d\n", foo);
+	ST_EXPECT_EQ(stest_listdir(cli, "/abracadabra", listdirs_test_fn1,
+			&data), 3);
+	ST_EXPECT_NOT_EQ(BITFIELD_TEST(data.found, 0), 0);
+	ST_EXPECT_NOT_EQ(BITFIELD_TEST(data.found, 1), 0);
+	ST_EXPECT_NOT_EQ(BITFIELD_TEST(data.found, 2), 0);
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	int ret;
@@ -65,8 +106,11 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	mkdirs_test(cli);
-
+	if (mkdirs_test(cli))
+		goto done;
+	if (listdirs_test(cli))
+		goto done;
+done:
 	redfish_disconnect_and_release(cli);
 	return stest_finish();
 }

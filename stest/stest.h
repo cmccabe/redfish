@@ -20,6 +20,7 @@
 #include "util/compiler.h"
 
 struct redfish_client;
+struct redfish_dir_entry;
 struct redfish_mds_locator;
 
 struct stest_custom_opt
@@ -110,6 +111,22 @@ enum stest_stat_res {
  */
 extern enum stest_stat_res stest_stat(struct redfish_client *cli,
 				      const char *path);
+
+/** Function that examines directory entries for stest_listdir */
+typedef int (*stest_listdir_fn)(const struct redfish_dir_entry *oda, void *v);
+
+/** Simple wrapper function to test redfish_listdir
+ *
+ * @param cli		Redfish client
+ * @param path		listdir path
+ * @param fn		function to invoke on each entry
+ * @param data		data to provide to fn
+ *
+ * @return		a negative number on listdir error; the number of
+ *			entries processed otherwise.
+ */
+int stest_listdir(struct redfish_client *cli, const char *path,
+		stest_listdir_fn fn, void *data);
 
 #define ST_EXPECT_ZERO(expr) \
 	do { \

@@ -307,3 +307,23 @@ enum stest_stat_res stest_stat(struct redfish_client *cli, const char *path)
 	redfish_free_path_status(&osa);
 	return is_dir ? STEST_STAT_RES_DIR : STEST_STAT_RES_FILE;
 }
+
+int stest_listdir(struct redfish_client *cli, const char *path,
+		stest_listdir_fn fn, void *data)
+{
+	struct redfish_dir_entry *oda;
+	int i, noda, ret;
+
+	noda = redfish_list_directory(cli, path, &oda);
+	if (noda < 0)
+		return noda;
+	for (i = 0; i < noda; ++i) {
+		ret = fn(&oda[i], data);
+		if (ret)
+			goto done;
+	}
+	ret = noda;
+done:
+	redfish_free_dir_entries(oda, noda);
+	return ret;
+}
