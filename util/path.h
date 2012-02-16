@@ -22,6 +22,9 @@
 /** Canonicalize paths so that they have only one slash between path
  * components, and do not end with a slash.
  *
+ * The only exception is the root directory, which is always canonicalized as
+ * a single slash.
+ *
  * @param path		The (absolute) path
  *
  * @return		0 on success; -ENOTSUP if the path was not absolute
