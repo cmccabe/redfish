@@ -29,7 +29,21 @@
  *
  * @return		0 on success; -ENOTSUP if the path was not absolute
  */
-int canonicalize_path(char *path);
+extern int canonicalize_path(char *path);
+
+/** Append a relative path to a canonical path.
+ *
+ * Since the root directory ends in a slash, you can't just append a slash and a
+ * relative path to a canonical path and expect to get another canonical path.
+ * Instead, use this function.
+ *
+ * @param base		(out param) the canonicalized path to append to
+ * @param base_len	length of 'base'
+ * @param suffix	the relative path to append
+ *
+ * @return		0 on success; -ENAMETOOLONG if there isn't enough space
+ */
+extern int canon_path_append(char *out, size_t out_len, const char *suffix);
 
 /** Get the name of the directory enclosing a file
  *
@@ -37,6 +51,6 @@ int canonicalize_path(char *path);
  * @param dir		(out param) The directory enclosing 'path'
  * @param dir_len	Length of the dir buffer
  */
-void do_dirname(const char *fname, char *dname, size_t dname_len);
+extern void do_dirname(const char *fname, char *dname, size_t dname_len);
 
 #endif

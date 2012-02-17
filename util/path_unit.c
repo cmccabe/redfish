@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "mds/limits.h"
 #include "util/path.h"
 #include "util/string.h"
 #include "util/test.h"
@@ -46,6 +47,21 @@ static int test_do_dirname(const char *fname, const char *expected)
 	return strcmp(dname, expected);
 }
 
+static int test_canon_path_append(void)
+{
+	char base1[RF_PATH_MAX] = "/";
+	char base2[RF_PATH_MAX] = "/a/b/c";
+	char base3[RF_PATH_MAX] = "/foo";
+
+	EXPECT_ZERO(canon_path_append(base1, sizeof(base1), "foo"));
+	EXPECT_ZERO(strcmp(base1, "/foo"));
+	EXPECT_ZERO(canon_path_append(base2, sizeof(base2), "d/e/f"));
+	EXPECT_ZERO(strcmp(base2, "/a/b/c/d/e/f"));
+	EXPECT_ZERO(canon_path_append(base3, sizeof(base3), ""));
+	EXPECT_ZERO(strcmp(base3, "/foo"));
+	return 0;
+}
+
 int main(void)
 {
 	EXPECT_ZERO(test_canonicalize_path("", NULL));
@@ -60,6 +76,7 @@ int main(void)
 	EXPECT_ZERO(test_do_dirname("/", "/"));
 	EXPECT_ZERO(test_do_dirname("/tmp/foo", "/tmp"));
 	EXPECT_ZERO(test_do_dirname("/longer/path/here", "/longer/path"));
+	EXPECT_ZERO(test_canon_path_append());
 
 	return EXIT_SUCCESS;
 }

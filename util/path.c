@@ -15,11 +15,13 @@
  */
 
 #include "util/path.h"
+#include "util/string.h"
 
 #include <errno.h>
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <strings.h>
 
 int canonicalize_path(char *src)
@@ -50,6 +52,18 @@ int canonicalize_path(char *src)
 	}
 	*dst = '\0';
 	return 0;
+}
+
+int canon_path_append(char *base, size_t out_len, const char *suffix)
+{
+	size_t cbase_len;
+
+	if (!suffix[0])
+		return 0;
+	cbase_len = strlen(base);
+	if (cbase_len < 2)
+		return zsnprintf(base, out_len, "/%s", suffix);
+	return zsnprintf(base + cbase_len, out_len - cbase_len, "/%s", suffix);
 }
 
 void do_dirname(const char *fname, char *dname, size_t dname_len)
