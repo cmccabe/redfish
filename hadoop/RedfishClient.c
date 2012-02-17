@@ -409,7 +409,10 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishListDirectory(
 	for (i = 0; i < noda; ++i) {
 		jobject res;
 
-		res = redfish_stat_to_file_info(jenv, oda[i].path,
+		/* It should be fine to create a FileStatus object with just the
+		 * name of the file.  As far as I can see, FileStatus objects
+		 * don't have to contain absolute paths. */
+		res = redfish_stat_to_file_info(jenv, oda[i].name,
 				&oda[i].stat);
 		if (!res) {
 			strerror_r(ENOMEM, err, err_len);

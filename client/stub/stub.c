@@ -706,8 +706,8 @@ int redfish_list_directory(struct redfish_client *cli, const char *path,
 		ret = st_buf_to_redfish_stat(&st_buf, &zoda[noda].stat);
 		if (ret)
 			goto error;
-		zoda[noda].path = strdup(fname);
-		if (!zoda[noda].path) {
+		zoda[noda].name = strdup(de->d_name);
+		if (!zoda[noda].name) {
 			ret = -ENOMEM;
 			goto error;
 		}

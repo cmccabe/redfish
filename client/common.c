@@ -47,7 +47,7 @@ void redfish_free_dir_entries(struct redfish_dir_entry* odas, int noda)
 
 	for (i = 0; i < noda; ++i) {
 		struct redfish_dir_entry *oda = odas + i;
-		free(oda->path);
+		free(oda->name);
 		redfish_free_path_status(&oda->stat);
 	}
 	free(odas);

@@ -63,7 +63,7 @@ static int listdirs_test_fn1(const struct redfish_dir_entry *oda, void *v)
 	struct listdirs_test_fn1_data *data = v;
 	int idx = -1;
 
-	if (sscanf(oda->path, "/abracadabra/%d", &idx) != 1)
+	if (sscanf(oda->name, "%d", &idx) != 1)
 		return -EINVAL;
 	if ((idx < 0) || (idx > MAX_LISTDIRS_TEST_ENTRIES))
 		return -EINVAL;
@@ -75,15 +75,12 @@ static int listdirs_test(struct redfish_client *cli)
 {
 	struct listdirs_test_fn1_data data;
 
-	ST_EXPECT_ZERO(redfish_mkdirs(cli, 0644, "/abracadabra"));
-	ST_EXPECT_ZERO(redfish_mkdirs(cli, 0644, "/abracadabra/0"));
-	ST_EXPECT_ZERO(redfish_mkdirs(cli, 0644, "/abracadabra/1"));
-	ST_EXPECT_ZERO(redfish_mkdirs(cli, 0644, "/abracadabra/2"));
+	ST_EXPECT_ZERO(redfish_mkdirs(cli, 0644, "/mkdirs_test2"));
+	ST_EXPECT_ZERO(redfish_mkdirs(cli, 0644, "/mkdirs_test2/0"));
+	ST_EXPECT_ZERO(redfish_mkdirs(cli, 0644, "/mkdirs_test2/1"));
+	ST_EXPECT_ZERO(redfish_mkdirs(cli, 0644, "/mkdirs_test2/2"));
 	memset(&data, 0, sizeof(data));
-	int foo = stest_listdir(cli, "/abracadabra", listdirs_test_fn1,
-			&data);
-	printf("foo = %d\n", foo);
-	ST_EXPECT_EQ(stest_listdir(cli, "/abracadabra", listdirs_test_fn1,
+	ST_EXPECT_EQ(stest_listdir(cli, "/mkdirs_test2", listdirs_test_fn1,
 			&data), 3);
 	ST_EXPECT_NOT_EQ(BITFIELD_TEST(data.found, 0), 0);
 	ST_EXPECT_NOT_EQ(BITFIELD_TEST(data.found, 1), 0);

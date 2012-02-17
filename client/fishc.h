@@ -70,7 +70,7 @@ struct redfish_stat
 /** Represents an entry in a Redfish directory */
 struct redfish_dir_entry
 {
-	char *path;
+	char *name;
 	struct redfish_stat stat;
 };
 
