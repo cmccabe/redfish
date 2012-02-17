@@ -918,6 +918,28 @@ done:
 	return ret;
 }
 
+int redfish_rmdir(struct redfish_client *cli, const char *path)
+{
+	int ret;
+	char epath[PATH_MAX];
+
+	ret = get_stub_path(cli, path, epath, PATH_MAX);
+	if (ret)
+		return ret;
+	pthread_mutex_lock(&cli->lock);
+	ret = stub_check_enc_dir_perm(cli, epath, STUB_VPERM_WRITE);
+	if (ret)
+		goto done;
+	if (rmdir(epath)) {
+		ret = -errno;
+		goto done;
+	}
+	ret = 0;
+done:
+	pthread_mutex_unlock(&cli->lock);
+	return ret;
+}
+
 int redfish_unlink_tree(struct redfish_client *cli, const char *path)
 {
 	int ret;

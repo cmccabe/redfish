@@ -475,7 +475,20 @@ int redfish_hsync(struct redfish_file *ofe);
  */
 int redfish_unlink(struct redfish_client *cli, const char *path);
 
-/** Delete a file of directory subtree
+/** Delete a directory if it's empty
+ *
+ * @param cli		the redfish client
+ * @param path		the directory to remove
+ *
+ * @return		0 on success; error code otherwise
+ */
+int redfish_rmdir(struct redfish_client *cli, const char *path);
+
+/** Delete a file or directory subtree
+ *
+ * Unlike redfish_rmdir, this will delete both directories and files.  It will
+ * also recursively delete everything under a directory.
+ * The recursive deletion is not guaranteed to be atomic.
  *
  * @param cli		the redfish client
  * @param path		the file or subtree to remove
