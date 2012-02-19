@@ -15,6 +15,7 @@
  */
 
 #include "client/fishc.h"
+#include "core/env.h"
 #include "mds/limits.h"
 #include "stest/stest.h"
 #include "util/string.h"
@@ -101,25 +102,27 @@ static int process_dirs(char *dirs)
 	return ndirs;
 }
 
+static const char *g_unlink_test_usage[] = {
+	"unlink_test: tests creating and unlinking files and directories.",
+	"test-specific environment variables:",
+	STEST_REDFISH_CONF_EXPLANATION,
+	STEST_REDFISH_USER_EXPLANATION,
+	"ST_ROOT: comma-separated list of directories to use.",
+	NULL
+};
+
 int main(int argc, char **argv)
 {
 	int ret, ndirs;
 	struct redfish_client *cli = NULL;
 	const char *cpath;
-	const char *user, *dir_str;
+	const char *user;
+	const char *dir_str;
 	char *dirs = NULL;
-	struct stest_custom_opt copt[] = {
-		{
-			.key = "dirs",
-			.val = "/",
-			.help = "dirs=<comma-separated-list of directories>\n"
-				"We will create and unlink files in these "
-				"directories\n",
-		},
-	};
-	const int ncopt = sizeof(copt)/sizeof(copt[0]);
 
-	stest_init(argc, argv, copt, ncopt, &cpath, &user);
+	stest_get_conf_and_user(&cpath, &user);
+	dir_str = getenv_with_default("ST_ROOT", "/");
+	stest_init(argc, argv, g_unlink_test_usage);
 	ret = redfish_connect(cpath, user, &cli);
 	if (ret) {
 		stest_add_error("redfish_connect: failed to connect: "
@@ -127,7 +130,6 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	dir_str = copt_get("dirs", copt, ncopt);
 	dirs = strdup(dir_str);
 	ndirs = process_dirs(dirs);
 	unlink_test(cli, dirs, ndirs);

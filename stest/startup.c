@@ -21,23 +21,26 @@
 #include <string.h>
 #include <unistd.h>
 
+static const char *g_startup_test_usage[] = {
+	"startup_test: tests starting the Redfish client",
+	"test-specific environment variables:",
+	STEST_REDFISH_CONF_EXPLANATION,
+	STEST_REDFISH_USER_EXPLANATION,
+	"ST_CRASH: set this to 1 to crash before disconnecting the client.",
+	NULL
+};
+
 int main(int argc, char **argv)
 {
 	int ret;
 	struct redfish_client *cli = NULL;
-	const char *user, *error;
+	const char *user;
 	const char *cpath;
-	struct stest_custom_opt copt[] = {
-		{
-			.key = "crash",
-			.val = NULL,
-			.help = "error=[0/1]\n"
-				"If 1, crash without properly disconnecting\n",
-		},
-	};
-	const int ncopt = sizeof(copt)/sizeof(copt[0]);
+	const char *crash;
 
-	stest_init(argc, argv, copt, ncopt, &cpath, &user);
+	stest_get_conf_and_user(&cpath, &user);
+	crash = getenv("ST_CRASH");
+	stest_init(argc, argv, g_startup_test_usage);
 	ret = redfish_connect(cpath, user, &cli);
 	if (ret) {
 		stest_add_error("redfish_connect: failed to connect: "
@@ -45,9 +48,8 @@ int main(int argc, char **argv)
 	}
 
 	stest_set_status(10);
-	error = copt_get("error", copt, ncopt);
 
-	if (error && strcmp(error, "0")) {
+	if (crash) {
 		_exit(1);
 	}
 	if (cli) {

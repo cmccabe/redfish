@@ -88,6 +88,14 @@ static int listdirs_test(struct redfish_client *cli)
 	return 0;
 }
 
+static const char *g_mkdirs_test_usage[] = {
+	"mkdirs_test: tests making a bunch of directories and listing them.",
+	"test-specific environment variables:",
+	STEST_REDFISH_CONF_EXPLANATION,
+	STEST_REDFISH_USER_EXPLANATION,
+	NULL
+};
+
 int main(int argc, char **argv)
 {
 	int ret;
@@ -95,7 +103,8 @@ int main(int argc, char **argv)
 	const char *cpath;
 	const char *user;
 
-	stest_init(argc, argv, NULL, 0, &cpath, &user);
+	stest_get_conf_and_user(&cpath, &user);
+	stest_init(argc, argv, g_mkdirs_test_usage);
 	ret = redfish_connect(cpath, user, &cli);
 	if (ret) {
 		stest_add_error("redfish_connect: failed to connect: "

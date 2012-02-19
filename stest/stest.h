@@ -23,28 +23,16 @@ struct redfish_client;
 struct redfish_dir_entry;
 struct redfish_mds_locator;
 
-struct stest_custom_opt
-{
-	/** Pointer to a key which identifies the option */
-	const char *key;
-
-	/** Pointer to a statically allocated string */
-	char *val;
-
-	/** Help string to print out in usage function */
-	const char *help;
-};
-
-/** Get a custom option value from a list of custom options
+/** Get the Redfish configuration file and user name from the environment.
  *
- * @param key		the key to get
- * @param copt		array of custom options
- * @param ncopt		length of copt
+ * Die if the configuration file has not been specified.
  *
- * @returnv		NULL if key isn't found; the matchinvalue otherwise
+ * @param conf		(out param) statically allocated string with the conf
+ *			file path
+ * @param user		(out param) statically allocated string with the user
+ *			name
  */
-const char *copt_get(const char *key, struct stest_custom_opt *copt,
-		     int ncopt);
+extern void stest_get_conf_and_user(const char **conf, const char **user);
 
 /** Parse argv.
  *
@@ -54,25 +42,11 @@ const char *copt_get(const char *key, struct stest_custom_opt *copt,
  *
  * @param argc		argc as passed to main
  * @param argv		argv as passed to main
- * @param copt		(in-out param) NULL-terminated list of custom stest
- *			options. All custom options are treated as
- *			non-mandatory. Custom options not found on the
- *			commandline will not have their entries in copt
- *			altered.
- * @param ncopt		number of custom options
- * @param cpath		(out-param) The path to the configuration file to use.
- *			Statically allocated.
- * @param user		(out-param) The username to connect as. Statically
- *			allocated.
+ * @param usage		NULL-terminated list of test-specific usage lines.
+ * 			These will be printed if the user specifies '-h'
+ * 			of if there is an option parsing error.
  */
-extern void stest_init(int argc, char **argv, struct stest_custom_opt *copt,
-		       int ncopt, const char **cpath, const char **user);
-
-/** Free mlocs array returned from stest_init
- *
- * @param mlocs		the mlocs array returned from stest_init
- */
-void stest_mlocs_free(struct redfish_mds_locator **mlocs);
+extern void stest_init(int argc, char **argv, const char **test_usage);
 
 /** Set the stest done status
  *
@@ -166,5 +140,10 @@ int stest_listdir(struct redfish_client *cli, const char *path,
 			return 1; \
 		} \
 	} while(0);
+
+#define STEST_REDFISH_CONF_EXPLANATION \
+	"REDFISH_CONF: sets the path to the Redfish configuration file"
+#define STEST_REDFISH_USER_EXPLANATION \
+	"REDFISH_USER: sets the Redfish user to use.  Defaults to superuser."
 
 #endif

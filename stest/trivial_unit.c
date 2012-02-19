@@ -24,6 +24,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+static char env_str[512];
+
 int main(POSSIBLY_UNUSED(int argc), char **argv)
 {
 	char st_trivial[PATH_MAX];
@@ -31,13 +33,9 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 	EXPECT_ZERO(get_colocated_path(argv[0], "st_trivial",
 			      st_trivial, sizeof(st_trivial)));
 	EXPECT_ZERO(run_cmd(st_trivial, "-h", (char*)NULL));
-	EXPECT_ZERO(run_cmd(st_trivial, "-c", "/tmp/redfish_conf",
-			"-f", (char*)NULL));
-	EXPECT_ZERO(run_cmd(st_trivial, "-c", "/tmp/redfish_conf",
-			"-f", "error=0", (char*)NULL));
-	EXPECT_NONZERO(run_cmd(st_trivial, "-c", "/tmp/redfish_conf",
-			"-f", "error=1", (char*)NULL));
-	EXPECT_ZERO(run_cmd(st_trivial, "-c", "/tmp/redfish_conf",
-			"-u", "myuser", "-f", "error=0", (char*)NULL));
+	EXPECT_ZERO(run_cmd(st_trivial, "-f", (char*)NULL));
+	snprintf(env_str, sizeof(env_str), "ST_ERROR=1");
+	putenv(env_str);
+	EXPECT_NONZERO(run_cmd(st_trivial, "-f", (char*)NULL));
 	return 0;
 }

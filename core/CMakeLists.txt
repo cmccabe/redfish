@@ -1,5 +1,6 @@
 add_library(core
     alarm.c
+    env.c
     glitch_log.c
     pid_file.c
     process_ctx.c

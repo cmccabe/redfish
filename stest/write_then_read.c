@@ -47,23 +47,26 @@ static int write_then_read(struct redfish_client *cli)
 	return 0;
 }
 
+static const char *g_write_then_read_test_usage[] = {
+	"mkdirs_test: tests making a bunch of directories and listing them.",
+	"test-specific environment variables:",
+	STEST_REDFISH_CONF_EXPLANATION,
+	STEST_REDFISH_USER_EXPLANATION,
+	"ST_CRASH: if 1, crash without properly disconnecting.",
+	NULL
+};
+
 int main(int argc, char **argv)
 {
 	int ret;
 	struct redfish_client *cli = NULL;
 	const char *cpath;
-	const char *user, *error;
-	struct stest_custom_opt copt[] = {
-		{
-			.key = "crash",
-			.val = NULL,
-			.help = "error=[0/1]\n"
-				"If 1, crash without properly disconnecting\n",
-		},
-	};
-	const int ncopt = sizeof(copt)/sizeof(copt[0]);
+	const char *user;
+	const char *error;
 
-	stest_init(argc, argv, copt, ncopt, &cpath, &user);
+	stest_get_conf_and_user(&cpath, &user);
+	error = getenv("ST_CRASH");
+	stest_init(argc, argv, g_write_then_read_test_usage);
 	ret = redfish_connect(cpath, user, &cli);
 	if (ret) {
 		stest_add_error("redfish_connect: failed to connect: "
@@ -74,10 +77,8 @@ int main(int argc, char **argv)
 	write_then_read(cli);
 
 	stest_set_status(10);
-	error = copt_get("error", copt, ncopt);
-	if (error && strcmp(error, "0")) {
+	if (error)
 		_exit(1);
-	}
 	redfish_disconnect_and_release(cli);
 	return stest_finish();
 }

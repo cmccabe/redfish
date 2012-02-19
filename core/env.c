@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the Redfish authors
+ * Copyright 2012 the Redfish authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,29 +14,31 @@
  * limitations under the License.
  */
 
-#include "stest/stest.h"
+#include "core/env.h"
 
+#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
-static const char *g_trivial_test_usage[] = {
-	"trivial_test: tests the stest framework itself.",
-	"test-specific environment variables:",
-	"ST_ERROR: cause an stest error",
-	NULL
-};
-
-int main(int argc, char **argv)
+const char *getenv_or_die(const char *key)
 {
-	const char *error;
+	const char *val;
 
-	stest_init(argc, argv, g_trivial_test_usage);
-	error = getenv("ST_ERROR");
-
-	stest_set_status(10);
-	if (error) {
-		stest_add_error("something went wrong!\n");
+	val = getenv(key);
+	if (!val) {
+		fprintf(stderr, "You must set the environment variable "
+			"%s for this program.\n", key);
+		exit(EXIT_FAILURE);
 	}
-
-	return stest_finish();
+	return val;
 }
+
+const char *getenv_with_default(const char *key, const char *def)
+{
+	const char *val;
+
+	val = getenv(key);
+	if (!val)
+		return def;
+	return val;
+}
+

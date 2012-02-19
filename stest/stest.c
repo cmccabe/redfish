@@ -17,6 +17,7 @@
 #include "client/fishc.h"
 #include "client/fishc_internal.h"
 #include "common/config/logc.h"
+#include "core/env.h"
 #include "core/signal.h"
 #include "mds/limits.h"
 #include "stest/stest.h"
@@ -49,113 +50,63 @@ static int g_daemonize = 1;
 
 static int g_percent_fd = -1;
 
-static FILE *g_err_fp = NULL;
+static FILE *g_err_fp;
 
-static volatile int g_saw_err = 0;
+static volatile int g_saw_err;
 
-const char *copt_get(const char *key, struct stest_custom_opt *copt, int ncopt)
+static const char *g_tmdir;
+
+static void stest_usage(const char *argv0, const char **test_usage,
+		int exitstatus)
 {
-	int i;
-	for (i = 0; i < ncopt; ++i) {
-		if (strcmp(key, copt[i].key) == 0)
-			return copt[i].val;
-	}
-	return NULL;
-}
-
-static void stest_usage(const char *argv0, struct stest_custom_opt *copt,
-			int ncopt, int exitstatus)
-{
-	int i;
 	fprintf(stderr, "%s: a Redfish system test\n", argv0);
 	{
 		static const char *usage_lines[] = {
 "See http://www.club.cc.cmu.edu/~cmccabe/redfish.html for the most up-to-date",
 "information about Redfish.",
 "",
-"Standard system test options:",
+"System test options:",
+"-d <directory>",
+"    Set the directory to use for test metadata.  Defaults to a temporary ",
+"    directory",
 "-f",
 "    Run in the foreground (do not daemonize)",
 "-h",
 "    Show this help message",
-"-m <hostname>:<port>",
-"    Add metadata server location.",
-"-u <username>",
-"    Set the Redfish username to connect as.",
 NULL
 		};
 		print_lines(stderr, usage_lines);
 	}
-	if (ncopt == 0)
-		exit(exitstatus);
-	fprintf(stderr, "\nTest-specific options:\n");
-	for (i = 0; i < ncopt; ++i) {
-		fprintf(stderr, "%s", copt[i].help);
-	}
-	fputs("\n", stderr);
+	fprintf(stderr, "\nTest information:\n");
+	print_lines(stderr, test_usage);
 	exit(exitstatus);
 }
 
-static void stest_parse_argv(int argc, char **argv,
-		struct stest_custom_opt *copt, int ncopt, const char **user,
-		const char **cpath)
+static void stest_parse_argv(int argc, char **argv, const char **test_usage)
 {
-	char **s;
 	int c;
-	*user = NULL;
-	*cpath = getenv("REDFISH_CONF");
-	while ((c = getopt(argc, argv, "c:fhu:")) != -1) {
+	while ((c = getopt(argc, argv, "d:fh")) != -1) {
 		switch (c) {
-		case 'c':
-			*cpath = optarg;
+		case 'd':
+			g_tmdir = optarg;
 			break;
 		case 'f':
 			g_daemonize = 0;
 			break;
 		case 'h':
-			stest_usage(argv[0], copt, ncopt, EXIT_SUCCESS);
-			break;
-		case 'u':
-			*user = optarg;
+			stest_usage(argv[0], test_usage, EXIT_SUCCESS);
 			break;
 		case '?':
-			stest_usage(argv[0], copt, ncopt, EXIT_FAILURE);
+			stest_usage(argv[0], test_usage, EXIT_FAILURE);
 			break;
 		}
 	}
-	for (s = argv + optind; *s; ++s) {
-		int i;
-		char *eq = index(*s, '=');
-		size_t strlen_s = strlen(*s);
-		size_t strlen_v;
-		if (eq == NULL) {
-			fprintf(stderr, "Error parsing custom argument %s: "
-				"could not find equals sign.\n", *s);
-			stest_usage(argv[0], copt, ncopt, EXIT_FAILURE);
-		}
-		++eq;
-		strlen_v = strlen(eq);
-		for (i = 0; i < ncopt; ++i) {
-			if (!strncmp(copt[i].key, *s,
-				     strlen_s - strlen_v - 1)) {
-				break;
-			}
-		}
-		if (i == ncopt) {
-			fprintf(stderr, "Error parsing custom argument %s: "
-				"it is not an option for this test.\n", *s);
-			stest_usage(argv[0], copt, ncopt, EXIT_FAILURE);
-		}
-		copt[i].val = eq;
-	}
-	if (*user == NULL) {
-		*user = STEST_DEFAULT_USER;
-	}
-	if (*cpath == NULL) {
-		fprintf(stderr, "You must supply a configuration file "
-			"with -c, or by setting REDFISH_CONF");
-		exit(EXIT_FAILURE);
-	}
+}
+
+void stest_get_conf_and_user(const char **conf, const char **user)
+{
+	*conf = getenv_or_die("REDFISH_CONF");
+	*user = getenv_with_default("REDFISH_USER", STEST_DEFAULT_USER);
 }
 
 static void stest_status_files_init(void)
@@ -238,11 +189,9 @@ static void stest_init_signals(const char *argv0)
 	}
 }
 
-void stest_init(int argc, char **argv,
-		struct stest_custom_opt *copt, int ncopt, const char **cpath,
-		const char **user)
+void stest_init(int argc, char **argv, const char **test_usage)
 {
-	stest_parse_argv(argc, argv, copt, ncopt, user, cpath);
+	stest_parse_argv(argc, argv, test_usage);
 	stest_status_files_init();
 	stest_init_signals(argv[0]);
 	stest_output_start_msg();

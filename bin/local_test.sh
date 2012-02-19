@@ -30,18 +30,18 @@ die() {
 export TDIR=`mktemp -d -t local_test.XXXXXXXXXX`
 export STUB_BASE="$TDIR/stub_base"
 mkdir "${STUB_BASE}" || die "failed to mkdir ${STUB_BASE}"
-export CFILE="${STUB_BASE}/redfish.conf"
-touch "${CFILE}"
+export REDFISH_CONF="${STUB_BASE}/redfish.conf"
+touch "${REDFISH_CONF}"
 trap "[ -n "${SKIP_CLEANUP}" ] || rm -rf ${STUB_BASE}; exit" INT TERM EXIT
 echo "Tests running with STUB_BASE=${STUB_BASE}"
 
-./mkfs/fishmkfs -c "${CFILE}" -F 1 -m 0 || die "line ${LINENO}"
-./stest/st_startup -c "${CFILE}" -f || die "line ${LINENO}"
-./stest/st_trivial -c "${CFILE}" -f || die "line ${LINENO}"
-./stest/st_write_then_read -c "${CFILE}" -f || die "line ${LINENO}"
-./stest/st_mkdirs -c "${CFILE}" -f || die "line ${LINENO}"
-./stest/st_unlink -c "${CFILE}" -f || die "line ${LINENO}"
-./stest/st_rename1 -c "${CFILE}" -f || die "line ${LINENO}"
+./mkfs/fishmkfs -c "${REDFISH_CONF}" -F 1 -m 0 || die "line ${LINENO}"
+./stest/st_startup -f || die "line ${LINENO}"
+./stest/st_trivial -f || die "line ${LINENO}"
+./stest/st_write_then_read -f || die "line ${LINENO}"
+./stest/st_mkdirs -f || die "line ${LINENO}"
+./stest/st_unlink -f || die "line ${LINENO}"
+./stest/st_rename1 -f || die "line ${LINENO}"
 
 echo "*** SUCCESS ***"
 exit 0
