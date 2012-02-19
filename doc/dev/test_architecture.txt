@@ -1,0 +1,47 @@
+THE REDFISH TESTING ARCHITECTURE
+
+Redfish has a layered testing architecture.
+
++-------------------------------------+
+|     DEPLOY                          |
+|                                     |
+| The Python deployment and testing   |  launches and manages
+| framework.                          |------------+
+| Handles cluster setup and teardown. |            |
++-------------------------------------+            |
+           | launches and manages                  |
+           V                                       |
++-------------------------------------+            |
+|     STEST                           |            |
+|                                     |            |
+| The client-side system tests.       |            |
+| These are standalone C applications |            |
+| linked against libfishc.so and      |            |
+| libstest.a.                         |            |
+|                                     |            V
++-------------------------------------+          +-----------------------------+
+|     RSEM_CLI                        | <======> |           RSEMD             |
+|                                     | talks to |                             |
+| Library that talks to the remote    |          | The remote semaphore daemon |
+| semaphore daemon                    |          | Certain system tests use    |
+|                                     |          | this daemon to coordinate.  |
++-------------------------------------+          +-----------------------------+
+
+
+
+There are also unit tests.
++-------------------------------------+  +-----------------------------+
+|   clean_build.sh                    |  |   valgrinder.sh             |
+|                                     |  |                             |
+| Does a build from scratch and runs  |  | Runs the unit tests with    |
+| the unit tests on it.               |  | valgrind                    |
+| This catches unsubmitted files, etc.|  |                             |
++-------------------------------------+  +-----------------------------+
+                  | runs                         | runs
+                  V                              V
++-------------------------------------------------------+
+|   UNIT TESTS                                          |
+|                                                       |
+| Standalone tests written in C.                        |
+| Can be run with 'make check'                          |
++-------------------------------------------------------+
