@@ -1082,8 +1082,8 @@ static void run_msgr_notify_cb(struct ev_loop *loop, struct ev_async *w,
 				continue;
 			}
 			mconn_teardown(conn, ECANCELED);
-			free(cancel);
 			SLIST_REMOVE_HEAD(&conn_cancels_head, entry);
+			free(cancel);
 		}
 		if (!tr)
 			return;
