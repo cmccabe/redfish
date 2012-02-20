@@ -227,7 +227,7 @@ static int bsend_test_tr_timeo(struct fast_log_buf *fb, int simult)
 			&ctx, simult, 0));
 	for (i = 0; i < simult; ++i) {
 		EXPECT_ZERO(bsend_test30(ctx, foo_msgr, BSF_RESP,
-				i, 1, 0, i + 1));
+				i, 1, 0, 1));
 	}
 	EXPECT_EQ(bsend_join(ctx), simult);
 	for (i = 0; i < simult; ++i) {

@@ -227,10 +227,15 @@ static int mtran_compare_trid(struct mtran *a, struct mtran *b)
 
 static int mtran_compare_timeo(struct mtran *a, struct mtran *b)
 {
+	int c;
+
 	/* Do a circular comparison of the timeout period.  The correctness of
 	 * this function is based on the fact that we'll never have a transactor
 	 * lingering for 546 hours (2**15 seconds)  */
-	return circ_compare16(a->timeo_id, b->timeo_id);
+	c = circ_compare16(a->timeo_id, b->timeo_id);
+	if (c)
+		return c;
+	return mtran_compare_trid(a, b);
 }
 
 static struct mtran *mtran_lookup_by_id(struct mconn *conn, uint32_t trid)
