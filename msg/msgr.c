@@ -920,7 +920,7 @@ static void run_msgr_timeout_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			continue;
 		}
 		RB_FOREACH_SAFE(tr, timeo_tr, &conn->timeo_head, tr_tmp) {
-			if (circ_compare16(tr->timeo_id, timeo_id) < 0) {
+			if (circ_compare16(timeo_id, tr->timeo_id) < 0) {
 				/* This transactor is not yet ready to be timed
 				 * out.  Since the tree is sorted, this means we
 				 * can stop looking for transactors to time out.
