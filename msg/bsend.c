@@ -156,7 +156,7 @@ int bsend_add(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
 	tr = mtran_alloc(msgr);
 	if (!tr) {
 		fast_log_bsend(ctx->fb, FAST_LOG_BSEND_ERROR, FLBS_ADD_TR,
-			       tr->port, tr->ip, flags, ENOMEM, ctx->num_tr);
+			       port, addr, flags, ENOMEM, ctx->num_tr);
 		return -ENOMEM;
 	}
 	tr->ip = addr;
@@ -170,9 +170,9 @@ int bsend_add_tr_or_free(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
 	struct bsend_mtran *btr;
 
 	if (ctx->num_tr >= ctx->max_tr) {
-		mtran_free(tr);
 		fast_log_bsend(ctx->fb, FAST_LOG_BSEND_ERROR, FLBS_ADD_TR,
 			       tr->port, tr->ip, flags, EMFILE, ctx->num_tr);
+		mtran_free(tr);
 		return -EMFILE;
 	}
 	btr = &ctx->btrs[ctx->num_tr];
@@ -182,9 +182,9 @@ int bsend_add_tr_or_free(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
 	pthread_mutex_lock(&ctx->lock);
 	if (ctx->cancel) {
 		pthread_mutex_unlock(&ctx->lock);
-		mtran_free(tr);
 		fast_log_bsend(ctx->fb, FAST_LOG_BSEND_ERROR, FLBS_ADD_TR,
 			       tr->port, tr->ip, flags, ECANCELED, ctx->num_tr);
+		mtran_free(tr);
 		return -ECANCELED;
 	}
 	pthread_mutex_unlock(&ctx->lock);
