@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "core/alarm.h"
 #include "core/process_ctx.h"
 #include "msg/bsend.h"
 #include "msg/msg.h"
@@ -23,6 +24,7 @@
 #include "util/macro.h"
 #include "util/packed.h"
 #include "util/test.h"
+#include "util/time.h"
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -112,7 +114,7 @@ static void bsend_test_cb_noresp(POSSIBLY_UNUSED(struct mconn *conn),
 }
 
 static int bsend_test30(struct bsend *ctx, struct msgr *msgr, int flags,
-			int x, int y, int ex)
+			int x, int y, int ex, int timeo)
 {
 	struct mmm_test30 *m;
 
@@ -122,7 +124,7 @@ static int bsend_test30(struct bsend *ctx, struct msgr *msgr, int flags,
 	pack_to_be32(&m->x, x);
 	pack_to_be32(&m->y, y);
 	EXPECT_EQ(bsend_add(ctx, msgr, flags, (struct msg*)m,
-			g_localhost, MSGR_UNIT_PORT, 60), ex);
+			g_localhost, MSGR_UNIT_PORT, timeo), ex);
 	return 0;
 }
 
@@ -177,7 +179,7 @@ static int bsend_test_send(struct fast_log_buf *fb, int simult,
 		for (i = 0; i < simult; ++i) {
 			uint8_t flags = resp ? BSF_RESP : 0;
 			EXPECT_ZERO(bsend_test30(ctx, foo_msgr, flags,
-						 i, 1, 0));
+						 i, 1, 0, 60));
 		}
 		EXPECT_EQ(bsend_join(ctx), simult);
 		for (i = 0; i < simult; ++i) {
@@ -230,9 +232,33 @@ static int bsend_test_cancel(struct fast_log_buf *fb, int simult, int cancel)
 		if (simult == cancel)
 			bsend_cancel(ctx);
 		EXPECT_ZERO(bsend_test30(ctx, foo_msgr, BSF_RESP, i, 1,
-				c ? -ECANCELED : 0));
+				c ? -ECANCELED : 0, 60));
+
 	}
 	EXPECT_EQ(bsend_join(ctx), -ECANCELED);
+	bsend_reset(ctx);
+	bsend_test_teardown(foo_msgr, bar_msgr, ctx);
+	return 0;
+}
+
+static int bsend_test_tr_timeo(struct fast_log_buf *fb, int simult)
+{
+	int i;
+	struct bsend *ctx;
+	struct msgr *foo_msgr, *bar_msgr;
+	struct mtran *tr;
+
+	EXPECT_ZERO(bsend_test_setup(fb, &foo_msgr, &bar_msgr,
+			&ctx, simult, 0));
+	for (i = 0; i < simult; ++i) {
+		EXPECT_ZERO(bsend_test30(ctx, foo_msgr, BSF_RESP,
+				i, 1, 0, i + 1));
+	}
+	EXPECT_EQ(bsend_join(ctx), simult);
+	for (i = 0; i < simult; ++i) {
+		tr = bsend_get_mtran(ctx, i);
+		EXPECT_EQ(tr->m, ERR_PTR(ETIMEDOUT));
+	}
 	bsend_reset(ctx);
 	bsend_test_teardown(foo_msgr, bar_msgr, ctx);
 	return 0;
@@ -241,8 +267,12 @@ static int bsend_test_cancel(struct fast_log_buf *fb, int simult, int cancel)
 int main(POSSIBLY_UNUSED(int argc), char **argv)
 {
 	struct fast_log_buf *fb;
+	timer_t timer;
+	time_t t;
 
 	EXPECT_ZERO(utility_ctx_init(argv[0]));
+	t = mt_time() + 600;
+	EXPECT_ZERO(mt_set_alarm(t, "bsend_unit timed out", &timer));
 	EXPECT_ZERO(get_localhost_ipv4(&g_localhost));
 	fb = fast_log_create(g_fast_log_mgr, "main");
 	bsend_test_init_shutdown(fb);
@@ -254,7 +284,9 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 	EXPECT_ZERO(bsend_test_send(fb, 10, 5, 0));
 	EXPECT_ZERO(bsend_test_cancel(fb, 10, 0));
 	EXPECT_ZERO(bsend_test_cancel(fb, 10, 5));
+	EXPECT_ZERO(bsend_test_tr_timeo(fb, 5));
 	fast_log_free(fb);
+	EXPECT_ZERO(mt_deactivate_alarm(timer));
 	process_ctx_shutdown();
 
 	return EXIT_SUCCESS;

@@ -18,6 +18,7 @@
 #include "msg/generic.h"
 #include "msg/msg.h"
 #include "msg/msgr.h"
+#include "util/circ_compare.h"
 #include "util/cram.h"
 #include "util/error.h"
 #include "util/fast_log.h"
@@ -226,21 +227,10 @@ static int mtran_compare_trid(struct mtran *a, struct mtran *b)
 
 static int mtran_compare_timeo(struct mtran *a, struct mtran *b)
 {
-	uint16_t ta = a->timeo_id;
-	uint16_t tb = b->timeo_id;
-	uint16_t tc;
-
 	/* Do a circular comparison of the timeout period.  The correctness of
 	 * this function is based on the fact that we'll never have a transactor
 	 * lingering for 546 hours (2**15 seconds)  */
-	tc = tb;
-	tc -= ta;
-	if (tc > 0x8000)
-		return 1;
-	else if (tc == 0)
-		return 0;
-	else
-		return -1;
+	return circ_compare16(a->timeo_id, b->timeo_id);
 }
 
 static struct mtran *mtran_lookup_by_id(struct mconn *conn, uint32_t trid)
@@ -310,6 +300,7 @@ void mtran_recv_next(struct mconn *conn, struct mtran *tr)
 {
 	tr->state = MTRAN_STATE_ACTIVE;
 	RB_INSERT(active_tr, &conn->active_head, tr);
+	RB_INSERT(timeo_tr, &conn->timeo_head, tr);
 }
 
 int mconn_cancel(struct msgr *msgr, uint32_t addr, uint16_t port)
@@ -924,7 +915,7 @@ static void run_msgr_timeout_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 			continue;
 		}
 		RB_FOREACH_SAFE(tr, timeo_tr, &conn->timeo_head, tr_tmp) {
-			if (tr->timeo_id > timeo_id) {
+			if (circ_compare16(tr->timeo_id, timeo_id) < 0) {
 				/* This transactor is not yet ready to be timed
 				 * out.  Since the tree is sorted, this means we
 				 * can stop looking for transactors to time out.

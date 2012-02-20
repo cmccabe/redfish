@@ -2,6 +2,7 @@
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 
 add_library(util
+    circ_compare.c
     config.c
     cram.c
     dir.c
