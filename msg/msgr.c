@@ -1053,8 +1053,8 @@ static void run_msgr_notify_cb(struct ev_loop *loop, struct ev_async *w,
 				cancel = SLIST_FIRST(&conn_cancels_head);
 				if (!cancel)
 					break;
-				free(cancel);
 				SLIST_REMOVE_HEAD(&conn_cancels_head, entry);
+				free(cancel);
 			}
 			/* We don't need to take the msgr->lock here.  The other
 			 * place where msgr->pending_tr_head could be modified,
