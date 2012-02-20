@@ -89,12 +89,8 @@ extern int bsend_add_tr_or_free(struct bsend *ctx, struct msgr *msgr,
  *
  * @param ctx		The blocking RPC context
  *
- * @return		-ECANCELED if the blocking rpc was interrupted by
- *			bsend_cancel.  The number of RPC calls made otherwise.
- *			(Even RPCs that resulted in an error are counted.) If
- *			the bsend_join is cancelled, _all_ the message responses
- *			will be replaced with -ECANCELLED-- even for messages
- *			that finished before the cancellation.
+ * @return		The number of RPC calls made.  Even RPCs that resulted
+ *			in an error are counted.
  */
 extern int bsend_join(struct bsend *ctx);
 
@@ -124,21 +120,6 @@ extern struct mtran *bsend_get_mtran(struct bsend *ctx, int ntr);
  * @param ctx		The blocking RPC context
  */
 extern void bsend_reset(struct bsend *ctx);
-
-/** Interrupt a blocking RPC
- *
- * This function is safe to invoke from any thread.  Any blocking RPC that is
- * pending will be aborted with -ECANCELED.  All future attempts to invoke the
- * bsend_ctx will result in -ECANCELLED.
- *
- * NOTE: it is assumed that you have shut down the messenger
- *
- * This function does _not_ free the blocking RPC context.  Use bsend_ctx_free
- * for that.
- *
- * @param ctx		The blocking RPC context
- */
-extern void bsend_cancel(struct bsend *ctx);
 
 /** Free a blocking RPC context
  *

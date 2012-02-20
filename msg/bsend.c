@@ -42,7 +42,7 @@ struct bsend_mtran {
 
 /** A blocking RPC context */
 struct bsend {
-	/** Protects num_finished and cancel */
+	/** Protects num_finished */
 	pthread_mutex_t lock;
 	/** Condition variable to wait for completion of RPCs */
 	pthread_cond_t cond;
@@ -54,8 +54,6 @@ struct bsend {
 	int max_tr;
 	/** Current number of transactions */
 	int num_tr;
-	/** If nonzero, the context has been cancelled. */
-	int cancel;
 	/** Number of finished transactors */
 	int num_finished;
 };
@@ -179,15 +177,6 @@ int bsend_add_tr_or_free(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
 	btr->tr = tr;
 	btr->ctx = ctx;
 	btr->flags = flags;
-	pthread_mutex_lock(&ctx->lock);
-	if (ctx->cancel) {
-		pthread_mutex_unlock(&ctx->lock);
-		fast_log_bsend(ctx->fb, FAST_LOG_BSEND_ERROR, FLBS_ADD_TR,
-			       tr->port, tr->ip, flags, ECANCELED, ctx->num_tr);
-		mtran_free(tr);
-		return -ECANCELED;
-	}
-	pthread_mutex_unlock(&ctx->lock);
 	ctx->num_tr++;
 	fast_log_bsend(ctx->fb, FAST_LOG_BSEND_DEBUG, FLBS_ADD_TR,
 		       tr->port, tr->ip, flags, 0, ctx->num_tr);
@@ -197,26 +186,10 @@ int bsend_add_tr_or_free(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
 
 int bsend_join(struct bsend *ctx)
 {
-	int i;
-	struct bsend_mtran *btr;
-
 	pthread_mutex_lock(&ctx->lock);
 	while (1) {
 		fast_log_bsend(ctx->fb, FAST_LOG_BSEND_DEBUG, FLBS_JOIN,
 			       0, 0, 0, 0, ctx->num_tr - ctx->num_finished);
-		if (ctx->cancel) {
-			pthread_mutex_unlock(&ctx->lock);
-			for (i = 0; i < ctx->num_tr; ++i) {
-				btr = &ctx->btrs[i];
-				if (!IS_ERR(btr->tr->m)) {
-					free(btr->tr->m);
-				}
-				btr->tr->m = ERR_PTR(ECANCELED);
-			}
-			fast_log_bsend(ctx->fb, FAST_LOG_BSEND_ERROR,
-				FLBS_JOIN, 0, 0, 0, ECANCELED, 0);
-			return -ECANCELED;
-		}
 		if (ctx->num_finished == ctx->num_tr) {
 			pthread_mutex_unlock(&ctx->lock);
 			fast_log_bsend(ctx->fb, FAST_LOG_BSEND_DEBUG, FLBS_JOIN,
@@ -258,21 +231,6 @@ void bsend_reset(struct bsend *ctx)
 	}
 	ctx->num_tr = 0;
 	ctx->num_finished = 0;
-}
-
-void bsend_cancel(struct bsend *ctx)
-{
-	/* We can't use fast_log in this function because it may not be called
-	 * from the same thread as the bsend user. */
-	pthread_mutex_lock(&ctx->lock);
-	if (ctx->cancel) {
-		pthread_mutex_unlock(&ctx->lock);
-		return;
-	}
-	ctx->cancel = 1;
-	ctx->num_finished = ctx->num_tr;
-	pthread_cond_signal(&ctx->cond);
-	pthread_mutex_unlock(&ctx->lock);
 }
 
 void bsend_free(struct bsend *ctx)

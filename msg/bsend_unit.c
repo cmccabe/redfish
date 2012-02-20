@@ -62,7 +62,6 @@ static void bsend_test_init_shutdown(struct fast_log_buf *fb)
 	struct bsend *ctx;
 
 	ctx = bsend_init(fb, 10);
-	bsend_cancel(ctx);
 	bsend_free(ctx);
 }
 
@@ -158,7 +157,6 @@ static int bsend_test_setup(struct fast_log_buf *fb, struct msgr **foo_msgr,
 static void bsend_test_teardown(struct msgr *foo_msgr, struct msgr *bar_msgr,
 			struct bsend *ctx)
 {
-	bsend_cancel(ctx);
 	bsend_free(ctx);
 	msgr_shutdown(foo_msgr);
 	msgr_shutdown(bar_msgr);
@@ -218,29 +216,6 @@ static int bsend_test_send(struct fast_log_buf *fb, int simult,
 	return 0;
 }
 
-static int bsend_test_cancel(struct fast_log_buf *fb, int simult, int cancel)
-{
-	int i;
-	struct bsend *ctx;
-	struct msgr *foo_msgr, *bar_msgr;
-
-	EXPECT_ZERO(bsend_test_setup(fb, &foo_msgr, &bar_msgr,
-			&ctx, simult, 1));
-	bsend_cancel(ctx);
-	for (i = 0; i < simult; ++i) {
-		int c = (simult >= cancel);
-		if (simult == cancel)
-			bsend_cancel(ctx);
-		EXPECT_ZERO(bsend_test30(ctx, foo_msgr, BSF_RESP, i, 1,
-				c ? -ECANCELED : 0, 60));
-
-	}
-	EXPECT_EQ(bsend_join(ctx), -ECANCELED);
-	bsend_reset(ctx);
-	bsend_test_teardown(foo_msgr, bar_msgr, ctx);
-	return 0;
-}
-
 static int bsend_test_tr_timeo(struct fast_log_buf *fb, int simult)
 {
 	int i;
@@ -282,8 +257,6 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 	EXPECT_ZERO(bsend_test_send(fb, 10, 5, 1));
 	EXPECT_ZERO(bsend_test_send(fb, 1, 1, 0));
 	EXPECT_ZERO(bsend_test_send(fb, 10, 5, 0));
-	EXPECT_ZERO(bsend_test_cancel(fb, 10, 0));
-	EXPECT_ZERO(bsend_test_cancel(fb, 10, 5));
 	EXPECT_ZERO(bsend_test_tr_timeo(fb, 5));
 	fast_log_free(fb);
 	EXPECT_ZERO(mt_deactivate_alarm(timer));
