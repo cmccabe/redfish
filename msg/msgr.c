@@ -372,16 +372,15 @@ static struct mconn *mconn_create(struct msgr *msgr,
 			}
 			/* The connect operation is in progress */
 		}
+		ev_io_init(&conn->w_write, mconn_writable_cb,
+			conn->sock, EV_WRITE);
+		ev_io_start(msgr->loop, &conn->w_write);
 	}
 	else {
 		conn->sock = sock;
 		conn->state = MCONN_ESTABLISHED;
-	}
-	ev_io_init(&conn->w_write, mconn_writable_cb,
-		conn->sock, EV_WRITE);
-	if ((conn->state == MCONN_CONNECTING) ||
-			(!STAILQ_EMPTY(&conn->pending_head))) {
-		ev_io_start(msgr->loop, &conn->w_write);
+		ev_io_init(&conn->w_write, mconn_writable_cb,
+			conn->sock, EV_WRITE);
 	}
 	ev_io_init(&conn->w_read, mconn_readable_cb,
 		conn->sock, EV_READ);
