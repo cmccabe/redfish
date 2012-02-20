@@ -39,7 +39,6 @@
 #include <string.h>
 
 /****************************** prototypes ********************************/
-static int mtran_compare(struct mtran *tr_a, struct mtran *tr_b);
 static int mconn_compare(struct mconn *a, struct mconn *b);
 static void mconn_teardown(struct mconn *conn, int failcode);
 static void mconn_writable_cb(struct ev_loop *loop, struct ev_io *w,
@@ -51,8 +50,8 @@ static void run_msgr_timeout_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 static void run_msgr_notify_cb(struct ev_loop *loop, struct ev_async *w,
 		int revents);
 static void mtran_deliver_netfail(struct mtran *tr, int err);
-static int mtran_compare(struct mtran *tr_a, struct mtran *tr_b) PURE;
-static int mconn_compare(struct mconn *a, struct mconn *b) PURE;
+static int mtran_compare_trid(struct mtran *a, struct mtran *b) PURE;
+static int mtran_compare_timeo(struct mtran *a, struct mtran *b) PURE;
 
 /****************************** types ********************************/
 enum mconn_state_t {
@@ -67,7 +66,9 @@ enum {
 
 STAILQ_HEAD(pending_tr, mtran);
 RB_HEAD(active_tr, mtran);
-RB_GENERATE(active_tr, mtran, u.active_entry, mtran_compare);
+RB_GENERATE(active_tr, mtran, u.active_entry, mtran_compare_trid);
+RB_HEAD(timeo_tr, mtran);
+RB_GENERATE(timeo_tr, mtran, timeo_entry, mtran_compare_timeo);
 
 struct conn_cancel {
 	SLIST_ENTRY(conn_cancel) entry;
@@ -116,6 +117,8 @@ struct mconn {
 	struct active_tr active_head;
 	/** Pending transactions */
 	struct pending_tr pending_head;
+	/** All transactions. Keyed on transactor timeout. */
+	struct timeo_tr timeo_head;
 	/** Number of timeout periods that have passed without any TCP traffic */
 	int timeout_cnt;
 };
@@ -130,8 +133,8 @@ RB_HEAD(msgr_conn, mconn);
 RB_GENERATE(msgr_conn, mconn, entry, mconn_compare);
 
 struct msgr {
-	/** lock that protects thread state, pending_head, and
-	 * conn_cancels_head */
+	/** lock that protects thread state, pending_tr_head,
+	 * conn_cancels_head, and (sort of) timeo_id */
 	pthread_spinlock_t lock;
 	/** messenger thread state */
 	enum msgr_state_t state;
@@ -166,11 +169,11 @@ struct msgr {
 	struct pending_tr pending_tr_head;
 	/** Fast log buffer manager */
 	struct fast_log_mgr *fb_mgr;
-	/** Timeout period length, in seconds */
-	int timeout_period;
 	/** Maximum number of timeout periods to wait for before timing out a
 	 * connection or transactor */
-	int timeout_cnt_max;
+	int tcp_teardown_timeo;
+	/** Current timeout period ID. */
+	uint16_t timeo_id;
 	/** The name of this messenger */
 	const char *name;
 };
@@ -211,14 +214,33 @@ void mtran_free(struct mtran *tr)
 	free(tr);
 }
 
-static int mtran_compare(struct mtran *tr_a, struct mtran *tr_b)
+static int mtran_compare_trid(struct mtran *a, struct mtran *b)
 {
-	if (tr_a->trid < tr_b->trid)
+	if (a->trid < b->trid)
 		return -1;
-	else if (tr_a->trid > tr_b->trid)
+	else if (a->trid > b->trid)
 		return 1;
 	else
 		return 0;
+}
+
+static int mtran_compare_timeo(struct mtran *a, struct mtran *b)
+{
+	uint16_t ta = a->timeo_id;
+	uint16_t tb = b->timeo_id;
+	uint16_t tc;
+
+	/* Do a circular comparison of the timeout period.  The correctness of
+	 * this function is based on the fact that we'll never have a transactor
+	 * lingering for 546 hours (2**15 seconds)  */
+	tc = tb;
+	tc -= ta;
+	if (tc > 0x8000)
+		return 1;
+	else if (tc == 0)
+		return 0;
+	else
+		return -1;
 }
 
 static struct mtran *mtran_lookup_by_id(struct mconn *conn, uint32_t trid)
@@ -230,8 +252,12 @@ static struct mtran *mtran_lookup_by_id(struct mconn *conn, uint32_t trid)
 }
 
 void mtran_send(struct msgr *msgr, struct mtran *tr,
-		msgr_cb_t cb, void *priv, struct msg *m)
+		msgr_cb_t cb, void *priv, struct msg *m, int timeo)
 {
+	if (timeo > MSGR_TIMEOUT_MAX) {
+		mtran_deliver_netfail(tr, EINVAL);
+		return;
+	}
 	tr->state = MTRAN_STATE_SENDING;
 	tr->cb = cb;
 	tr->priv = priv;
@@ -247,6 +273,7 @@ void mtran_send(struct msgr *msgr, struct mtran *tr,
 		mtran_deliver_netfail(tr, ECANCELED);
 		return;
 	}
+	tr->timeo_id = (uint16_t)msgr->timeo_id + (uint16_t)timeo;
 	/* Add our transactor to the pending queue and poke the messenger
 	 * thread.  It will decide which connection (mconn) to give the
 	 * transactor to. */
@@ -255,17 +282,24 @@ void mtran_send(struct msgr *msgr, struct mtran *tr,
 	ev_async_send(msgr->loop, &msgr->w_notify);
 }
 
-void mtran_send_next(struct mconn *conn, struct mtran *tr, struct msg *m)
+void mtran_send_next(struct mconn *conn, struct mtran *tr, struct msg *m,
+		int timeo)
 {
+	if (timeo > MSGR_TIMEOUT_MAX) {
+		mtran_deliver_netfail(tr, EINVAL);
+		return;
+	}
 	/* There is no need for any locks in this function.  mtran_send_next can
 	 * only be invoked from the context of a callback made by the messenger
 	 * thread itself.  Since all modifications to struct mconn are made from
 	 * that same messenger thread, there is no concurrency hazard. */
 	tr->state = MTRAN_STATE_SENDING;
 	tr->m = m;
+	tr->timeo_id = (uint16_t)conn->msgr->timeo_id + (uint16_t)timeo;
 	m->rem_trid = htobe32(tr->trid);
 	m->trid = htobe32(tr->rem_trid);
 	STAILQ_INSERT_TAIL(&conn->pending_head, tr, u.pending_entry);
+	RB_INSERT(timeo_tr, &conn->timeo_head, tr);
 	fast_log_msgr(conn->msgr, FAST_LOG_MSGR_DEBUG,
 		tr->port, tr->ip, tr->trid,
 		tr->rem_trid, FLME_MTRAN_SEND_NEXT, be16toh(m->ty));
@@ -336,6 +370,7 @@ static struct mconn *mconn_create(struct msgr *msgr,
 	conn->inbound_tr = NULL;
 	conn->inbound_msg = NULL;
 	RB_INIT(&conn->active_head);
+	RB_INIT(&conn->timeo_head);
 	STAILQ_INIT(&conn->pending_head);
 	RB_INSERT(msgr_conn, &msgr->conn_head, conn);
 	if (sock < 0) {
@@ -408,6 +443,8 @@ static void mconn_teardown(struct mconn *conn, int failcode)
 	struct msgr *msgr = conn->msgr;
 	struct mtran *tr, *tr_tmp;
 
+	/* NOTE: we don't bother removing transactors from the timeout tree
+	 * here.  There isn't any reason to do it. */
 	RB_REMOVE(msgr_conn, &msgr->conn_head, conn);
 	conn->msgr->cur_conn--;
 	ev_io_stop(conn->msgr->loop, &conn->w_write);
@@ -537,6 +574,7 @@ static void mconn_writable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		return;
 	conn->sent_cnt = 0;
 	STAILQ_REMOVE_HEAD(&conn->pending_head, u.pending_entry);
+	RB_REMOVE(timeo_tr, &conn->timeo_head, tr);
 	if (!STAILQ_FIRST(&conn->pending_head))
 		ev_io_stop(msgr->loop, &conn->w_write);
 	free(tr->m);
@@ -565,6 +603,8 @@ static struct mtran* mconn_create_mtran(struct msgr *msgr, struct mconn *conn,
 	tr->cb = cb;
 	tr->priv = msgr->listen.priv;
 	tr->state = MTRAN_STATE_ACTIVE;
+	tr->timeo_id = (uint16_t)msgr->timeo_id +
+		(uint16_t)MSGR_INCOMING_TIMEO;
 	RB_INSERT(active_tr, &conn->active_head, tr);
 	return tr;
 }
@@ -710,10 +750,11 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 		}
 	}
 	/* deliver the message */
-	RB_REMOVE(active_tr, &conn->active_head, conn->inbound_tr);
-	conn->recv_cnt = 0;
 	tr = conn->inbound_tr;
 	conn->inbound_tr = NULL;
+	RB_REMOVE(active_tr, &conn->active_head, tr);
+	RB_REMOVE(timeo_tr, &conn->timeo_head, tr);
+	conn->recv_cnt = 0;
 	tr->m = conn->inbound_msg;
 	conn->inbound_msg = NULL;
 	tr->state = MTRAN_STATE_RECV;
@@ -722,7 +763,7 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 
 /****************************** msgr ********************************/
 struct msgr *msgr_init(char *err, size_t err_len,
-		int max_conn, int max_tran, const struct msgr_timeo *timeo,
+		int max_conn, int max_tran, int tcp_teardown_timeo,
 		struct fast_log_mgr *fb_mgr, const char *name)
 {
 	struct msgr *msgr;
@@ -748,14 +789,13 @@ struct msgr *msgr_init(char *err, size_t err_len,
 	msgr->max_tran = max_tran;
 	msgr->cur_conn = 0;
 	msgr->max_conn = max_conn;
-	msgr->timeout_period = timeo->period;
-	msgr->timeout_cnt_max = timeo->cnt;
+	msgr->tcp_teardown_timeo = tcp_teardown_timeo;
 	RB_INIT(&msgr->conn_head);
 	ev_init(&msgr->w_listen_fd, NULL);
 	STAILQ_INIT(&msgr->pending_tr_head);
 	ev_async_init(&msgr->w_notify, run_msgr_notify_cb);
 	ev_timer_init(&msgr->w_timeout, run_msgr_timeout_cb,
-		msgr->timeout_period, msgr->timeout_period);
+			MSGR_TIMEOUT_PERIOD, MSGR_TIMEOUT_PERIOD);
 	msgr->loop = ev_loop_new(0);
 	if (!msgr->loop) {
 		snprintf(err, err_len, "msgr_init: ev_loop_new failed.");
@@ -858,8 +898,18 @@ static void run_msgr_timeout_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 {
 	struct msgr *msgr = GET_OUTER(w, struct msgr, w_timeout);
 	struct mconn *conn, *conn_tmp;
-	int timeout_cnt_max = msgr->timeout_cnt_max;
+	struct mtran *tr, *tr_tmp;
+	int tcp_teardown_timeo = msgr->tcp_teardown_timeo;
+	uint16_t timeo_id;
 
+	pthread_spin_lock(&msgr->lock);
+	/* Locking rules for timeo_id:
+	 *              MSGR THREAD             OTHER THREADS
+	 * READ:        no locking              need msgr_lock
+	 * WRITE:       need msgr_lock          don't!
+	 */
+	timeo_id = ++msgr->timeo_id;
+	pthread_spin_unlock(&msgr->lock);
 	if (revents & EV_ERROR) {
 		fast_log_msgr(msgr, FAST_LOG_MSGR_ERROR, 0, 0, 0,
 			0, FLME_EV_ERROR, 3);
@@ -867,8 +917,28 @@ static void run_msgr_timeout_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 	}
 	RB_FOREACH_SAFE(conn, msgr_conn, &msgr->conn_head, conn_tmp) {
 		conn->timeout_cnt++;
-		if (conn->timeout_cnt >= timeout_cnt_max)
+		if (conn->timeout_cnt >= tcp_teardown_timeo) {
+			/* Tear down the whole TCP connection because it's been
+			 * inactive for too long. */
 			mconn_teardown(conn, ETIMEDOUT);
+			continue;
+		}
+		RB_FOREACH_SAFE(tr, timeo_tr, &conn->timeo_head, tr_tmp) {
+			if (tr->timeo_id > timeo_id) {
+				/* This transactor is not yet ready to be timed
+				 * out.  Since the tree is sorted, this means we
+				 * can stop looking for transactors to time out.
+				 * */
+				break;
+			}
+			/* Time out transactor */
+			RB_REMOVE(timeo_tr, &conn->timeo_head, tr);
+			if (!(RB_REMOVE(active_tr, &conn->active_head, tr))) {
+				STAILQ_REMOVE(&conn->pending_head, tr, mtran,
+					u.pending_entry);
+			}
+			mtran_deliver_netfail(tr, ETIMEDOUT);
+		}
 	}
 }
 
@@ -944,10 +1014,11 @@ static void run_msgr_setup_pending(struct msgr *msgr, struct mtran *tr)
 			tr->rem_trid, FLME_CONN_REUSED, be16toh(tr->m->ty));
 		ev_io_start(msgr->loop, &conn->w_write);
 	}
+	RB_INSERT(timeo_tr, &conn->timeo_head, tr);
 	STAILQ_INSERT_TAIL(&conn->pending_head, tr, u.pending_entry);
 }
 
-static void msgr_cancel_pending_tr(struct msgr *msgr)
+static void msgr_cancel_all_pending_tr(struct msgr *msgr)
 {
 	struct mtran *tr;
 
@@ -1003,7 +1074,7 @@ static void run_msgr_notify_cb(struct ev_loop *loop, struct ev_async *w,
 				STAILQ_INSERT_TAIL(&msgr->pending_tr_head,
 						tr, u.pending_entry);
 			}
-			msgr_cancel_pending_tr(msgr);
+			msgr_cancel_all_pending_tr(msgr);
 			ev_unloop(loop, EVUNLOOP_ALL);
 			return;
 		}

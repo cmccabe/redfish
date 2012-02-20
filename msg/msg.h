@@ -73,6 +73,7 @@ struct mtran {
 		RB_ENTRY(mtran) active_entry;
 		STAILQ_ENTRY(mtran) pending_entry;
 	} u;
+	RB_ENTRY(mtran) timeo_entry;
 	/** The message.
 	 *
 	 * This is an overloaded field (maybe too overloaded?)
@@ -108,6 +109,11 @@ struct mtran {
 	uint16_t port;
 	/** transactor state */
 	uint16_t state;
+	/** The messenger timeout period ID at which this transactor should be
+	 * timed out.  Messenger timeout period IDs repeat after a few hours.
+	 * To get around this issue, we use circular comparisons whenever
+	 * comparing them. */
+	uint16_t timeo_id;
 	/** private data. */
 	void *priv;
 };

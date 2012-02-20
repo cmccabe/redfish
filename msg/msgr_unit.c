@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "core/alarm.h"
 #include "core/process_ctx.h"
 #include "msg/msg.h"
 #include "msg/msgr.h"
@@ -21,6 +22,7 @@
 #include "util/macro.h"
 #include "util/packed.h"
 #include "util/test.h"
+#include "util/time.h"
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -134,7 +136,7 @@ static void bar_cb(struct mconn *conn, struct mtran *tr)
 		abort();
 	}
 	pack_to_be32(&mout->i, i + 1);
-	mtran_send_next(conn, tr, (struct msg*)mout);
+	mtran_send_next(conn, tr, (struct msg*)mout, 60);
 	free(m);
 }
 
@@ -143,14 +145,13 @@ static int msgr_test_init_shutdown(int start)
 	struct msgr *foo_msgr, *bar_msgr;
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
-	const struct msgr_timeo timeo = { 60, 5 };
 
 	foo_msgr = msgr_init(err, err_len, 10, 10,
-			&timeo, g_fast_log_mgr, "foo_msgr");
+			360, g_fast_log_mgr, "foo_msgr");
 	if (err[0])
 		goto handle_error;
 	bar_msgr = msgr_init(err, err_len, 10, 10,
-			&timeo, g_fast_log_mgr, "bar_msgr");
+			360, g_fast_log_mgr, "bar_msgr");
 	if (err[0])
 		goto handle_error;
 	if (start) {
@@ -187,7 +188,7 @@ static int send_foo_tr(struct msgr* msgr, msgr_cb_t cb, uint32_t i)
 	pack_to_be32(&mout->i, i);
 	tr->ip = g_localhost;
 	tr->port = MSGR_UNIT_PORT;
-	mtran_send(msgr, tr, cb, (void*)(uintptr_t)i, (struct msg*)mout);
+	mtran_send(msgr, tr, cb, (void*)(uintptr_t)i, (struct msg*)mout, 60);
 	return 0;
 }
 
@@ -198,16 +199,15 @@ static int msgr_test_simple_send(int num_sends)
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 	struct listen_info linfo;
-	const struct msgr_timeo timeo = { 60, 5 };
 
 	EXPECT_ZERO(sem_init(&g_msgr_test_simple_send_sem, 0, 0));
 
 	foo_msgr = msgr_init(err, err_len, 10, 10,
-				&timeo, g_fast_log_mgr, "foo_msgr");
+				360, g_fast_log_mgr, "foo_msgr");
 	if (err[0])
 		goto handle_error;
 	bar_msgr = msgr_init(err, err_len, 10, 10,
-				&timeo, g_fast_log_mgr, "bar_msgr");
+				360, g_fast_log_mgr, "bar_msgr");
 	if (err[0])
 		goto handle_error;
 	memset(&linfo, 0, sizeof(linfo));
@@ -291,16 +291,15 @@ static int msgr_test_conn_timeout(void)
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 	struct listen_info linfo;
-	const struct msgr_timeo timeo = { 1, 1 };
 
 	EXPECT_ZERO(sem_init(&g_msgr_test_baz_sem, 0, 0));
 
 	baz1_msgr = msgr_init(err, err_len, 10, 10,
-				&timeo, g_fast_log_mgr, "baz1_msgr");
+				1, g_fast_log_mgr, "baz1_msgr");
 	if (err[0])
 		goto handle_error;
 	baz2_msgr = msgr_init(err, err_len, 10, 10,
-				&timeo, g_fast_log_mgr, "baz2_msgr");
+				1, g_fast_log_mgr, "baz2_msgr");
 	if (err[0])
 		goto handle_error;
 	memset(&linfo, 0, sizeof(linfo));
@@ -338,16 +337,15 @@ static int msgr_test_conn_shutdown(void)
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 	struct listen_info linfo;
-	const struct msgr_timeo timeo = { 1, 1 };
 
 	EXPECT_ZERO(sem_init(&g_msgr_test_baz_sem, 0, 0));
 
 	baz1_msgr = msgr_init(err, err_len, 10, 10,
-				&timeo, g_fast_log_mgr, "baz1_msgr");
+				360, g_fast_log_mgr, "baz1_msgr");
 	if (err[0])
 		goto handle_error;
 	baz2_msgr = msgr_init(err, err_len, 10, 10,
-				&timeo, g_fast_log_mgr, "baz2_msgr");
+				360, g_fast_log_mgr, "baz2_msgr");
 	if (err[0])
 		goto handle_error;
 	memset(&linfo, 0, sizeof(linfo));
@@ -382,7 +380,12 @@ handle_error:
 
 int main(POSSIBLY_UNUSED(int argc), char **argv)
 {
+	timer_t timer;
+	time_t t;
+
 	EXPECT_ZERO(utility_ctx_init(argv[0]));
+	t = mt_time() + 600;
+	EXPECT_ZERO(mt_set_alarm(t, "msgr_unit timed out", &timer));
 	EXPECT_ZERO(get_localhost_ipv4(&g_localhost));
 	EXPECT_ZERO(msgr_test_init_shutdown(0));
 	EXPECT_ZERO(msgr_test_init_shutdown(1));
@@ -390,6 +393,7 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 	EXPECT_ZERO(msgr_test_simple_send(100));
 	EXPECT_ZERO(msgr_test_conn_timeout());
 	EXPECT_ZERO(msgr_test_conn_shutdown());
+	EXPECT_ZERO(mt_deactivate_alarm(timer));
 	process_ctx_shutdown();
 
 	return EXIT_SUCCESS;

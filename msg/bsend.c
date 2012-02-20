@@ -149,7 +149,7 @@ static void bsend_cb(struct mconn *conn, struct mtran *tr)
 }
 
 int bsend_add(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
-		struct msg *msg, uint32_t addr, uint16_t port)
+		struct msg *msg, uint32_t addr, uint16_t port, int timeo)
 {
 	struct mtran *tr;
 
@@ -161,11 +161,11 @@ int bsend_add(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
 	}
 	tr->ip = addr;
 	tr->port = port;
-	return bsend_add_tr_or_free(ctx, msgr, flags, msg, tr);
+	return bsend_add_tr_or_free(ctx, msgr, flags, msg, tr, timeo);
 }
 
 int bsend_add_tr_or_free(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
-		struct msg *msg, struct mtran *tr)
+		struct msg *msg, struct mtran *tr, int timeo)
 {
 	struct bsend_mtran *btr;
 
@@ -191,7 +191,7 @@ int bsend_add_tr_or_free(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
 	ctx->num_tr++;
 	fast_log_bsend(ctx->fb, FAST_LOG_BSEND_DEBUG, FLBS_ADD_TR,
 		       tr->port, tr->ip, flags, 0, ctx->num_tr);
-	mtran_send(msgr, tr, bsend_cb, btr, msg);
+	mtran_send(msgr, tr, bsend_cb, btr, msg, timeo);
 	return 0;
 }
 

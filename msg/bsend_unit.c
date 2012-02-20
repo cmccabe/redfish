@@ -97,7 +97,7 @@ static void bsend_test_cb(struct mconn *conn, struct mtran *tr)
 		return;
 	}
 	pack_to_be32(&mout->z, x + y);
-	mtran_send_next(conn, tr, (struct msg*)mout);
+	mtran_send_next(conn, tr, (struct msg*)mout, 60);
 	free(m);
 }
 
@@ -122,7 +122,7 @@ static int bsend_test30(struct bsend *ctx, struct msgr *msgr, int flags,
 	pack_to_be32(&m->x, x);
 	pack_to_be32(&m->y, y);
 	EXPECT_EQ(bsend_add(ctx, msgr, flags, (struct msg*)m,
-			g_localhost, MSGR_UNIT_PORT), ex);
+			g_localhost, MSGR_UNIT_PORT, 60), ex);
 	return 0;
 }
 
@@ -132,13 +132,12 @@ static int bsend_test_setup(struct fast_log_buf *fb, struct msgr **foo_msgr,
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 	struct listen_info linfo;
-	const struct msgr_timeo timeo = { 60, 5 };
 
 	*foo_msgr = msgr_init(err, err_len, 10, 10,
-			&timeo, g_fast_log_mgr, "foo_msgr");
+			360, g_fast_log_mgr, "foo_msgr");
 	EXPECT_ZERO(err[0]);
 	*bar_msgr = msgr_init(err, err_len, 10, 10,
-			&timeo, g_fast_log_mgr, "bar_msgr");
+			360, g_fast_log_mgr, "bar_msgr");
 	EXPECT_ZERO(err[0]);
 	memset(&linfo, 0, sizeof(linfo));
 	linfo.cb = resp ? bsend_test_cb : bsend_test_cb_noresp;

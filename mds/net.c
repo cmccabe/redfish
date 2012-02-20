@@ -59,12 +59,18 @@
 #define MAX_TR_THREADS 16
 
 #define DEFAULT_MDS_MDS_PORT 9000
+#define MDS_MDS_TCP_TIMEOUT 900
 
 #define DEFAULT_MDS_OSD_PORT 9001
+#define MDS_OSD_TCP_TIMEOUT 300
 
 #define DEFAULT_MDS_CLI_PORT 9002
+#define MDS_CLI_TCP_TIMEOUT 300
 
 #define NUM_DSLOTS 32
+
+/** Standard timeout used for delegation operations */
+#define DGOP_STD_TIMEO 60
 
 /** Maximum number of simultaneous transactors to allow. */
 #define RF_MAX_TRAN 16384
@@ -75,19 +81,13 @@
 /** Maximum number of simultaneous TCP sockets to allow for the client messenger. */
 #define RF_MAX_CLI_CONN 65536
 
-static const struct msgr_timeo g_mds_msgr_timeo = { .period = 5, .cnt = 3 };
-
 struct mds_tr_thread {
 	struct recv_pool_thread base;
 };
 
-static const struct msgr_timeo g_osd_msgr_timeo = { .period = 20, .cnt = 3 };
-
 struct osd_tr_thread {
 	struct recv_pool_thread base;
 };
-
-static const struct msgr_timeo g_cli_msgr_timeo = { .period = 20, .cnt = 3 };
 
 struct cli_tr_thread {
 	struct recv_pool_thread base;
@@ -119,7 +119,7 @@ static void mds_net_msgr_init(struct recv_pool **rpool, struct msgr **msgr,
 	struct recv_pool_thread *rts, size_t th_sz,
 	struct fast_log_buf *fb, int max_conn,
 	recv_pool_handler_fn_t handler, int nthreads, uint16_t port,
-	const struct msgr_timeo *timeo, const char *name)
+	int tcp_timeo, const char *name)
 {
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
@@ -132,7 +132,7 @@ static void mds_net_msgr_init(struct recv_pool **rpool, struct msgr **msgr,
 		abort();
 	}
 	*msgr = msgr_init(err, err_len, max_conn, RF_MAX_TRAN,
-			timeo, g_fast_log_mgr, name);
+			tcp_timeo, g_fast_log_mgr, name);
 	if (err[0]) {
 		glitch_log("mds_net_msgr_init: failed to create messenger: "
 			"error %s\n", err);
@@ -211,7 +211,8 @@ static int handle_mmmd_get_mds_status(struct recv_pool_thread *rt, struct mtran 
 	if (!m)
 		return -ENOMEM;
 	pack_to_be16(&m->mid, g_mid);
-	ret = bsend_add_tr_or_free(ctx, g_mds_msgr, 0, (struct msg*)m, tr);
+	ret = bsend_add_tr_or_free(ctx, g_mds_msgr, 0, (struct msg*)m, tr,
+				DGOP_STD_TIMEO);
 	if (ret)
 		return ret;
 	ret = bsend_join(ctx);
@@ -398,21 +399,21 @@ void mds_net_init(struct fast_log_buf *fb, struct unitaryc *conf,
 		DEFAULT_MDS_TR_THREADS,
 		((mconf->mds_port == JORM_INVAL_INT) ?
 		 	DEFAULT_MDS_MDS_PORT : mconf->mds_port),
-		&g_mds_msgr_timeo, "g_mds_msgr");
+		MDS_MDS_TCP_TIMEOUT, "g_mds_msgr");
 	mds_net_msgr_init(&g_osd_rpool, &g_osd_msgr,
 		(struct recv_pool_thread *)g_osd_rts, sizeof(g_osd_rts[0]),
 		fb, RF_MAX_OSD_CONN, mds_net_handle_osd_tr,
 		DEFAULT_OSD_TR_THREADS,
 		((mconf->osd_port == JORM_INVAL_INT) ?
 		 	DEFAULT_MDS_OSD_PORT : mconf->osd_port),
-		&g_osd_msgr_timeo, "g_osd_msgr");
+		MDS_OSD_TCP_TIMEOUT, "g_osd_msgr");
 	mds_net_msgr_init(&g_cli_rpool, &g_cli_msgr,
 		(struct recv_pool_thread *)g_cli_rts, sizeof(g_cli_rts[0]),
 		fb, RF_MAX_CLI_CONN, mds_net_handle_cli_tr,
 		DEFAULT_CLI_TR_THREADS,
 		((mconf->cli_port == JORM_INVAL_INT) ?
 		 	DEFAULT_MDS_CLI_PORT : mconf->cli_port),
-		&g_cli_msgr_timeo, "g_cli_msgr");
+		MDS_CLI_TCP_TIMEOUT, "g_cli_msgr");
 	mds_net_msgrs_start();
 	mds_net_heartbeat_start();
 }

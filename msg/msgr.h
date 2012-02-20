@@ -22,6 +22,16 @@
 #include <stdint.h> /* for uint32_t, etc. */
 #include <unistd.h> /* for size_t */
 
+/** Length of a messenger timeout period in seconds */
+#define MSGR_TIMEOUT_PERIOD 1.0
+
+/** Number of messenger time periods to wait before timing out an incoming
+ * transactor */
+#define MSGR_INCOMING_TIMEO 30
+
+/** The maximum timeout that can be specified, in seconds */
+#define MSGR_TIMEOUT_MAX 16384
+
 struct fast_log_mgr;
 struct mconn;
 struct msgr;
@@ -61,13 +71,6 @@ struct listen_info {
  * with an error pointer set to the errno code.
  */
 
-struct msgr_timeo {
-	/** Timeout period in seconds */
-	int period;
-	/** Number of periods to allow to expire before the timeout triggers */
-	int cnt;
-};
-
 /** Initialize the messenger.
  *
  * @param err			(out param) error buffer
@@ -75,7 +78,8 @@ struct msgr_timeo {
  * @param max_conn		Maximum number of connections to allow.
  * @param max_tran		Maximum number of simultaneous transactors to
  *				allow
- * @param timeo			The timeout on outgoing and incoming messages.
+ * @param tcp_teardown_timeo	Number of messenger timeout periods to allow a TCP
+ *				connection to sit idle before tearing it down
  * @param mgr			Fast log manager to use for fast logs
  * @param name			Messenger name.  The caller is responsible for
  *				managing the lifecycle of this string.
@@ -83,7 +87,7 @@ struct msgr_timeo {
  * @return			the messenger on success; NULL otherwise
  */
 extern struct msgr *msgr_init(char *err, size_t err_len,
-		int max_conn, int max_tran, const struct msgr_timeo *timeo,
+		int max_conn, int max_tran, int tcp_teardown_timeo,
 		struct fast_log_mgr *mgr, const char *name);
 
 /** Configure the messenger to listen on a given TCP port.
@@ -142,9 +146,10 @@ extern void mtran_free(struct mtran *tr);
  * @param m		The message to send.
  * 			This must be dynamically allocated. The messenger will
  * 			take ownership of this pointer and free it later.
+ * @param timeo		Timeout in seconds
  */
 extern void mtran_send(struct msgr *msgr, struct mtran *tr,
-		msgr_cb_t cb, void *priv, struct msg *m);
+		msgr_cb_t cb, void *priv, struct msg *m, int timeo);
 
 /** Queue a message for sending on a currently open connection
  *
@@ -155,9 +160,10 @@ extern void mtran_send(struct msgr *msgr, struct mtran *tr,
  * @param m		The message to send.
  * 			This must be dynamically allocated. The messenger will
  * 			take ownership of this pointer and free it later.
+ * @param timeo		Timeout in seconds
  */
 extern void mtran_send_next(struct mconn *conn, struct mtran *tr,
-			struct msg *m);
+			struct msg *m, int timeo);
 
 /** Register to receive a message from a currently open connection
  *

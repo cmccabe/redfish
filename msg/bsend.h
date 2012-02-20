@@ -56,11 +56,12 @@ extern struct bsend *bsend_init(struct fast_log_buf *fb, int max_tr);
  * @param msg		The message
  * @param addr		The destination address
  * @param port		The destination port
+ * @param timeo		Timeout in seconds
  *
  * @return		0 on success; error code otherwise
  */
 extern int bsend_add(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
-		struct msg *msg, uint32_t addr, uint16_t port);
+		struct msg *msg, uint32_t addr, uint16_t port, int timeo);
 
 /** Send out an RPC message
  *
@@ -72,11 +73,12 @@ extern int bsend_add(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
  * @param flags		Flags to use
  * @param msg		The message
  * @param addr		The transactor to use
+ * @param timeo		Timeout in seconds
  *
  * @return		0 on success; error code otherwise
  */
 extern int bsend_add_tr_or_free(struct bsend *ctx, struct msgr *msgr,
-		uint8_t flags, struct msg *msg, struct mtran *tr);
+		uint8_t flags, struct msg *msg, struct mtran *tr, int timeo);
 
 /** Block until all the RPC calls have been made.
  *

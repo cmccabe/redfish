@@ -75,7 +75,7 @@ static int send_foo_tr(struct msgr* msgr, msgr_cb_t cb, uint32_t q)
 	pack_to_be32(&mout->q, q);
 	tr->ip = g_localhost;
 	tr->port = MSGR_UNIT_PORT;
-	mtran_send(msgr, tr, cb, (void*)(uintptr_t)q, (struct msg*)mout);
+	mtran_send(msgr, tr, cb, (void*)(uintptr_t)q, (struct msg*)mout, 60);
 	return 0;
 }
 
@@ -130,7 +130,6 @@ static int recv_pool_test_recv(struct fast_log_buf *fb,
 	struct recv_pool *rpool;
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
-	const struct msgr_timeo timeo = { 60, 5 };
 
 	EXPECT_ZERO(sem_init(&g_handler_run_sem, 0, 0));
 	EXPECT_ZERO(pthread_cond_init(&g_full_set_cond, NULL));
@@ -139,10 +138,10 @@ static int recv_pool_test_recv(struct fast_log_buf *fb,
 	rpool = recv_pool_init(fb);
 	EXPECT_NOT_ERRPTR(rpool);
 	foo_msgr = msgr_init(err, err_len, 10, 10,
-			&timeo, g_fast_log_mgr, "foo_msgr");
+			360, g_fast_log_mgr, "foo_msgr");
 	EXPECT_ZERO(err[0]);
 	bar_msgr = msgr_init(err, err_len, 10, 10,
-			&timeo, g_fast_log_mgr, "bar_msgr");
+			360, g_fast_log_mgr, "bar_msgr");
 	EXPECT_ZERO(err[0]);
 	recv_pool_msgr_listen(rpool, bar_msgr,
 			MSGR_UNIT_PORT, err, sizeof(err));
