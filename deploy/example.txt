@@ -1,6 +1,14 @@
 # An example of using the deployment scripts:
 
+# Use ssh connection sharing for speed
+export SSH_CONTROL_PATH="~/.ssh" 
+# What Redfish configuration do we want to use?
 export REDFISH_CONF="/media/fish/redfish/conf/twofer.conf"
+# Install daemons
 ./install.py -b /home/cmccabe/tmp/redfish
+# Run daemons
 ./run.py
+# Check daemon status
+./status.py
+# Kill daemons
 ./killall.py

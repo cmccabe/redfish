@@ -17,6 +17,13 @@ parser.add_option("-b", "--redfish-build-directory", dest="bld_dir")
 if opts.bld_dir == None:
     sys.stderr.write("you must give a Redfish build directory\n")
     sys.exit(1)
+
+# If we've configured ssh connection sharing, create the ssh control sockets
+# here
+of_node.kill_ssh_connection_sharing_daemons(node_list)
+of_node.create_ssh_connection_sharing_daemons(node_list)
+
+# Build the binaries to install
 install_dir = os.path.join(tempfile.gettempdir(), str(os.getpid()))
 install_dir = install_dir + "/"
 os.mkdir(install_dir)
