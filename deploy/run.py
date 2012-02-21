@@ -31,4 +31,4 @@ for d in of_node.OfNodeIter(node_list, ["daemon"]):
             os.unlink(d.get_pid_path())
     except CalledProcessError, e:
         pass
-    d.run(d.bin_path +  " -c " +  d.get_conf_path() + " -k " + str(d.id))
+    d.run(d.bin_path +  " -c " +  d.conf_path + " -k " + str(d.id))

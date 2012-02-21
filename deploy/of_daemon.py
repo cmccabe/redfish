@@ -37,8 +37,6 @@ class OfDaemon(of_node.OfNode):
         self.bin_path = base_dir + "/usr/bin/" + self.get_binary_name()
     def get_pid_path(self):
         return self.base_dir + "/pid"
-    def get_conf_path(self):
-        return self.base_dir + "/conf"
     def get_binary_name(self):
         return self.id.get_binary_name()
     def kill(self, kill9):
