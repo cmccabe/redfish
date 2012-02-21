@@ -5,6 +5,7 @@ from optparse import OptionParser
 from subprocess import *
 import json
 import of_daemon
+import of_node
 import os
 import subprocess
 import sys
@@ -28,7 +29,9 @@ def parse_deploy_opts(parser):
             sys.stderr.write("you must give a Redfish cluster configuration file\n")
             sys.exit(1)
     jo = of_daemon.load_conf_file(opts.cluster_conf)
-    return (opts, args, jo)
+    node_list = of_node.node_list_from_conf_object(jo)
+    opts.conf_json = jo
+    return (opts, args, node_list)
 
 # FIXME: implement me!
 def shell_quote(str):

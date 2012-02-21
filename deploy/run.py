@@ -1,13 +1,16 @@
 #!/usr/bin/python
 
+from optparse import OptionParser
+from subprocess import *
 import json
+import of_daemon
+import of_node
+import of_util
 import os
-import subprocess
 import sys
 import tempfile
-from of_daemon import *
-from of_util import *
-from optparse import OptionParser
+
+of_util.check_python_version()
 
 def process_is_running(pid):
     try:
@@ -16,21 +19,16 @@ def process_is_running(pid):
     except:
         return False
 
-check_python_version()
 parser = OptionParser()
-(opts, args, jo) = parse_deploy_opts(parser)
-jo = load_conf_file(opts.cluster_conf)
-
-diter = DaemonIter.from_conf_object(jo, None)
-for d in diter:
+(opts, args, node_list) = of_util.parse_deploy_opts(parser)
+for d in of_node.OfNodeIter(node_list, ["daemon"]):
     try:
-        pid = d.run_with_output("cat " + d.get_pid_file())
+        pid = d.run_with_output("cat " + d.get_pid_path())
         if (process_is_running(int(pid))):
             print "error: daemon " + d.get_short_name() + " is still running as process " + pid
             continue
         else:
-            os.unlink(d.get_pid_file())
-    except subprocess.CalledProcessError, e:
+            os.unlink(d.get_pid_path())
+    except CalledProcessError, e:
         pass
-    d.run(d.get_binary_path() +  " -c " +  d.get_conf_file() +
-        " -k " + str(d.id.idx))
+    d.run(d.bin_path +  " -c " +  d.get_conf_path() + " -k " + str(d.id))
