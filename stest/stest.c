@@ -164,11 +164,6 @@ static void stest_output_start_msg(void)
 	}
 }
 
-static void stest_signal_fn(POSSIBLY_UNUSED(int signal))
-{
-	stest_set_status(100);
-}
-
 static void stest_init_signals(const char *argv0)
 {
 	char crash_log_path[PATH_MAX];
@@ -182,7 +177,7 @@ static void stest_init_signals(const char *argv0)
 	}
 	memset(&lc, 0, sizeof(lc));
 	lc.crash_log_path = crash_log_path;
-	signal_init(argv0, err, sizeof(err), &lc, stest_signal_fn);
+	signal_init(argv0, err, sizeof(err), &lc);
 	if (err[0]) {
 		fprintf(stderr, "signal_init error: %s\n", err);
 		exit(EXIT_FAILURE);

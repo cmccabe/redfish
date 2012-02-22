@@ -79,7 +79,7 @@ static int process_ctx_init_impl(const char *argv0, int daemonize,
 		configure_fast_log(getenv("REDFISH_LOG"));
 	else
 		configure_fast_log(lc->fast_log);
-	signal_init(argv0, err, err_len, lc, NULL);
+	signal_init(argv0, err, err_len, lc);
 	if (err[0]) {
 		glitch_log("signal_init error: %s\n", err);
 		goto error_free_fast_log_mgr;

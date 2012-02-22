@@ -121,7 +121,7 @@ int main(int argc, char **argv)
 		goto free_conf;
 	}
 	configure_glitch_log(conf->lc);
-	signal_init(argv[0], err, sizeof(err), conf->lc, NULL);
+	signal_init(argv[0], err, sizeof(err), conf->lc);
 	if (err[0]) {
 		glitch_log("signal_init error: %s\n", err);
 		ret = EXIT_FAILURE;

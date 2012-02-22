@@ -21,8 +21,6 @@
 
 struct logc;
 
-typedef void (*signal_cb_t)(int);
-
 /** The global fast log manager */
 extern struct fast_log_mgr *g_fast_log_mgr;
 
@@ -39,7 +37,7 @@ extern struct fast_log_mgr *g_fast_log_mgr;
  * We write out an error message to error if signal_init fails.
  */
 extern void signal_init(const char *argv0, char *err, size_t err_len,
-		const struct logc *lc, signal_cb_t fatal_signal_cb);
+		const struct logc *lc);
 
 /** Clear all signal handlers, free the alternate signal stack, and disable the
  * crash log.

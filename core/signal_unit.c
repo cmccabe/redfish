@@ -73,7 +73,7 @@ static int test_signal_handler(const char *argv0, const char *tempdir, int sig)
 		struct logc lc;
 		memset(&lc, 0, sizeof(lc));
 		lc.crash_log_path = crash_log_path;
-		signal_init(argv0, err, sizeof(err), &lc, NULL);
+		signal_init(argv0, err, sizeof(err), &lc);
 		if (err[0]) {
 			fprintf(stderr, "signal_init error: %s\n", err);
 			_exit(1);

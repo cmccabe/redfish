@@ -57,8 +57,6 @@ static int g_fast_log_fd = -1;
 
 static int g_use_syslog = 0;
 
-static signal_cb_t g_fatal_signal_cb = NULL;
-
 extern void regurgitate_fd(char *line, size_t max_line, int ifd, int ofd,
 			int use_syslog);
 
@@ -73,8 +71,6 @@ static void handle_fatal_signal(int sig, siginfo_t *siginfo, void *ctx)
 	for (i = 0; i < NUM_FATAL_SIGNALS; ++i) {
 		signal(FATAL_SIGNALS[i], SIG_IGN);
 	}
-	if (g_fatal_signal_cb)
-		g_fatal_signal_cb(sig);
 	if (sig == SIGALRM) {
 		snprintf(buf, sizeof(bentries), "%s ALARM EXPIRED\n",
 			 (const char*)siginfo->si_value.sival_ptr);
@@ -210,11 +206,10 @@ void signal_shutdown(void)
 		RETRY_ON_EINTR(res, close(g_fast_log_fd));
 	g_fast_log_fd = -1;
 	g_use_syslog = 0;
-	g_fatal_signal_cb = NULL;
 }
 
 void signal_init(const char *argv0, char *err, size_t err_len,
-		 const struct logc *lc, signal_cb_t fatal_signal_cb)
+		 const struct logc *lc)
 {
 	if ((g_alt_stack.ss_sp != NULL) || (g_crash_log_fd != -1)) {
 		snprintf(err, err_len, "signal_init: already "
@@ -249,7 +244,6 @@ void signal_init(const char *argv0, char *err, size_t err_len,
 	else {
 		g_fast_log_fd = STDERR_FILENO;
 	}
-	g_fatal_signal_cb = fatal_signal_cb;
 	signal_init_altstack(err, err_len, &g_alt_stack);
 	if (err[0]) {
 		signal_shutdown();
