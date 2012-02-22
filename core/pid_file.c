@@ -61,7 +61,6 @@ void create_pid_file(const struct logc *lc, char *err, size_t err_len)
 		return;
 	}
 	snprintf(g_pid_file, PATH_MAX, "%s", lc->pid_file);
-	atexit(delete_pid_file);
 }
 
 void delete_pid_file(void)

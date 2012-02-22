@@ -140,6 +140,7 @@ int main(int argc, char **argv)
 		ret = EXIT_FAILURE;
 		goto done;
 	}
+	atexit(delete_pid_file);
 	ret = osd_main_loop(oconf);
 done:
 	process_ctx_shutdown();

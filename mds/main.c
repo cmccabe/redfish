@@ -18,6 +18,7 @@
 #include "common/config/mdsc.h"
 #include "common/config/unitaryc.h"
 #include "core/glitch_log.h"
+#include "core/pid_file.h"
 #include "core/process_ctx.h"
 #include "jorm/json.h"
 #include "mds/net.h"
@@ -135,6 +136,7 @@ int main(int argc, char **argv)
 	}
 	if (process_ctx_init(argv[0], daemonize, mconf->lc))
 		return EXIT_FAILURE;
+	atexit(delete_pid_file);
 	fb = fast_log_create(g_fast_log_mgr, "mds_main");
 	if (IS_ERR(fb)) {
 		ret = PTR_ERR(fb);
