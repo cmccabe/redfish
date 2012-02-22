@@ -18,7 +18,7 @@
 #include "client/fishc_internal.h"
 #include "common/config/logc.h"
 #include "core/env.h"
-#include "core/signal.h"
+#include "core/process_ctx.h"
 #include "mds/limits.h"
 #include "stest/stest.h"
 #include "util/compiler.h"
@@ -164,35 +164,26 @@ static void stest_output_start_msg(void)
 	}
 }
 
-static void stest_init_signals(const char *argv0)
-{
-	char crash_log_path[PATH_MAX];
-	char err[512] = { 0 };
-	struct logc lc;
-
-	if (zsnprintf(crash_log_path, sizeof(crash_log_path), "%s/crash",
-			g_test_dir)) {
-		fprintf(stderr, "start_msg buffer too short!\n");
-		exit(EXIT_FAILURE);
-	}
-	memset(&lc, 0, sizeof(lc));
-	lc.crash_log_path = crash_log_path;
-	signal_init(argv0, err, sizeof(err), &lc);
-	if (err[0]) {
-		fprintf(stderr, "signal_init error: %s\n", err);
-		exit(EXIT_FAILURE);
-	}
-}
-
 void stest_init(int argc, char **argv, const char **test_usage)
 {
+	int ret;
+	struct logc *lc;
+
 	stest_parse_argv(argc, argv, test_usage);
 	stest_status_files_init();
-	stest_init_signals(argv[0]);
 	stest_output_start_msg();
-	if (g_daemonize) {
-		daemon(0, 0);
+	lc = JORM_INIT_logc();
+	if (!lc)
+		abort();
+	lc->base_dir = strdup(g_test_dir);
+	if (!lc->base_dir)
+		abort();
+	ret = process_ctx_init(argv[0], g_daemonize, lc);
+	if (ret) {
+		fprintf(stderr, "process_ctx_init failed with error %d\n", ret);
+		exit(EXIT_FAILURE);
 	}
+	JORM_FREE_logc(lc);
 }
 
 void stest_set_status(int pdone)
@@ -234,6 +225,7 @@ int stest_finish(void)
 	g_percent_fd = -1;
 	fclose(g_err_fp);
 	g_err_fp = NULL;
+	process_ctx_shutdown();
 	return (g_saw_err) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
