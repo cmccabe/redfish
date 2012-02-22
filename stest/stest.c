@@ -44,8 +44,6 @@
 #define STEST_DEFAULT_USER RF_SUPERUSER_NAME
 #define NUM_PERCENT_DIGITS 3
 
-static char g_tempdir[PATH_MAX];
-
 static int g_daemonize = 1;
 
 static int g_percent_fd = -1;
@@ -54,7 +52,7 @@ static FILE *g_err_fp;
 
 static volatile int g_saw_err;
 
-static const char *g_tmdir;
+static char g_test_dir[PATH_MAX];
 
 static void stest_usage(const char *argv0, const char **test_usage,
 		int exitstatus)
@@ -84,11 +82,11 @@ NULL
 
 static void stest_parse_argv(int argc, char **argv, const char **test_usage)
 {
-	int c;
+	int ret, c;
 	while ((c = getopt(argc, argv, "d:fh")) != -1) {
 		switch (c) {
 		case 'd':
-			g_tmdir = optarg;
+			snprintf(g_test_dir, sizeof(g_test_dir), "%s", optarg);
 			break;
 		case 'f':
 			g_daemonize = 0;
@@ -100,6 +98,15 @@ static void stest_parse_argv(int argc, char **argv, const char **test_usage)
 			stest_usage(argv[0], test_usage, EXIT_FAILURE);
 			break;
 		}
+	}
+	if (!g_test_dir[0]) {
+		ret = get_tempdir(g_test_dir, sizeof(g_test_dir), 0775);
+		if (ret) {
+			fprintf(stderr, "get_tempdir failed with error %d!\n",
+				ret);
+			exit(EXIT_FAILURE);
+		}
+		register_tempdir_for_cleanup(g_test_dir);
 	}
 }
 
@@ -113,16 +120,8 @@ static void stest_status_files_init(void)
 {
 	char percent_fname[PATH_MAX], err_fname[PATH_MAX];
 
-	int ret = get_tempdir(g_tempdir, sizeof(g_tempdir), 0775);
-	if (ret) {
-		fprintf(stderr, "get_tempdir failed with error %d!\n", ret);
-		exit(EXIT_FAILURE);
-	}
-	if (!g_daemonize) {
-		register_tempdir_for_cleanup(g_tempdir);
-	}
 	if (zsnprintf(percent_fname, sizeof(percent_fname),
-		      "%s/percent", g_tempdir)) {
+		      "%s/percent", g_test_dir)) {
 		fprintf(stderr, "tempdir name too long!\n");
 		exit(EXIT_FAILURE);
 	}
@@ -134,7 +133,7 @@ static void stest_status_files_init(void)
 		exit(EXIT_FAILURE);
 	}
 	if (zsnprintf(err_fname, sizeof(err_fname),
-		      "%s/err", g_tempdir)) {
+		      "%s/err", g_test_dir)) {
 		fprintf(stderr, "tempdir name too long!\n");
 		exit(EXIT_FAILURE);
 	}
@@ -153,7 +152,7 @@ static void stest_output_start_msg(void)
 	int ret;
 	char start_msg[512];
 	if (zsnprintf(start_msg, sizeof(start_msg), "STEST_STARTED: %s\n",
-		 g_tempdir)) {
+		 g_test_dir)) {
 		fprintf(stderr, "start_msg buffer too short!\n");
 		exit(EXIT_FAILURE);
 	}
@@ -176,7 +175,8 @@ static void stest_init_signals(const char *argv0)
 	char err[512] = { 0 };
 	struct logc lc;
 
-	if (zsnprintf(crash_log_path, sizeof(crash_log_path), "%s/crash", g_tempdir)) {
+	if (zsnprintf(crash_log_path, sizeof(crash_log_path), "%s/crash",
+			g_test_dir)) {
 		fprintf(stderr, "start_msg buffer too short!\n");
 		exit(EXIT_FAILURE);
 	}
