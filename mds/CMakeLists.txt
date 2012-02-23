@@ -19,27 +19,27 @@ target_link_libraries(fishmds
 
 add_executable(str_range_lock_unit str_range_lock_unit.c str_range_lock.c)
 target_link_libraries(str_range_lock_unit util utest)
-add_test(str_range_lock_unit ${CMAKE_CURRENT_BINARY_DIR}/str_range_lock_unit str_range_lock_unit)
+add_utest(str_range_lock_unit)
 
 add_executable(leveldb_unit leveldb_unit.c force_cpp.cc)
 target_link_libraries(leveldb_unit ${LEVELDB_LIBRARIES} util utest)
-add_test(leveldb_unit ${CMAKE_CURRENT_BINARY_DIR}/leveldb_unit leveldb_unit)
+add_utest(leveldb_unit)
 
 add_executable(mstor_unit mstor_unit.c mstor.c force_cpp.cc user.c)
 target_link_libraries(mstor_unit core ${LEVELDB_LIBRARIES} util utest)
-add_test(mstor_unit ${CMAKE_CURRENT_BINARY_DIR}/mstor_unit mstor_unit)
+add_utest(mstor_unit)
 
 add_executable(user_unit user_unit.c user.c)
 target_link_libraries(user_unit core ${LEVELDB_LIBRARIES} util utest)
-add_test(user_unit ${CMAKE_CURRENT_BINARY_DIR}/user_unit user_unit)
+add_utest(user_unit)
 
 add_executable(dslots_unit dslots_unit.c delegation.c dslots.c)
 target_link_libraries(dslots_unit core util utest)
-add_test(dslots_unit ${CMAKE_CURRENT_BINARY_DIR}/dslots_unit dslots_unit)
+add_utest(dslots_unit)
 
 add_executable(dmap_unit dmap_unit.c dmap.c)
 target_link_libraries(dmap_unit core util utest)
-add_test(dmap_unit ${CMAKE_CURRENT_BINARY_DIR}/dmap_unit dmap_unit)
+add_utest(dmap_unit)
 
 add_executable(fishmdump
     dump.c

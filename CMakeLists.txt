@@ -85,6 +85,14 @@ include_directories(
     ${LEVELDB_INCLUDE_DIR}
 )
 
+macro(install_stest stest)
+    INSTALL(TARGETS ${stest} DESTINATION stest)
+endmacro(install_stest)
+
+macro(add_utest utest)
+    add_test(${utest} ${CMAKE_CURRENT_BINARY_DIR}/${utest} ${utest})
+endmacro(add_utest)
+
 add_subdirectory(client)
 add_subdirectory(common)
 add_subdirectory(core)

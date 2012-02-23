@@ -16,12 +16,12 @@ target_link_libraries(msgr
 
 add_executable(msgr_unit msgr_unit.c)
 target_link_libraries(msgr_unit core msgr utest)
-add_test(msgr_unit ${CMAKE_CURRENT_BINARY_DIR}/msgr_unit msgr_unit)
+add_utest(msgr_unit)
 
 add_executable(bsend_unit bsend_unit.c)
 target_link_libraries(bsend_unit core msgr utest)
-add_test(bsend_unit ${CMAKE_CURRENT_BINARY_DIR}/bsend_unit bsend_unit)
+add_utest(bsend_unit)
 
 add_executable(recv_pool_unit recv_pool_unit.c)
 target_link_libraries(recv_pool_unit core msgr utest)
-add_test(recv_pool_unit ${CMAKE_CURRENT_BINARY_DIR}/recv_pool_unit recv_pool_unit)
+add_utest(recv_pool_unit)

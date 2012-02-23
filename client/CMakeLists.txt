@@ -26,11 +26,11 @@ ENDIF(${REDFISH_CLIENT_LIB} STREQUAL fishc_stub)
 
 add_executable(xattrs_unit stub/xattrs.c stub/xattrs_unit.c)
 target_link_libraries(xattrs_unit common util utest)
-add_test(xattrs_unit ${CMAKE_CURRENT_BINARY_DIR}/xattrs_unit xattrs_unit)
+add_utest(xattrs_unit)
 
 add_executable(version_unit version_unit.c version.c)
 target_link_libraries(version_unit common util utest)
-add_test(version_unit ${CMAKE_CURRENT_BINARY_DIR}/version_unit xattrs_unit)
+add_utest(version_unit)
 
 #add_library(fishc_hdfs SHARED
 #    common.c

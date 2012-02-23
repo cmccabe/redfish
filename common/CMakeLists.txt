@@ -13,4 +13,4 @@ target_link_libraries(common jorm util pthread)
 
 add_executable(cluster_map_unit cluster_map_unit.c)
 target_link_libraries(cluster_map_unit common utest)
-add_test(cluster_map_unit ${CMAKE_CURRENT_BINARY_DIR}/cluster_map_unit cluster_map_unit)
+add_utest(cluster_map_unit)
