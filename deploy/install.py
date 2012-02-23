@@ -30,18 +30,11 @@ os.mkdir(install_dir)
 os.chdir(opts.bld_dir)
 subprocess.check_call(["make", "install", ("DESTDIR=" + install_dir)])
 
-for d in of_node.OfNodeIter(node_list, ["daemon"]):
-    print "installing " + d.get_short_name()
+for n in of_node.OfNodeIter(node_list, []):
+    print "installing " + n.get_short_name()
     # Create base_dir where logs and configuration will go 
-    d.run("mkdir -p " + d.base_dir)
-    # Upload daemon configuration file
-    with tempfile.NamedTemporaryFile(delete=False) as f:
-        f.write(json.dumps(opts.conf_json, sort_keys=True, indent=4))
-        f.flush()
-        d.upload(f.name, d.conf_path)
+    n.run("mkdir -p " + n.base_dir)
+    # Upload configuration file
+    n.upload_conf(opts.conf_json)
     # upload system binaries
-    d.upload(install_dir, d.base_dir)
-
-for c in of_node.OfNodeIter(node_list, ["test_client"]):
-    print "installing " + c.get_short_name()
-    d.run("mkdir -p " + d.base_dir)
+    n.upload(install_dir, n.base_dir)

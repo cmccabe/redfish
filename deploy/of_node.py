@@ -11,6 +11,7 @@ import signal
 import string
 import subprocess
 import sys
+import tempfile
 
 of_util.check_python_version()
 
@@ -115,27 +116,11 @@ class OfNode(object):
             if (not self.has_label(want)):
                 return False
         return True
-
-""" Create a list of OfNode objects from a JSON configuration object
-representing the unitary configuration file. """
-def node_list_from_conf_object(jo):
-    node_list = []
-    if (not jo.has_key("mds")):
-        raise RuntimeError("malformed configuration file: no MDS list.")
-    id = -1
-    for m in jo["mds"]:
-        id = id + 1
-        node_list.append(of_daemon.OfMds.from_json(id, m))
-    if (not jo.has_key("osd")):
-        raise RuntimeError("malformed configuration file: no OSD list.")
-    id = -1
-    for m in jo["osd"]:
-        id = id + 1
-        node_list.append(of_daemon.OfOsd.from_json(id, m))
-    if (jo.has_key("test_clients")):
-        for m in jo["test_clients"]:
-            node_list.append(OfTestClient.from_json(id, m))
-    return node_list
+    def upload_conf(self, conf_json):
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            f.write(json.dumps(conf_json, sort_keys=True, indent=4))
+            f.flush()
+            self.upload(f.name, self.conf_path)
 
 class OfNodeIter(object):
     def __init__(self, node_list, want_labels):
@@ -153,3 +138,29 @@ class OfNodeIter(object):
             if (not node.has_all_labels(self.want_labels)):
                 continue
             return node
+
+import of_test_client
+
+""" Create a list of OfNode objects from a JSON configuration object
+representing the unitary configuration file. """
+def node_list_from_conf_object(jo):
+    node_list = []
+    if (not jo.has_key("mds")):
+        raise RuntimeError("malformed configuration file: no MDS list.")
+    id = -1
+    for m in jo["mds"]:
+        id = id + 1
+        node_list.append(of_daemon.OfMds.from_json(id, m))
+    if (not jo.has_key("osd")):
+        raise RuntimeError("malformed configuration file: no OSD list.")
+    id = -1
+    for m in jo["osd"]:
+        id = id + 1
+        node_list.append(of_daemon.OfOsd.from_json(id, m))
+    if (jo.has_key("test_client")):
+        id = -1
+        for jd in jo["test_client"]:
+            id = id + 1
+            node_list.append(of_test_client.OfTestClient.from_json(id, jd))
+    return node_list
+
