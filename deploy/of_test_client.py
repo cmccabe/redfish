@@ -36,15 +36,15 @@ class OfTestClient(of_node.OfNode):
     def start_stest(self, params):
         if (not params.has_key("tsid")):
             params["tsid"] = params["test"]
-        dir = "%s/%s" % (self.base_dir, params["tsid"])
+        test_base_dir = "%s/%s" % (self.base_dir, params["tsid"])
         bin_path = "%s/%s" % (self.bin_path, params["test"])
-        self.run("rm -rf '%s'" % dir)
-        self.run("mkdir -p '%s'" % dir)
-        self.run("'%s' -d '%s'" % (bin_path, dir))
-        pid = self.run_with_output("cat '%s/pid'" % dir)
+        self.run("rm -rf '%s'" % test_base_dir, {})
+        self.run("mkdir -p '%s'" % test_base_dir, {})
+        self.run("'%s' -d '%s'" % (bin_path, test_base_dir), {})
+        pid = self.run_with_output("cat '%s/pid'" % test_base_dir, {})
         pid = int(pid)
-        test = OfTest(params["test"], params["tsid"], dir,
-                    params["bin_path"], pid)
+        test = OfTest(params["test"], params["tsid"], test_base_dir,
+                    bin_path, pid)
         self.active_tests.append(test)
     def join_stests(self):
         results = {}
@@ -63,58 +63,34 @@ class OfTestClient(of_node.OfNode):
         for tsid in results.keys():
             if (results[tsid].err_txt != ""):
                 print "*** TEST ERROR FROM %s" % tsid
-                print err_txt
+                print results[tsid].err_txt
                 saw_errors = True
         if (saw_errors):
             raise RuntimeError("join_stests_expect_success saw errors.")
 
 class OfTest(object):
-    def __init__(self, test, tsid, dir, bin_path, pid):
+    def __init__(self, test, tsid, test_base_dir, bin_path, pid):
         self.test = test
         self.tsid = tsid
-        self.dir = dir
+        self.test_base_dir = test_base_dir
         self.bin_path = bin_path
         self.pid = pid
     def is_running(self, test_client):
         try:
             # Does the process still exist?
-            test_client.run("ps %d" % self.pid)
+            test_client.run("ps %d &>/dev/null" % self.pid, {})
             return True
         except subprocess.CalledProcessError, e:
             return False
     def kill(self, test_client):
-        if (not is_running(test_client)):
+        if (not self.is_running(test_client)):
             return
-        test_client.run("kill %d" % self.pid)
+        test_client.run("kill %d" % self.pid, {})
     def get_result(self, test_client):
-        err_txt = test_client.run_with_output("cat '%s/err'" % (self.bin_path))
+        err_txt = test_client.run_with_output("cat '%s/err'" % \
+            (self.test_base_dir), {})
         return OfTestResult(err_txt)
 
-class OfTestResult(object):
-    def __init__(self, err_txt):
-        self.err_txt = err_txt
-class OfTest(object):
-    def __init__(self, test, tsid, dir, bin_path, pid):
-        self.test = test
-        self.tsid = tsid
-        self.dir = dir
-        self.bin_path = bin_path
-        self.pid = pid
-    def is_running(self, test_client):
-        try:
-            # Does the process still exist?
-            test_client.run("ps %d" % self.pid)
-            return True
-        except subprocess.CalledProcessError, e:
-            return False
-    def kill(self, test_client):
-        if (not is_running(test_client)):
-            return
-        test_client.run("kill %d" % self.pid)
-    def get_result(self, test_client):
-        err_txt = test_client.run_with_output("cat '%s/err'" % (self.bin_path))
-        return OfTestResult(err_txt)
-        
 class OfTestResult(object):
     def __init__(self, err_txt):
         self.err_txt = err_txt

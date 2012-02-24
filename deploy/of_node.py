@@ -83,17 +83,28 @@ class OfNode(object):
         self.host = host
         self.labels = labels
         self.conf_path = base_dir + "/conf"
+    """ Get the prefix we need to put before ssh commands.  This is how we
+    ensure that the environment variables we want are used. """
+    def get_ssh_prefix(self, env):
+        if env == None:
+            env = {}
+        env["LD_LIBRARY_PATH"] = self.base_dir + "/usr/lib/"
+        env["REDFISH_CONF"] = os.environ["REDFISH_CONF"]
+        ret = "env "
+        for e in env.keys():
+            ret += e + "=" + env[e] + " "
+        return ret
     """ Run a command on this node and give output. Throws an exception on failure. """
-    def run_with_output(self, cmd):
+    def run_with_output(self, cmd, opts):
         ssh_cmd = get_ssh_cmd(self.host)
         ssh_cmd.append(self.host)
-        ssh_cmd.append(cmd)
+        ssh_cmd.append(self.get_ssh_prefix(opts.get("env")) + cmd)
         return of_util.subprocess_check_output(ssh_cmd)
     """ Run a command on this node. Throws an exception on failure. """
-    def run(self, cmd):
+    def run(self, cmd, opts):
         ssh_cmd = get_ssh_cmd(self.host)
         ssh_cmd.append(self.host)
-        ssh_cmd.append(cmd)
+        ssh_cmd.append(self.get_ssh_prefix(opts.get("env")) + cmd)
         subprocess.check_call(ssh_cmd)
     """ Upload a file to this node. Throws an exception on failure. """
     def upload(self, local_path, remote_path):

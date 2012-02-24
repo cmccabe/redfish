@@ -23,7 +23,7 @@ parser = OptionParser()
 (opts, args, node_list) = of_util.parse_deploy_opts(parser)
 for d in of_node.OfNodeIter(node_list, ["daemon"]):
     try:
-        pid = d.run_with_output("cat " + d.get_pid_path())
+        pid = d.run_with_output("cat " + d.get_pid_path(), {})
         if (process_is_running(int(pid))):
             print "error: daemon " + d.get_short_name() + " is still running as process " + pid
             continue
@@ -31,4 +31,4 @@ for d in of_node.OfNodeIter(node_list, ["daemon"]):
             os.unlink(d.get_pid_path())
     except CalledProcessError, e:
         pass
-    d.run(d.bin_path +  " -c " +  d.conf_path + " -k " + str(d.id))
+    d.run(d.bin_path +  " -c " +  d.conf_path + " -k " + str(d.id), {})

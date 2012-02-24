@@ -17,7 +17,7 @@ parser = OptionParser()
 diter = of_node.OfNodeIter(node_list, ["daemon"])
 for d in diter:
     try:
-        pid = d.run_with_output("cat " + d.get_pid_path())
+        pid = d.run_with_output("cat " + d.get_pid_path(), {})
         print d.get_short_name() + " is running as process " + pid
     except CalledProcessError, e:
         print d.get_short_name() + " is NOT running."

@@ -41,19 +41,19 @@ class OfDaemon(of_node.OfNode):
         return self.id.get_binary_name()
     def kill(self, kill9):
         try:
-            pid = self.run_with_output("cat " + self.get_pid_path()).rstrip()
+            pid = self.run_with_output("cat " + self.get_pid_path(), {}).rstrip()
         except subprocess.CalledProcessError, e:
             return False
         if (kill9 == True):
             try:
-                self.run_with_output("rm -f " + self.get_pid_path())
-                self.run("kill -9 " + str(pid))
-                self.run("rm -f " + self.get_pid_path())
+                self.run_with_output("rm -f " + self.get_pid_path(), {})
+                self.run("kill -9 " + str(pid), {})
+                self.run("rm -f " + self.get_pid_path(), {})
             except subprocess.CalledProcessError, e:
                 return
         else:
-            self.run("kill " + str(pid))
-            self.run("rm -f " + self.get_pid_path())
+            self.run("kill " + str(pid), {})
+            self.run("rm -f " + self.get_pid_path(), {})
     def rf_msgr_send(self, msg):
         try:
             sock = socket(AF_INET, SOCK_STREAM)

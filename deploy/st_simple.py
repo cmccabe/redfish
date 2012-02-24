@@ -26,5 +26,5 @@ for d in of_node.OfNodeIter(node_list, ["test_client"]):
     stests.append(d.start_stest({ "test" : "st_rename1"}))
 
 for d in of_node.OfNodeIter(node_list, ["test_client"]):
-    d.join_stests_expect_success(stests)
+    d.join_stests_expect_success()
 print "tests completed successfully."
