@@ -89,10 +89,12 @@ class OfNode(object):
         if env == None:
             env = {}
         env["LD_LIBRARY_PATH"] = self.base_dir + "/usr/lib/"
-        env["REDFISH_CONF"] = os.environ["REDFISH_CONF"]
+        env["REDFISH_CONF"] = os.environ.get("REDFISH_CONF")
+        env["REDFISH_FUSE_DIR"] = os.environ.get("REDFISH_FUSE_DIR")
         ret = "env "
         for e in env.keys():
-            ret += e + "=" + env[e] + " "
+            if (env[e] != None):
+                ret += e + "=" + env[e] + " "
         return ret
     """ Run a command on this node and give output. Throws an exception on failure. """
     def run_with_output(self, cmd, opts):
