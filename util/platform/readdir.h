@@ -28,7 +28,7 @@ struct redfish_dirp;
  *
  * @return		0 on success; error code otherwise
  */
-int  do_opendir(const char *name, struct redfish_dirp** dp);
+extern int do_opendir(const char *name, struct redfish_dirp** dp);
 
 /** Read another entry from a directory.
  *
@@ -39,12 +39,12 @@ int  do_opendir(const char *name, struct redfish_dirp** dp);
  *
  * @return		the next directory entry, or NULL if there are no more.
  */
-struct dirent *do_readdir(struct redfish_dirp *dp);
+extern struct dirent *do_readdir(struct redfish_dirp *dp);
 
 /** Close a directory and free the associated resources
  *
  * @param dp		directory to close
  */
-void do_closedir(struct redfish_dirp *dp);
+extern void do_closedir(struct redfish_dirp *dp);
 
 #endif
