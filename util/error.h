@@ -42,6 +42,13 @@ static inline int IS_ERR(const void *ptr) {
   ret = expr; \
 } while ((ret == -1) && (errno == EINTR));
 
+#define RETRY_ON_EINTR_GET_ERRNO(ret, expr) do { \
+ret = expr; \
+if (!ret) \
+	break; \
+ret = -errno; \
+} while (ret == -EINTR);
+
 #define FORCE_POSITIVE(e) ((e < 0) ? -e : e)
 
 #define FORCE_NEGATIVE(e) ((e > 0) ? -e : e)
