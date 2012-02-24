@@ -29,6 +29,13 @@
 #define RENAME1_DSTD "/rename1dd"
 #define RENAME1_SRCF "/rename1sf"
 
+static void rename_test1_cleanup(struct redfish_client *cli)
+{
+	redfish_unlink_tree(cli, RENAME1_SRCD);
+	redfish_unlink_tree(cli, RENAME1_DSTD);
+	redfish_unlink_tree(cli, RENAME1_SRCF);
+}
+
 static int rename_test1(struct redfish_client *cli)
 {
 	struct redfish_file *ofe;
@@ -95,7 +102,10 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	rename_test1(cli);
+	rename_test1_cleanup(cli);
+	ret = rename_test1(cli);
+	if (ret == 0)
+		rename_test1_cleanup(cli);
 	redfish_disconnect_and_release(cli);
 	return stest_finish();
 }
