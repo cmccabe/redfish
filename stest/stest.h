@@ -19,6 +19,8 @@
 
 #include "util/compiler.h"
 
+struct dirent;
+struct redfish_dirp;
 struct redfish_client;
 struct redfish_dir_entry;
 struct redfish_mds_locator;
@@ -101,6 +103,21 @@ typedef int (*stest_listdir_fn)(const struct redfish_dir_entry *oda, void *v);
  */
 int stest_listdir(struct redfish_client *cli, const char *path,
 		stest_listdir_fn fn, void *data);
+
+/** Function that examines directory entries for stest_fuse_listdir */
+typedef int (*stest_fuse_readdir_fn)(const struct dirent *de, void *v);
+
+/** Simple wrapper function to test FUSE readdir
+ *
+ * @param dp		Redfish directory pointer (wrapper for DIR*)
+ * @param fn		function to invoke on each entry
+ * @param data		data to provide to fn
+ *
+ * @return		a negative number on readdir error; the number of
+ *			entries processed otherwise.
+ */
+int stest_fuse_readdir(struct redfish_dirp* dp,
+		stest_fuse_readdir_fn fn, void *data);
 
 #define ST_EXPECT_ZERO(expr) \
 	do { \

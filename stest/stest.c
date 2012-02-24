@@ -24,11 +24,13 @@
 #include "util/compiler.h"
 #include "util/error.h"
 #include "util/macro.h"
+#include "util/platform/readdir.h"
 #include "util/safe_io.h"
 #include "util/str_to_int.h"
 #include "util/string.h"
 #include "util/tempfile.h"
 
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -262,4 +264,26 @@ int stest_listdir(struct redfish_client *cli, const char *path,
 done:
 	redfish_free_dir_entries(oda, noda);
 	return ret;
+}
+
+int stest_fuse_readdir(struct redfish_dirp* dp,
+		stest_fuse_readdir_fn fn, void *data)
+{
+	struct dirent *de;
+	int ret, noda = 0;
+
+	while (1) {
+		de = do_readdir(dp);
+		if (!de)
+			return noda;
+		if (!strcmp(de->d_name, "."))
+			continue;
+		if (!strcmp(de->d_name, ".."))
+			continue;
+		ret = fn(de, data);
+		if (ret)
+			return ret;
+		++noda;
+	}
+	return noda;
 }
