@@ -17,8 +17,8 @@ target_link_libraries(fishmds
     msgr
 )
 
-add_executable(str_range_lock_unit str_range_lock_unit.c str_range_lock.c)
-target_link_libraries(str_range_lock_unit util utest)
+add_executable(srange_lock_unit srange_lock_unit.c srange_lock.c)
+target_link_libraries(srange_lock_unit util utest)
 add_utest(str_range_lock_unit)
 
 add_executable(leveldb_unit leveldb_unit.c force_cpp.cc)
