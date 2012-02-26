@@ -50,10 +50,14 @@ class OfDaemon(of_node.OfNode):
                 self.run("kill -9 " + str(pid), {})
                 self.run("rm -f " + self.get_pid_path(), {})
             except subprocess.CalledProcessError, e:
-                return
+                return False
         else:
-            self.run("kill " + str(pid), {})
             self.run("rm -f " + self.get_pid_path(), {})
+            try:
+                self.run("kill " + str(pid), {})
+            except subprocess.CalledProcessError, e:
+                return False
+        return True
     def rf_msgr_send(self, msg):
         try:
             sock = socket(AF_INET, SOCK_STREAM)
