@@ -98,7 +98,7 @@ extern struct fast_log_buf* fast_log_create(struct fast_log_mgr *mgr,
 /** Set the name of the fast log buffer
  *
  * @param fb		The fast log buffer
- * @param name		The new name
+ * @param name		The new name.  This will be deep-copied.
  */
 extern void fast_log_set_name(struct fast_log_buf *fb, const char *name);
 

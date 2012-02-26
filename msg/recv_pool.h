@@ -43,9 +43,11 @@ struct recv_pool_thread {
 
 /** Create an RPC receive thread pool
  *
+ * @param name		Name of the receive pool.  This will be shallow-copied.
+ *
  * @return		Pointer to a valid recv_pool, or an error pointer
  */
-extern struct recv_pool *recv_pool_init(struct fast_log_buf *fb);
+extern struct recv_pool *recv_pool_init(const char *name);
 
 /** Hook up a messenger to a receive pool
  *

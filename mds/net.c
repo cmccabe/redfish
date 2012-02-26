@@ -117,7 +117,7 @@ struct redfish_thread g_mds_send_hb_thread;
 
 static void mds_net_msgr_init(struct recv_pool **rpool, struct msgr **msgr,
 	struct recv_pool_thread *rts, size_t th_sz,
-	struct fast_log_buf *fb, int max_conn,
+	const char *thread_pool_name, int max_conn,
 	recv_pool_handler_fn_t handler, int nthreads, uint16_t port,
 	int tcp_timeo, const char *name)
 {
@@ -138,7 +138,7 @@ static void mds_net_msgr_init(struct recv_pool **rpool, struct msgr **msgr,
 			"error %s\n", err);
 		abort();
 	}
-	*rpool = recv_pool_init(fb);
+	*rpool = recv_pool_init(thread_pool_name);
 	if (IS_ERR(*rpool)) {
 		glitch_log("mds_net_msgr_init: failed to create recv_pool: "
 			"error %d\n", PTR_ERR(*rpool));
@@ -367,8 +367,8 @@ static void mds_net_root_delegation_setup(void)
 	}
 }
 
-void mds_net_init(struct fast_log_buf *fb, struct unitaryc *conf,
-		struct mdsc *mconf, uint16_t mid)
+void mds_net_init(POSSIBLY_UNUSED(struct fast_log_buf *fb),
+		struct unitaryc *conf, struct mdsc *mconf, uint16_t mid)
 {
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
@@ -395,21 +395,21 @@ void mds_net_init(struct fast_log_buf *fb, struct unitaryc *conf,
 	mds_net_root_delegation_setup();
 	mds_net_msgr_init(&g_mds_rpool, &g_mds_msgr,
 		(struct recv_pool_thread *)g_mds_rts, sizeof(g_mds_rts[0]),
-		fb, RF_MAX_MDS, mds_net_handle_mds_tr,
+		"mds_mds_tpool", RF_MAX_MDS, mds_net_handle_mds_tr,
 		DEFAULT_MDS_TR_THREADS,
 		((mconf->mds_port == JORM_INVAL_INT) ?
 		 	DEFAULT_MDS_MDS_PORT : mconf->mds_port),
 		MDS_MDS_TCP_TIMEOUT, "g_mds_msgr");
 	mds_net_msgr_init(&g_osd_rpool, &g_osd_msgr,
 		(struct recv_pool_thread *)g_osd_rts, sizeof(g_osd_rts[0]),
-		fb, RF_MAX_OSD_CONN, mds_net_handle_osd_tr,
+		"mds_osd_tpool", RF_MAX_OSD_CONN, mds_net_handle_osd_tr,
 		DEFAULT_OSD_TR_THREADS,
 		((mconf->osd_port == JORM_INVAL_INT) ?
 		 	DEFAULT_MDS_OSD_PORT : mconf->osd_port),
 		MDS_OSD_TCP_TIMEOUT, "g_osd_msgr");
 	mds_net_msgr_init(&g_cli_rpool, &g_cli_msgr,
 		(struct recv_pool_thread *)g_cli_rts, sizeof(g_cli_rts[0]),
-		fb, RF_MAX_CLI_CONN, mds_net_handle_cli_tr,
+		"mds_cli_tpool", RF_MAX_CLI_CONN, mds_net_handle_cli_tr,
 		DEFAULT_CLI_TR_THREADS,
 		((mconf->cli_port == JORM_INVAL_INT) ?
 		 	DEFAULT_MDS_CLI_PORT : mconf->cli_port),

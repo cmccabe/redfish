@@ -20,6 +20,7 @@
 #include "msg/recv_pool.h"
 #include "util/compiler.h"
 #include "util/error.h"
+#include "util/fast_log.h"
 #include "util/macro.h"
 
 #include <errno.h>
@@ -47,9 +48,11 @@ struct recv_pool {
 	struct pending_tr pending_head;
 	/** recv_pool has been cancelled */
 	int cancel;
+	/** Name of receive pool */
+	const char *name;
 };
 
-struct recv_pool *recv_pool_init(POSSIBLY_UNUSED(struct fast_log_buf *fb))
+struct recv_pool *recv_pool_init(const char *name)
 {
 	int ret;
 	struct recv_pool *rpool;
@@ -59,6 +62,7 @@ struct recv_pool *recv_pool_init(POSSIBLY_UNUSED(struct fast_log_buf *fb))
 		ret = -ENOMEM;
 		goto error;
 	}
+	rpool->name = name;
 	STAILQ_INIT(&rpool->worker_head);
 	STAILQ_INIT(&rpool->pending_head);
 	ret = pthread_mutex_init(&rpool->lock, NULL);
@@ -111,7 +115,10 @@ static int recv_pool_thread_trampoline(struct redfish_thread *rt)
 	struct recv_pool *rpool = rrt->rpool;
 	recv_pool_handler_fn_t handler = rrt->handler;
 	struct bsend *ctx;
+	char fb_name[FAST_LOG_BUF_NAME_MAX];
 
+	snprintf(fb_name, sizeof(fb_name), "%s%d", rpool->name, rt->thread_id);
+	fast_log_set_name(rt->fb, fb_name);
 	ctx = bsend_init(rt->fb, RECV_POOL_MAX_BSEND_TR);
 	if (IS_ERR(ctx)) {
 		return PTR_ERR(ctx);

@@ -49,11 +49,11 @@ struct mmm_test40 {
 
 static uint32_t g_localhost;
 
-static int recv_pool_test_init_shutdown(struct fast_log_buf *fb)
+static int recv_pool_test_init_shutdown(void)
 {
 	struct recv_pool *rpool;
 
-	rpool = recv_pool_init(fb);
+	rpool = recv_pool_init("my_tpool");
 	EXPECT_NOT_ERRPTR(rpool);
 	recv_pool_join(rpool);
 	recv_pool_free(rpool);
@@ -121,8 +121,7 @@ static int recv_pool_test_handler(POSSIBLY_UNUSED(struct recv_pool_thread *rt),
 	}
 }
 
-static int recv_pool_test_recv(struct fast_log_buf *fb,
-			int nthreads, int niter)
+static int recv_pool_test_recv(int nthreads, int niter)
 {
 	int i, iter;
 	struct recv_pool_thread rt[RECV_POOL_UNIT_RT_MAX];
@@ -135,7 +134,7 @@ static int recv_pool_test_recv(struct fast_log_buf *fb,
 	EXPECT_ZERO(pthread_cond_init(&g_full_set_cond, NULL));
 	EXPECT_ZERO(pthread_mutex_init(&g_full_set_lock, NULL));
 	g_current_iter_lowest = 0;
-	rpool = recv_pool_init(fb);
+	rpool = recv_pool_init("my_tpool");
 	EXPECT_NOT_ERRPTR(rpool);
 	foo_msgr = msgr_init(err, err_len, 10, 10,
 			360, g_fast_log_mgr, "foo_msgr");
@@ -184,17 +183,12 @@ static int recv_pool_test_recv(struct fast_log_buf *fb,
 
 int main(POSSIBLY_UNUSED(int argc), char **argv)
 {
-	struct fast_log_buf *fb;
-	
 	EXPECT_ZERO(utility_ctx_init(argv[0]));
-	fb = fast_log_create(g_fast_log_mgr, "recv_pool_unit_main");
-	EXPECT_NOT_ERRPTR(fb);
 	EXPECT_ZERO(get_localhost_ipv4(&g_localhost));
-	EXPECT_ZERO(recv_pool_test_init_shutdown(fb));
-	EXPECT_ZERO(recv_pool_test_recv(fb, 1, 1));
-	EXPECT_ZERO(recv_pool_test_recv(fb, 3, 1));
-	EXPECT_ZERO(recv_pool_test_recv(fb, 10, 5));
-	fast_log_free(fb);
+	EXPECT_ZERO(recv_pool_test_init_shutdown());
+	EXPECT_ZERO(recv_pool_test_recv(1, 1));
+	EXPECT_ZERO(recv_pool_test_recv(3, 1));
+	EXPECT_ZERO(recv_pool_test_recv(10, 5));
 	process_ctx_shutdown();
 
 	return EXIT_SUCCESS;
