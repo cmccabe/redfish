@@ -27,8 +27,10 @@ uint32_t create_unique_thread_id(void)
 	uint32_t ret;
 
 	/* pthread_self is useless here because it doesn't define what kind of
-	 * value it returns.
-	 * So just create a unique thread ID on the spot.
+	 * value it returns.  It may be a number, but it might even be a
+	 * structure with multiple fields.
+	 *
+	 * So we just create a unique thread ID on the spot here.
 	 */
 	pthread_mutex_lock(&unique_thread_id_lock);
 	ret = next_unique_thread_id;

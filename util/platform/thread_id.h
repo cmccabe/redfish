@@ -22,10 +22,11 @@
 /** Create a unique thread ID.
  *
  * Only call this once per thread.  It _may_ return a new value each time you
- * call it.
+ * call it.  On certain platforms, it will return the kernel's thread id, which
+ * may be useful for debugging.
  *
  * @return		a unique thread id
  */
-uint32_t create_unique_thread_id(void);
+extern uint32_t create_unique_thread_id(void);
 
 #endif
