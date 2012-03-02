@@ -37,6 +37,8 @@ int fishtool_rename(struct fishtool_params *params)
 	const char *src, *dst;
 	int ret;
 	struct redfish_client *cli = NULL;
+	char err[512] = { 0 };
+	size_t err_len = sizeof(err);
 
 	src = params->non_option_args[0];
 	if (!src) {
@@ -52,9 +54,12 @@ int fishtool_rename(struct fishtool_params *params)
 		ret = -EINVAL;
 		goto done;
 	}
-	ret = redfish_connect(params->cpath, params->user_name, &cli);
-	if (ret) {
-		fprintf(stderr, "redfish_connect failed with error %d\n", ret);
+	cli = redfish_connect(params->cpath, params->user_name,
+		redfish_log_to_stderr, NULL, err, err_len);
+	if (err[0]) {
+		fprintf(stderr, "redfish_connect: failed to connect: "
+				"%s\n", err);
+		ret = -EIO;
 		goto done;
 	}
 	ret = redfish_rename(cli, src, dst);

@@ -38,6 +38,27 @@ struct redfish_version
 	uint32_t patchlevel;
 };
 
+/** Redfish logging callback
+ *
+ * @param log_ctx		The client-supplied logging context
+ * @param str			The string to log
+ */
+typedef void (*redfish_log_fn_t)(void *log_ctx, const char *str);
+
+/** Logging callback which discards logs
+ *
+ * @param log_ctx		The client-supplied logging context (unused)
+ * @param str			The string to log (unused)
+ */
+extern void redfish_log_to_dev_null(void *log_ctx, const char *str);
+
+/** Logging callback which logs to stderr
+ *
+ * @param log_ctx		The client-supplied logging context (unused)
+ * @param str			The string to log
+ */
+extern void redfish_log_to_stderr(void *log_ctx, const char *str);
+
 /** Represents the location of a metadata server */
 struct redfish_mds_locator
 {
@@ -102,9 +123,6 @@ const char* redfish_get_version_str(void);
 
 /** Create a new Redfish filesystem
  *
- * We will begin by querying the supplied list of hosts, asking each one for a
- * current shard map to get us started.
- *
  * @param uconf		Local path to a Redfish configuration file
  * @param mid		The current metadata server ID
  * @param fsid		The filesystem ID of the new filesystem to create
@@ -117,18 +135,25 @@ void redfish_mkfs(const char *uconf, uint16_t mid, uint64_t fsid,
 
 /** Initialize a Redfish client instance.
  *
- * We will begin by querying the hosts specified in the configuration file,
- * asking each one for a current shard map to get us started.
- *
  * @param conf_path	Path to a Redfish configuration file
  * @param user		The user to connect as
- * @param cli		(out-parameter): the new redfish_client instance.
+ * @param log_cb	The logging callback to use, or NULL if you do not want
+ *			logging.  This function may be called concurrently by
+ *			multiple threads.  If you require locking, you are
+ *			responsible for providing it.
+ * @param log_ctx	Context pointer that will be passed to log_cb
+ * @param err		(out param) error buffer.  If there is an error, an
+ *			error message will be placed here.  If there is not an
+ *			error, this buffer will NOT be modified or zeroed.
+ * @param err_len	length of error buffer.
  *
- * @return		0 on success; error code otherwise
- *			On success, *cli will contain a valid redfish client.
+ * @return		The redfish client on success; NULL otherwise.
+ *			On error, an error message will be placed into the err
+ *			buffer.
  */
-int redfish_connect(const char *conf_path, const char *user,
-			struct redfish_client **cli);
+extern struct redfish_client *redfish_connect(const char *conf_path,
+	const char *user, redfish_log_fn_t log_cb, void *log_ctx,
+	char *err, size_t err_len);
 
 /** Create a new redfish user
  *

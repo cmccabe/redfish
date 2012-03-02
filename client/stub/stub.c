@@ -70,16 +70,17 @@ void redfish_release_client(struct redfish_client *cli);
  */
 struct redfish_client
 {
+	/** Client-supplied log callback */
+	redfish_log_fn_t log_cb;
+	/** Client-supplied log context */
+	void *log_ctx;
 	/** User name. */
 	char *user;
-
 	/** NULL-terminated list of groups we're a member of. The first group
 	 * is the primary group. */
 	char **group;
-
 	/** Base directory of stub filesystem. */
 	char *base;
-
 	/** Lock for the stub filesystem */
 	pthread_mutex_t lock;
 };
@@ -89,7 +90,6 @@ struct redfish_file
 {
 	/** Type of open file */
 	enum fish_open_ty ty;
-
 	/** Backing file descriptor */
 	int fd;
 };
@@ -166,42 +166,64 @@ void redfish_mkfs(POSSIBLY_UNUSED(const char *uconf),
 	}
 }
 
-int redfish_connect(POSSIBLY_UNUSED(const char *conf_path),
-			const char *user, struct redfish_client **cli)
+struct redfish_client *redfish_connect(POSSIBLY_UNUSED(const char *conf_path),
+	const char *user, redfish_log_fn_t log_cb, void *log_ctx,
+	char *err, size_t err_len)
 {
-	int ret;
-	struct redfish_client *zcli = calloc(1, sizeof(struct redfish_client));
-	if (!zcli)
-		return -ENOMEM;
-	ret = pthread_mutex_init(&zcli->lock, NULL);
+	struct redfish_client *cli;
+	int ret, mutex_init = 0;
+
+	cli = calloc(1, sizeof(struct redfish_client));
+	if (!cli)
+		goto oom_error;
+	cli->log_cb = log_cb;
+	cli->log_ctx = log_ctx;
+	ret = pthread_mutex_init(&cli->lock, NULL);
 	if (ret) {
-		free(zcli);
-		return -ENOMEM;
+		snprintf(err, err_len, "pthread_mutex_init failed with "
+			"error %d", ret);
+		goto error;
 	}
-	zcli->user = strdup(user);
-	if (!zcli->user)
+	mutex_init = 1;
+	cli->user = strdup(user);
+	if (!cli->user)
 		goto oom_error;
-	zcli->group = get_user_groups(user);
-	if (!zcli->group)
+	cli->group = get_user_groups(user);
+	if (!cli->group)
 		goto oom_error;
-	zcli->base = strdup(get_stub_base_dir());
-	if (!zcli->base)
+	cli->base = strdup(get_stub_base_dir());
+	if (!cli->base)
 		goto oom_error;
-	if (access(zcli->base, R_OK | W_OK | X_OK)) {
-		redfish_release_client(zcli);
-		return -ENOTDIR;
+	if (access(cli->base, R_OK | W_OK | X_OK)) {
+		snprintf(err, err_len, "Couldn't access cli->base (%s)\n",
+			cli->base);
+		goto error;
 	}
-	ret = check_xattr_support(zcli->base);
+	ret = check_xattr_support(cli->base);
 	if (ret) {
-		redfish_release_client(zcli);
-		return ret;
+		snprintf(err, err_len, "You must enable support for extended "
+			"attributes on the STUB_BASE directory (%s)",
+			cli->base);
+		goto error;
 	}
-	*cli = zcli;
-	return 0;
+	return cli;
 
 oom_error:
-	redfish_release_client(zcli);
-	return -ENOMEM;
+	snprintf(err, err_len, "OOM error");
+error:
+	if (mutex_init)
+		pthread_mutex_destroy(&cli->lock);
+	if (cli) {
+		char **g;
+
+		free(cli->user);
+		for (g = cli->group; *g; ++g)
+			free(*g);
+		free(cli->group);
+		free(cli->base);
+		free(cli);
+	}
+	return NULL;
 }
 
 static int cli_is_group_member(const struct redfish_client *cli, const char *group)
@@ -286,7 +308,7 @@ static int stub_check_perm(struct redfish_client *cli, const char *epath,
 	str = tbuf;
 	base_len = strlen(cli->base);
 	npc = client_stub_get_npc(epath);
-	printf("epath='%s', npc = %d\n", epath, npc);
+	CLIENT_LOG(cli, "epath='%s', npc = %d\n", epath, npc);
 	while (1) {
 		char *tmp, *seg;
 
@@ -298,10 +320,12 @@ static int stub_check_perm(struct redfish_client *cli, const char *epath,
 		strcat(full, "/");
 		strcat(full, seg);
 		if (strlen(full) < base_len) {
-			printf("full = '%s', skipping\n", full);
+			CLIENT_LOG(cli, "full = '%s', skipping\n",
+				full);
 			continue;
 		}
-		printf("full = '%s', cpc = %d, testing\n", full, cpc);
+		CLIENT_LOG(cli, "full = '%s', cpc = %d, testing\n",
+			full, cpc);
 		if (cpc == npc) {
 			ret = validate_perm(cli, full, want);
 			if (ret)
@@ -319,7 +343,7 @@ static int stub_check_perm(struct redfish_client *cli, const char *epath,
 				return ret;
 		}
 	}
-	printf("success\n");
+	CLIENT_LOG(cli, "stub_check_perm success\n");
 	return 0;
 }
 
@@ -393,11 +417,11 @@ int redfish_create(struct redfish_client *cli, const char *path,
 	if (ret)
 		return ret;
 	pthread_mutex_lock(&cli->lock);
-	fprintf(stderr, "redfish_create: validating permissions\n");
+	CLIENT_LOG(cli, "redfish_create: validating permissions\n");
 	ret = stub_check_enc_dir_perm(cli, epath, STUB_VPERM_WRITE);
 	if (ret)
 		goto error;
-	fprintf(stderr, "redfish_create: creating file\n");
+	CLIENT_LOG(cli, "redfish_create: creating file\n");
 	fd = open(epath, O_WRONLY | O_CREAT, 0644);
 	if (fd < 0) {
 		ret = -errno;
@@ -408,7 +432,7 @@ int redfish_create(struct redfish_client *cli, const char *path,
 	}
 	if (mode == REDFISH_INVAL_MODE)
 		mode = REDFISH_DEFAULT_FILE_MODE;
-	fprintf(stderr, "redfish_create: setting mode, user, group\n");
+	CLIENT_LOG(cli, "redfish_create: setting mode, user, group\n");
 	ret = set_mode(fd, mode);
 	if (ret)
 		goto error;
@@ -426,7 +450,7 @@ int redfish_create(struct redfish_client *cli, const char *path,
 	zofe->ty = FISH_OPEN_TY_WR;
 	zofe->fd = fd;
 	*ofe = zofe;
-	fprintf(stderr, "redfish_create: created as '%s'\n", epath);
+	CLIENT_LOG(cli, "redfish_create: created as '%s'\n", epath);
 	pthread_mutex_unlock(&cli->lock);
 	return 0;
 
@@ -667,7 +691,8 @@ int redfish_list_directory(struct redfish_client *cli, const char *path,
 	ret = get_stub_path(cli, path, epath, PATH_MAX);
 	if (ret)
 		return ret;
-	printf("redfish_list_directory: path='%s', epath='%s'\n", path, epath);
+	CLIENT_LOG(cli, "redfish_list_directory: path='%s', "
+		   "epath='%s'\n", path, epath);
 	pthread_mutex_lock(&cli->lock);
 	ret = stub_check_enc_dir_perm(cli, epath, STUB_VPERM_READ);
 	if (ret)

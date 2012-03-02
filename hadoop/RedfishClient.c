@@ -51,7 +51,6 @@ JNIEXPORT void JNICALL
 Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishConnect(
 	JNIEnv *jenv, jobject jobj, jstring configFile, jstring userName)
 {
-	int ret = 0;
 	char cconf_file[PATH_MAX], cuser_name[RF_USER_MAX];
 	struct redfish_client *cli  = NULL;
 	char err[512] = { 0 };
@@ -67,11 +66,10 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishConnect(
 		goto done;
 	if (jstr_to_cstr(jenv, userName, cuser_name, sizeof(cuser_name)))
 		goto done;
-	ret = redfish_connect(cconf_file, cuser_name, &cli);
-	if (ret) {
-		strerror_r(FORCE_POSITIVE(ret), err, err_len);
+	cli = redfish_connect(cconf_file, cuser_name, redfish_log_to_dev_null,
+			NULL, err, err_len);
+	if (err[0])
 		goto done;
-	}
 	redfish_set_m_cli(jenv, jobj, cli);
 done:
 	if (err[0])

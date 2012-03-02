@@ -87,19 +87,23 @@ extern int fast_log_mgr_dump_all(struct fast_log_mgr* mgr, int fd);
  * @param mgr		The fastlog buffer manager
  * @param stored	(out-param) the stored bitfield
  * @param store		(out-param) the store callback
+ * @param store_ctx	(out-param) context pointer to be passed to the
+ *			store callback
  */
 extern void fast_log_mgr_cp_storage_settings(struct fast_log_mgr *mgr,
 		BITFIELD_DECL(stored, FAST_LOG_TYPE_MAX),
-		fast_log_storage_fn_t *store);
+		fast_log_storage_fn_t *store, void **store_ctx);
 
 /** Set the manager's message storage settings
  *
  * @param mgr		The fastlog buffer manager
  * @param stored	the new stored bitfield
  * @param store		the new store callback
+ * @param store_ctx	the new context pointer to be passed to the store
+ *			callback
  */
 extern void fast_log_mgr_set_storage_settings(struct fast_log_mgr *mgr,
 		BITFIELD_DECL(stored, FAST_LOG_TYPE_MAX),
-		fast_log_storage_fn_t store);
+		fast_log_storage_fn_t store, void *store_ctx);
 
 #endif

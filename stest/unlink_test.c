@@ -113,20 +113,23 @@ static const char *g_unlink_test_usage[] = {
 
 int main(int argc, char **argv)
 {
-	int ret, ndirs;
+	int ndirs;
 	struct redfish_client *cli = NULL;
 	const char *cpath;
 	const char *user;
 	const char *dir_str;
 	char *dirs = NULL;
+	char err[512] = { 0 };
+	size_t err_len = sizeof(err);
 
 	stest_get_conf_and_user(&cpath, &user);
 	dir_str = getenv_with_default("ST_ROOT", "/");
 	stest_init(argc, argv, g_unlink_test_usage);
-	ret = redfish_connect(cpath, user, &cli);
-	if (ret) {
+	cli = redfish_connect(cpath, user, redfish_log_to_stderr,
+		NULL, err, err_len);
+	if (err[0]) {
 		stest_add_error("redfish_connect: failed to connect: "
-				"error %d\n", ret);
+				"%s\n", err);
 		return EXIT_FAILURE;
 	}
 

@@ -121,20 +121,22 @@ int fast_log_mgr_dump_all(struct fast_log_mgr *mgr, int fd)
 
 void fast_log_mgr_cp_storage_settings(struct fast_log_mgr *mgr,
 		BITFIELD_DECL(stored, FAST_LOG_TYPE_MAX),
-		fast_log_storage_fn_t *store)
+		fast_log_storage_fn_t *store, void **store_ctx)
 {
 	pthread_spin_lock(&mgr->lock);
 	BITFIELD_COPY(stored, mgr->stored);
 	*store = mgr->store;
+	*store_ctx = mgr->store_ctx;
 	pthread_spin_unlock(&mgr->lock);
 }
 
 void fast_log_mgr_set_storage_settings(struct fast_log_mgr *mgr,
 		BITFIELD_DECL(stored, FAST_LOG_TYPE_MAX),
-		fast_log_storage_fn_t store)
+		fast_log_storage_fn_t store, void *store_ctx)
 {
 	pthread_spin_lock(&mgr->lock);
 	BITFIELD_COPY(mgr->stored, stored);
 	mgr->store = store;
+	mgr->store_ctx = store_ctx;
 	pthread_spin_unlock(&mgr->lock);
 }

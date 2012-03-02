@@ -68,7 +68,7 @@ struct fast_log_buf* fast_log_create(struct fast_log_mgr *mgr, const char *name)
 		return fb;
 	fb->mgr = mgr;
 	fast_log_mgr_cp_storage_settings(mgr,
-			fb->stored, &fb->store);
+			fb->stored, &fb->store, &fb->store_ctx);
 	fast_log_mgr_register_buffer(mgr, fb);
 	return fb;
 }
@@ -97,13 +97,13 @@ void fast_log(struct fast_log_buf* fb, void *entry)
 	if (BITFIELD_TEST(fb->stored, fe->type)) {
 		char buf[FAST_LOG_PRETTY_PRINTED_MAX] = { 0 };
 		fb->mgr->dumpers[fe->type](entry, buf);
-		fb->store(buf);
+		fb->store(fb->store_ctx, buf);
 	}
 	memcpy(buf + fb->off, fe, sizeof(struct fast_log_entry));
 	fb->off++;
 	if (fb->off % FASTLOG_CHECKED_OFF == 0) {
 		fast_log_mgr_cp_storage_settings(fb->mgr,
-				fb->stored, &fb->store);
+				fb->stored, &fb->store, &fb->store_ctx);
 	}
 	if (fb->off == FASTLOG_MAX_OFF) {
 		fb->off = 0;

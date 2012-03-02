@@ -42,6 +42,8 @@ struct fast_log_buf
 	BITFIELD_DECL(stored, FAST_LOG_TYPE_MAX);
 	/** Storage callback */
 	fast_log_storage_fn_t store;
+	/** Storage callback context */
+	void *store_ctx;
 };
 
 LIST_HEAD(fast_log_buf_list, fast_log_buf);
@@ -65,6 +67,8 @@ struct fast_log_mgr
 	BITFIELD_DECL(stored, FAST_LOG_TYPE_MAX);
 	/** Storage callback */
 	fast_log_storage_fn_t store;
+	/** Storage callback context */
+	void *store_ctx;
 };
 
 /** Allocate a fast_log buffer.

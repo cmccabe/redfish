@@ -710,15 +710,18 @@ static struct rf_fuse_fs *rf_fuse_fs_create(const char *cpath,
 {
 	int ret;
 	struct rf_fuse_fs *fs;
+	char err[512] = { 0 };
+	size_t err_len = sizeof(err);
 
 	fs = calloc(1, sizeof(struct rf_fuse_fs));
 	if (!fs)
 		abort();
 	ret = pthread_mutex_init(&fs->next_fid_lock, NULL);
-	ret = redfish_connect(cpath, user, &fs->cli);
-	if (ret) {
+	fs->cli = redfish_connect(cpath, user, redfish_log_to_stderr, NULL,
+		err, err_len);
+	if (err[0]) {
 		fprintf(stderr, "fishfuse: failed to connect to Redfish: "
-			"error %d", ret);
+			"%s", err);
 		exit(EXIT_FAILURE);
 	}
 	return fs;

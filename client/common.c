@@ -15,9 +15,11 @@
  */
 
 #include "client/fishc.h"
+#include "util/compiler.h"
 
-#include <stdlib.h>
+#include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 /* "Convenience" functions that are the same in any client implementation. */
 void redfish_disconnect_and_release(struct redfish_client *cli)
@@ -66,4 +68,39 @@ void redfish_free_block_locs(struct redfish_block_loc **blcs, int nblc)
 		free(blc);
 	}
 	free(blcs);
+}
+
+void redfish_log_to_dev_null(POSSIBLY_UNUSED(void *log_ctx),
+		POSSIBLY_UNUSED(const char *msg))
+{
+	/* Ignore the log message. */
+}
+
+void redfish_log_to_stderr(POSSIBLY_UNUSED(void *log_ctx), const char *str)
+{
+	fputs(str, stderr);
+}
+
+void client_log(redfish_log_fn_t log_cb, void *log_ctx, const char *fmt, ...)
+{
+	int res;
+	va_list ap, ap2;
+	char stack_buf[8192];
+
+	va_start(ap, fmt);
+	va_copy(ap2, ap);
+	res = vsnprintf(stack_buf, sizeof(stack_buf), fmt, ap);
+	if (res + 1 >= (int)sizeof(stack_buf)) {
+		char *malloc_buf = malloc(res + 1);
+		if (!malloc_buf)
+			return;
+		vsnprintf(malloc_buf, res + 1, fmt, ap2);
+		log_cb(log_ctx, malloc_buf);
+		free(malloc_buf);
+	}
+	else {
+		log_cb(log_ctx, stack_buf);
+	}
+	va_end(ap2);
+	va_end(ap);
 }

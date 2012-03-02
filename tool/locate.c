@@ -97,9 +97,12 @@ int fishtool_locate(struct fishtool_params *params)
 		}
 		len = z;
 	}
-	ret = redfish_connect(params->cpath, params->user_name, &cli);
-	if (ret) {
-		fprintf(stderr, "redfish_connect failed with error %d\n", ret);
+	cli = redfish_connect(params->cpath, params->user_name,
+		redfish_log_to_stderr, NULL, err, err_len);
+	if (err[0]) {
+		fprintf(stderr, "redfish_connect: failed to connect: "
+				"%s\n", err);
+		ret = -EIO;
 		goto done;
 	}
 	nblc = redfish_locate(cli, path, start, len, &blcs);

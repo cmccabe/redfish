@@ -37,6 +37,8 @@ int fishtool_chown(struct fishtool_params *params)
 	const char *path, *user, *group;
 	int ret;
 	struct redfish_client *cli = NULL;
+	char err[512] = { 0 };
+	size_t err_len = sizeof(err);
 
 	user = params->uppercase_args[ALPHA_IDX('U')];
 	group = params->lowercase_args[ALPHA_IDX('g')];
@@ -53,9 +55,12 @@ int fishtool_chown(struct fishtool_params *params)
 		ret = -EINVAL;
 		goto done;
 	}
-	ret = redfish_connect(params->cpath, params->user_name, &cli);
-	if (ret) {
-		fprintf(stderr, "redfish_connect failed with error %d\n", ret);
+	cli = redfish_connect(params->cpath, params->user_name,
+		redfish_log_to_stderr, NULL, err, err_len);
+	if (err[0]) {
+		fprintf(stderr, "redfish_connect: failed to connect: "
+				"%s\n", err);
+		ret = -EIO;
 		goto done;
 	}
 	ret = redfish_chown(cli, path, user, group);

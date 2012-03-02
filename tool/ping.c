@@ -31,17 +31,23 @@
 
 int fishtool_ping(struct fishtool_params *params)
 {
-	int ret;
+	int ret = 0;
 	struct redfish_client *cli;
+	char err[512] = { 0 };
+	size_t err_len = sizeof(err);
 
-	ret = redfish_connect(params->cpath, params->user_name, &cli);
-	if (ret) {
-		fprintf(stderr, "redfish_connect failed with error %d\n", ret);
-		return ret;
+	cli = redfish_connect(params->cpath, params->user_name,
+		redfish_log_to_stderr, NULL, err, err_len);
+	if (err[0]) {
+		fprintf(stderr, "redfish_connect: failed to connect: "
+				"%s\n", err);
+		ret = -EIO;
+		goto done;
 	}
 	redfish_disconnect_and_release(cli);
 
-	return 0;
+done:
+	return ret;
 }
 
 const char *fishtool_ping_usage[] = {

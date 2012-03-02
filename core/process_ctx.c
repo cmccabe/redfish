@@ -39,9 +39,10 @@
 
 struct fast_log_mgr *g_fast_log_mgr;
 
-static void fast_log_to_core_log(const char *buf)
+static void fast_log_to_core_log(POSSIBLY_UNUSED(void *log_ctx),
+		const char *str)
 {
-	glitch_log("%s", buf);
+	glitch_log("%s", str);
 }
 
 static void configure_fast_log(const char *redfish_log)
@@ -58,7 +59,7 @@ static void configure_fast_log(const char *redfish_log)
 		}
 	}
 	fast_log_mgr_set_storage_settings(g_fast_log_mgr, bits,
-					  fast_log_to_core_log);
+					  fast_log_to_core_log, NULL);
 }
 
 static int process_ctx_init_impl(const char *argv0, int daemonize,

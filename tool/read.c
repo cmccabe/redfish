@@ -38,6 +38,8 @@ int fishtool_read(struct fishtool_params *params)
 	int fd = -1, res, ret;
 	struct redfish_client *cli = NULL;
 	struct redfish_file *ofe = NULL;
+	char err[512] = { 0 };
+	size_t err_len = sizeof(err);
 
 	path = params->non_option_args[0];
 	if (!path) {
@@ -47,9 +49,12 @@ int fishtool_read(struct fishtool_params *params)
 		goto done;
 	}
 	local = params->lowercase_args[ALPHA_IDX('o')];
-	ret = redfish_connect(params->cpath, params->user_name, &cli);
-	if (ret) {
-		fprintf(stderr, "redfish_connect failed with error %d\n", ret);
+	cli = redfish_connect(params->cpath, params->user_name,
+		redfish_log_to_stderr, NULL, err, err_len);
+	if (err[0]) {
+		fprintf(stderr, "redfish_connect: failed to connect: "
+				"%s\n", err);
+		ret = -EIO;
 		goto done;
 	}
 	ret = redfish_open(cli, path, &ofe);

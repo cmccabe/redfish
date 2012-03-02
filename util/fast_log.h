@@ -55,10 +55,11 @@ typedef void (*fast_log_dumper_fn_t)(struct fast_log_entry *fe, char *buf);
 /** A function used to store a pretty-printed fast log in a more permanent
  * fashion.
  *
- * @param buf		The pretty-printed fast_log entry. Will never be longer
+ * @param store_ctx	The context pointer that was supplied to fast_log_mgr
+ * @param str		The pretty-printed fast_log entry. Will never be longer
  *			than FAST_LOG_PRETTY_PRINTED_MAX
  */
-typedef void (*fast_log_storage_fn_t)(const char *str);
+typedef void (*fast_log_storage_fn_t)(void *store_ctx, const char *str);
 
 /** Maximum pretty-printed size of a fast log entry */
 #define FAST_LOG_PRETTY_PRINTED_MAX 512
