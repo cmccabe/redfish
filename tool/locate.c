@@ -61,7 +61,7 @@ int fishtool_locate(struct fishtool_params *params)
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 	const char *path, *start_str, *len_str;
-	int ret, nblc;
+	int ret, nblc = 0;
 	uint64_t start = 0, len = 0xffffffffffffffffll;
 	struct redfish_client *cli = NULL;
 	struct redfish_block_loc **blcs = NULL;

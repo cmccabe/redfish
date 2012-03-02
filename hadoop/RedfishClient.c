@@ -383,7 +383,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishListDirectory(
 	JNIEnv *jenv, jobject jobj, jstring jpath)
 {
 	jobjectArray jarr = NULL;
-	int i, noda;
+	int i, noda = 0;
 	struct redfish_client *cli;
 	struct redfish_dir_entry *oda = NULL;
 	char cpath[RF_PATH_MAX], err[512] = { 0 };
@@ -536,7 +536,7 @@ JNIEXPORT jboolean JNICALL
 Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishUnlink(
 		JNIEnv *jenv, jobject jobj, jstring jpath)
 {
-	int ret;
+	int ret = -EIO;
 	struct redfish_client *cli;
 	char cpath[RF_PATH_MAX], err[512] = { 0 };
 	size_t err_len = sizeof(err);
@@ -563,7 +563,7 @@ JNIEXPORT jboolean JNICALL
 Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishUnlinkTree(
 	JNIEnv *jenv, jobject jobj, jstring jpath)
 {
-	int ret;
+	int ret = -EIO;
 	struct redfish_client *cli;
 	char cpath[RF_PATH_MAX], err[512] = { 0 };
 	size_t err_len = sizeof(err);
@@ -590,7 +590,7 @@ JNIEXPORT jboolean JNICALL
 Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishRename(
 	JNIEnv *jenv, jobject jobj, jstring jsrc, jstring jdst)
 {
-	int ret;
+	int ret = -EIO;
 	struct redfish_client *cli;
 	char csrc[RF_PATH_MAX], cdst[RF_PATH_MAX], err[512] = { 0 };
 	size_t err_len = sizeof(err);

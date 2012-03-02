@@ -37,7 +37,7 @@ int fishtool_write(struct fishtool_params *params)
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 	const char *path, *local, *mode_str;
-	int fd, res, ret, mode = 0644;
+	int fd = -1, res, ret, mode = 0644;
 	struct redfish_client *cli = NULL;
 	struct redfish_file *ofe = NULL;
 

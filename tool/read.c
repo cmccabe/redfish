@@ -35,7 +35,7 @@
 int fishtool_read(struct fishtool_params *params)
 {
 	const char *path, *local;
-	int fd, res, ret;
+	int fd = -1, res, ret;
 	struct redfish_client *cli = NULL;
 	struct redfish_file *ofe = NULL;
 

@@ -117,7 +117,7 @@ static int rsem_post_impl(struct rsem_client *rcli, const char *name)
 {
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
-	int res, ret, zfd;
+	int res, ret, zfd = -1;
 	struct json_object *jo = NULL;
 	struct sockaddr_in addr;
 	uint32_t ty, resp;
@@ -126,6 +126,7 @@ static int rsem_post_impl(struct rsem_client *rcli, const char *name)
 	rel.name = (char*)name;
 	jo = JORM_TOJSON_rsem_release(&rel);
 	if (!jo) {
+		ret = -ENOMEM;
 		glitch_log("rsem_post_impl: out of memory\n");
 		goto done;
 	}
@@ -160,6 +161,7 @@ static int rsem_post_impl(struct rsem_client *rcli, const char *name)
 		goto done;
 	}
 	if (blocking_write_json_req("rsem_post_impl", zfd, jo)) {
+		ret = -EIO;
 		goto done;
 	}
 	if (safe_read(zfd, &resp, sizeof(uint32_t)) != sizeof(uint32_t)) {
@@ -335,10 +337,12 @@ int rsem_wait(struct rsem_client *rcli, const char *name)
 	req.port = port;
 	jo = JORM_TOJSON_rsem_request(&req);
 	if (!jo) {
+		ret = -ENOMEM;
 		glitch_log("rsem_wait: out of memory\n");
 		goto done;
 	}
 	if (blocking_write_json_req("rsem_wait", zfd, jo)) {
+		ret = -EIO;
 		json_object_put(jo);
 		goto done;
 	}
