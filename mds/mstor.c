@@ -118,7 +118,7 @@ struct mstor {
 	uint64_t next_nid;
 	/** The minimum number of seconds that we will sequester a file before
 	 * deleting it. */
-	int min_sequester_time;
+	int min_zombie_time;
 	/** Minimum replication level */
 	int min_repl;
 	/** Mandated replication level */
@@ -571,10 +571,10 @@ static int mstor_leveldb_init(struct mstor *mstor,
 	mstor->lreadopt = lreadopt;
 	mstor->lwropt = lwropt;
 	mstor->lcache = lcache;
-	if (conf->min_sequester_time == JORM_INVAL_INT)
-		mstor->min_sequester_time = MSTOR_DEFAULT_SEQUESTER_TIME;
+	if (conf->min_zombie_time == JORM_INVAL_INT)
+		mstor->min_zombie_time = MSTOR_DEFAULT_SEQUESTER_TIME;
 	else
-		mstor->min_sequester_time = conf->min_sequester_time;
+		mstor->min_zombie_time = conf->min_zombie_time;
 	mstor->min_repl = get_valid_repl(mstor->min_repl,
 					MSTOR_DEFAULT_MIN_REPL);
 	mstor->man_repl = get_valid_repl(mstor->man_repl,
