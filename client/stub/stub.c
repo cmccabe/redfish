@@ -233,7 +233,7 @@ static int validate_perm(const struct redfish_client *cli, const char *fname,
 		int ret;
 		char *user;
 
-		if (xgets(fname, XATTR_FISH_USER, REDFISH_USERNAME_MAX,
+		if (xgets(fname, XATTR_FISH_USER, RF_USER_MAX,
 				&user)) {
 			return -EIO;
 		}
@@ -246,7 +246,7 @@ static int validate_perm(const struct redfish_client *cli, const char *fname,
 	if (mode & (want << 3)) {
 		int ret;
 		char *group;
-		if (xgets(fname, XATTR_FISH_GROUP, REDFISH_GROUPNAME_MAX,
+		if (xgets(fname, XATTR_FISH_GROUP, RF_GROUP_MAX,
 				&group)) {
 			return -EIO;
 		}

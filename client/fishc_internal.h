@@ -41,10 +41,4 @@
 /** Default mode for files */
 #define REDFISH_DEFAULT_DIR_MODE 0755
 
-/** Maximum length of a redfish user name */
-#define REDFISH_USERNAME_MAX 255
-
-/** Maximum length of a redfish group name */
-#define REDFISH_GROUPNAME_MAX 255
-
 #endif
