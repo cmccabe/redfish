@@ -20,10 +20,12 @@
 #include "mds/defaults.h"
 #include "mds/limits.h"
 #include "mds/mstor.h"
+#include "mds/srange_lock.h"
 #include "mds/user.h"
 #include "msg/generic.h"
 #include "util/error.h"
 #include "util/fast_log.h"
+#include "util/macro.h"
 #include "util/packed.h"
 #include "util/path.h"
 #include "util/simple_io.h"
@@ -132,9 +134,105 @@ struct mstor {
 	/** user data.  You cannot modify this without quiescing all threads
 	 * that modify the mstor. */
 	struct udata *udata;
+	/** Tracker for string range locks */
+	struct srange_tracker *tk;
 };
 
 /****************************** functions ********************************/
+static int mstor_range_lock_by_op(struct mstor *mstor, struct mreq *mreq)
+{
+	struct srange_locker *lk = mreq->lk;
+
+	switch (mreq->op) {
+	case MSTOR_OP_CREAT:
+	case MSTOR_OP_OPEN:
+	case MSTOR_OP_UNLINK:
+	case MSTOR_OP_LISTDIR:
+	case MSTOR_OP_STAT:
+		/* Lock /a/b/ to /a/b/ */
+		do_dirname(mreq->full_path, (char*)lk->range[0].start, RF_PATH_MAX);
+		canon_path_append((char*)lk->range[0].start, RF_PATH_MAX + 1, "/");
+		snprintf((char*)lk->range[0].end, RF_PATH_MAX + 1,
+			"%s", (char*)lk->range[0].start);
+		/* Lock /a/b/c/ to /a/b/c/ */
+		snprintf((char*)lk->range[1].start, RF_PATH_MAX,
+			"%s", mreq->full_path);
+		canon_path_append((char*)lk->range[1].start, RF_PATH_MAX + 1, "/");
+		snprintf((char*)lk->range[1].end, RF_PATH_MAX + 1,
+			"%s", (char*)lk->range[1].start);
+		mreq->lk->num_range = 2;
+		srange_lock(mstor->tk, mreq->lk);
+		return 1;
+	case MSTOR_OP_RMDIR:
+	case MSTOR_OP_MKDIRS:
+		/* Note: we might be able to do better than than this for
+		 * mkdirs, with a little bit of cleverness */
+		/* Lock /a/b/ to /a/b/ */
+		do_dirname(mreq->full_path, (char*)lk->range[0].start, RF_PATH_MAX);
+		canon_path_append((char*)lk->range[0].start, RF_PATH_MAX + 1, "/");
+		snprintf((char*)lk->range[0].end, RF_PATH_MAX,
+			"%s", (char*)lk->range[0].start);
+		/* Lock /a/b/c/ to /a/b/c0 */
+		snprintf((char*)lk->range[1].start, RF_PATH_MAX,
+			"%s", mreq->full_path);
+		canon_path_append((char*)lk->range[1].start, RF_PATH_MAX + 1, "/");
+		snprintf((char*)lk->range[1].end, RF_PATH_MAX,
+			"%s", mreq->full_path);
+		canon_path_append((char*)lk->range[1].end, RF_PATH_MAX + 1, "0");
+		mreq->lk->num_range = 2;
+		srange_lock(mstor->tk, mreq->lk);
+		return 1;
+	case MSTOR_OP_CHUNKFIND:
+	case MSTOR_OP_CHMOD:
+	case MSTOR_OP_CHOWN:
+	case MSTOR_OP_UTIMES:
+		/* Lock /a/b/ to /a/b/ */
+		do_dirname(mreq->full_path, (char*)lk->range[0].start, RF_PATH_MAX);
+		canon_path_append((char*)lk->range[0].start, RF_PATH_MAX + 1, "/");
+		snprintf((char*)lk->range[0].end, RF_PATH_MAX + 1,
+			"%s", (char*)lk->range[0].start);
+		mreq->lk->num_range = 1;
+		srange_lock(mstor->tk, mreq->lk);
+		return 1;
+	case MSTOR_OP_RENAME:
+		/* Note: this could be made finer-grained by taking 4 locks
+		 * instead of 2... */
+		/* Assuming we're moving /a/b/c to /d/e/f */
+		/* Lock /a/b/ to /a/b0 */
+		do_dirname(mreq->full_path, (char*)lk->range[0].start, RF_PATH_MAX);
+		snprintf((char*)lk->range[0].end, RF_PATH_MAX,
+			"%s", (char*)lk->range[0].start);
+		canon_path_append((char*)lk->range[0].start, RF_PATH_MAX + 1, "/");
+		canon_path_append((char*)lk->range[0].end, RF_PATH_MAX + 1, "0");
+		/* Lock /d/e/f/ to /d/e/f/ */
+		do_dirname(((struct mreq_rename*)mreq)->dst_path,
+			   (char*)lk->range[1].start, RF_PATH_MAX);
+		canon_path_append((char*)lk->range[1].start, RF_PATH_MAX + 1, "/");
+		snprintf((char*)lk->range[1].end, RF_PATH_MAX + 1,
+			"%s", (char*)lk->range[1].start);
+		mreq->lk->num_range = 2;
+		srange_lock(mstor->tk, mreq->lk);
+		return 1;
+	case MSTOR_OP_CHUNKALLOC:
+	case MSTOR_OP_FIND_ZOMBIES:
+	case MSTOR_OP_DESTROY_ZOMBIE:
+		/* These operations don't take a range lock */
+		return 0;
+	case MSTOR_OP_NODE_SEARCH:
+	default:
+		/** Logic error */
+		abort();
+		return 0;
+	}
+}
+
+static void mstor_range_unlock(struct mstor *mstor, struct mreq *mreq)
+{
+	srange_unlock(mstor->tk, mreq->lk);
+}
+
+BUILD_BUG_ON(SRANGE_LOCKER_MAX_RANGE < 2);
+
 const char *mstor_op_ty_to_str(enum mstor_op_ty op)
 {
 	switch (op) {
@@ -599,7 +697,11 @@ struct mstor* mstor_init(POSSIBLY_UNUSED(struct fast_log_mgr *mgr),
 {
 	int ret;
 	struct mstor *mstor;
+	int num_threads;
 
+	num_threads = conf->mstor_io_threads;
+	if (num_threads == JORM_INVAL_INT)
+		abort();
 	mstor = calloc(1, sizeof(struct mstor));
 	if (!mstor) {
 		ret = ENOMEM;
@@ -609,9 +711,12 @@ struct mstor* mstor_init(POSSIBLY_UNUSED(struct fast_log_mgr *mgr),
 	ret = pthread_mutex_init(&mstor->next_nid_lock, NULL);
 	if (ret)
 		goto error_free_mstor;
+	mstor->tk = srange_tracker_init(num_threads);
+	if (IS_ERR(mstor->tk))
+		goto error_destroy_next_nid_lock;
 	ret = pthread_mutex_init(&mstor->next_cid_lock, NULL);
 	if (ret)
-		goto error_destroy_next_nid_lock;
+		goto error_srange_tracker_free;
 	ret = mstor_leveldb_init(mstor, conf);
 	if (ret)
 		goto error_destroy_next_cid_lock;
@@ -634,6 +739,8 @@ error_leveldb_shutdown:
 	mstor_leveldb_shutdown(mstor);
 error_destroy_next_cid_lock:
 	pthread_mutex_destroy(&mstor->next_cid_lock);
+error_srange_tracker_free:
+	srange_tracker_free(mstor->tk);
 error_destroy_next_nid_lock:
 	pthread_mutex_destroy(&mstor->next_nid_lock);
 error_free_mstor:
@@ -657,6 +764,7 @@ void mstor_shutdown(struct mstor *mstor)
 	mstor_leveldb_shutdown(mstor);
 	pthread_mutex_destroy(&mstor->next_nid_lock);
 	pthread_mutex_destroy(&mstor->next_cid_lock);
+	srange_tracker_free(mstor->tk);
 	free(mstor);
 }
 
@@ -851,7 +959,6 @@ static int mstor_do_open(struct mstor *mstor, struct mreq *mreq,
 
 done:
 	free(err);
-	// TODO: release lock here
 	return ret;
 }
 
@@ -1676,9 +1783,6 @@ static int mstor_do_path_operation(struct mstor *mstor, struct mreq *mreq,
 		mreq->flags &= ~MREQ_FLAG_CHECK_PERMS;
 	if (zsnprintf(full_path, sizeof(full_path), "%s", mreq->full_path))
 		return -ENAMETOOLONG;
-	ret = canonicalize_path(full_path);
-	if (ret)
-		return ret;
 	npc = 0;
 	pcomp = full_path;
 	while (1) {
@@ -1947,9 +2051,17 @@ done:
 
 int mstor_do_operation(struct mstor *mstor, struct mreq *mreq)
 {
-	int ret;
+	char lock_paths[4][RF_PATH_MAX + 1];
+	int ret, rlocked;
 	struct mnode pnode, cnode;
 
+	/* Allocate space on the stack for the range lock paths */
+	mreq->lk->range[0].start = lock_paths[0];
+	mreq->lk->range[0].end = lock_paths[1];
+	mreq->lk->range[1].start = lock_paths[2];
+	mreq->lk->range[1].end = lock_paths[3];
+	/* Take the range locks we need */
+	rlocked = mstor_range_lock_by_op(mstor, mreq);
 	switch (mreq->op) {
 	case MSTOR_OP_CHUNKALLOC:
 		ret = mstor_do_chunkalloc(mstor, mreq);
@@ -1977,6 +2089,8 @@ int mstor_do_operation(struct mstor *mstor, struct mreq *mreq)
 		mnode_free(&cnode);
 		break;
 	}
+	if (rlocked)
+		mstor_range_unlock(mstor, mreq);
 done:
 	glitch_log("mreq type %s returning result %d\n",
 		mstor_op_ty_to_str(mreq->op), ret);

@@ -18,6 +18,7 @@
 #include "core/process_ctx.h"
 #include "mds/limits.h"
 #include "mds/mstor.h"
+#include "mds/srange_lock.h"
 #include "mds/user.h"
 #include "msg/generic.h"
 #include "util/compiler.h"
@@ -30,10 +31,14 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
+#include <pthread.h>
+#include <semaphore.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define MSTORU_NUM_IO_THREADS 5
 
 #define MSTORU_SPOONY_USER "spoony"
 #define MSTORU_SPOONY_UID 2
@@ -52,6 +57,43 @@
 #define MSTORU_MAX_NID 32
 #define MSTORU_MAX_CINFOS 64
 #define MSTORU_MAX_ZINFOS 64
+
+static pthread_key_t g_tls_key;
+
+struct mstoru_tls {
+	sem_t sem;
+	struct srange_locker *lk;
+};
+
+static struct mstoru_tls* mstoru_tls_get(void)
+{
+	struct mstoru_tls *tls;
+
+	tls = pthread_getspecific(g_tls_key);
+	if (tls)
+		return tls;
+	tls = calloc(1, sizeof(struct mstoru_tls));
+	if (!tls)
+		abort();
+	if (sem_init(&tls->sem, 0, 0))
+		abort();
+	tls->lk = calloc(1, sizeof(struct srange_locker));
+	if (!tls->lk)
+		abort();
+	tls->lk->sem = &tls->sem;
+	if (pthread_setspecific(g_tls_key, tls))
+		abort();
+	return tls;
+}
+
+static void mstoru_tls_destroy(void *v)
+{
+	struct mstoru_tls *tls = (struct mstoru_tls*)v;
+
+	free(tls->lk);
+	sem_destroy(&tls->sem);
+	free(tls);
+}
 
 typedef int (*stat_check_fn_t)(void *arg, struct mmm_stat_hdr *hdr,
 		const char *pcomp);
@@ -112,6 +154,7 @@ static struct mstor *mstoru_init_unit(const char *tdir, const char *name,
 		JORM_FREE_mstorc(conf);
 		return ERR_PTR(ENOMEM);
 	}
+	conf->mstor_io_threads = MSTORU_NUM_IO_THREADS;
 	conf->mstor_cache_size = cache_size;
 	mstor = mstor_init(g_fast_log_mgr, conf, udata);
 	JORM_FREE_mstorc(conf);
@@ -136,8 +179,10 @@ static int mstoru_do_mkdirs(struct mstor *mstor, const char *full_path,
 		int mode, uint64_t ctime, const char *user_name)
 {
 	struct mreq_mkdirs mreq;
+	struct mstoru_tls *tls = mstoru_tls_get();
 
 	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.lk = tls->lk;
 	mreq.base.op = MSTOR_OP_MKDIRS;
 	mreq.base.full_path = full_path;
 	mreq.base.user_name = user_name;
@@ -151,8 +196,10 @@ static int mstoru_do_creat(struct mstor *mstor, const char *full_path,
 {
 	int ret;
 	struct mreq_creat mreq;
+	struct mstoru_tls *tls = mstoru_tls_get();
 
 	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.lk = tls->lk;
 	mreq.base.op = MSTOR_OP_CREAT;
 	mreq.base.full_path = full_path;
 	mreq.base.user_name = user_name;
@@ -170,8 +217,10 @@ static int mstoru_do_chunkalloc(struct mstor *mstor, uint64_t nid,
 {
 	int ret;
 	struct mreq_chunkalloc mreq;
+	struct mstoru_tls *tls = mstoru_tls_get();
 
 	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.lk = tls->lk;
 	mreq.base.op = MSTOR_OP_CHUNKALLOC;
 	mreq.nid = nid;
 	mreq.off = off;
@@ -187,8 +236,10 @@ static int mstoru_do_rename(struct mstor *mstor, const char *src,
 		const char *dst, const char *user_name)
 {
 	struct mreq_rename mreq;
+	struct mstoru_tls *tls = mstoru_tls_get();
 
 	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.lk = tls->lk;
 	mreq.base.op = MSTOR_OP_RENAME;
 	mreq.base.full_path = src;
 	mreq.base.user_name = user_name;
@@ -200,8 +251,10 @@ static int mstoru_do_unlink(struct mstor *mstor, const char *full_path,
 		const char *user_name, uint64_t ztime)
 {
 	struct mreq_unlink mreq;
+	struct mstoru_tls *tls = mstoru_tls_get();
 
 	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.lk = tls->lk;
 	mreq.base.op = MSTOR_OP_UNLINK;
 	mreq.base.full_path = full_path;
 	mreq.base.user_name = user_name;
@@ -215,8 +268,10 @@ static int mstoru_do_find_zombies(struct mstor *mstor,
 {
 	int ret;
 	struct mreq_find_zombies mreq;
+	struct mstoru_tls *tls = mstoru_tls_get();
 
 	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.lk = tls->lk;
 	mreq.base.op = MSTOR_OP_FIND_ZOMBIES;
 	mreq.lower_bound.cid = lower_bound->cid;
 	mreq.lower_bound.ztime = lower_bound->ztime;
@@ -232,8 +287,10 @@ static int mstoru_do_destroy_zombie(struct mstor *mstor,
 		const struct zombie_info *zinfo)
 {
 	struct mreq_destroy_zombie mreq;
+	struct mstoru_tls *tls = mstoru_tls_get();
 
 	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.lk = tls->lk;
 	mreq.base.op = MSTOR_OP_DESTROY_ZOMBIE;
 	mreq.zinfo.cid = zinfo->cid;
 	mreq.zinfo.ztime = zinfo->ztime;
@@ -246,8 +303,10 @@ static int mstoru_do_chunkfind(struct mstor *mstor, const char *full_path,
 {
 	int ret;
 	struct mreq_chunkfind mreq;
+	struct mstoru_tls *tls = mstoru_tls_get();
 
 	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.lk = tls->lk;
 	mreq.base.op = MSTOR_OP_CHUNKFIND;
 	mreq.base.full_path = full_path;
 	mreq.base.user_name = user_name;
@@ -284,9 +343,11 @@ static int mstoru_do_listdir(struct mstor *mstor, const char *full_path,
 	char buf[16384];
 	char pcomp[RF_PCOMP_MAX];
 	uint32_t off;
+	struct mstoru_tls *tls = mstoru_tls_get();
 
 	memset(&mreq, 0, sizeof(mreq));
 	memset(buf, 0, sizeof(buf));
+	mreq.base.lk = tls->lk;
 	mreq.base.op = MSTOR_OP_LISTDIR;
 	mreq.base.full_path = full_path;
 	mreq.base.user_name = user_name;
@@ -323,6 +384,10 @@ static int mstoru_do_rmdir(struct mstor *mstor, const char *full_path,
 		const char *user_name, uint64_t ztime, int rmr)
 {
 	struct mreq_rmdir mreq;
+	struct mstoru_tls *tls = mstoru_tls_get();
+
+	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.lk = tls->lk;
 	mreq.base.op = MSTOR_OP_RMDIR;
 	mreq.base.full_path = full_path;
 	mreq.base.user_name = user_name;
@@ -339,9 +404,11 @@ static int mstoru_do_stat(struct mstor *mstor, const char *full_path,
 	struct mreq_stat mreq;
 	char buf[16384];
 	char pcomp[RF_PCOMP_MAX];
+	struct mstoru_tls *tls = mstoru_tls_get();
 
 	memset(&mreq, 0, sizeof(mreq));
 	memset(buf, 0, sizeof(buf));
+	mreq.base.lk = tls->lk;
 	mreq.base.op = MSTOR_OP_STAT;
 	mreq.base.full_path = full_path;
 	mreq.base.user_name = user_name;
@@ -369,8 +436,10 @@ static int mstoru_do_chown(struct mstor *mstor, const char *full_path,
 {
 	int ret;
 	struct mreq_chown mreq;
+	struct mstoru_tls *tls = mstoru_tls_get();
 
 	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.lk = tls->lk;
 	mreq.base.op = MSTOR_OP_CHOWN;
 	mreq.base.full_path = full_path;
 	mreq.base.user_name = user_name;
@@ -389,8 +458,10 @@ static int mstoru_do_chmod(struct mstor *mstor, const char *full_path,
 {
 	int ret;
 	struct mreq_chmod mreq;
+	struct mstoru_tls *tls = mstoru_tls_get();
 
 	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.lk = tls->lk;
 	mreq.base.op = MSTOR_OP_CHMOD;
 	mreq.base.full_path = full_path;
 	mreq.base.user_name = user_name;
@@ -605,12 +676,14 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 	char tdir[PATH_MAX];
 
 	EXPECT_ZERO(utility_ctx_init(argv[0])); /* for g_fast_log_mgr */
+	EXPECT_ZERO(pthread_key_create(&g_tls_key, mstoru_tls_destroy));
 
 	EXPECT_ZERO(get_tempdir(tdir, sizeof(tdir), 0755));
 	EXPECT_ZERO(register_tempdir_for_cleanup(tdir));
 	EXPECT_ZERO(mstoru_test_open_close(tdir));
 	EXPECT_ZERO(mstoru_test1(tdir));
 
+	EXPECT_ZERO(pthread_key_delete(g_tls_key));
 	process_ctx_shutdown();
 
 	return EXIT_SUCCESS;

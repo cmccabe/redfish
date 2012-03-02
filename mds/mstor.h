@@ -24,31 +24,76 @@
 
 #define MNODE_IS_DIR 0x8000
 
+/*
+ * The metadata storage facility.
+ *
+ * Some notes:
+ * You must canonicalize all paths before giving them to the mstor.  Do not
+ * trust the users-- they are evil.
+ *
+ * You must quiesce all threads before changing the udata structure.  Since new
+ * users and groups are added rather infrequently, this should be as acceptable.
+ */
 struct fast_log_mgr;
 struct mstor;
+struct srange_locker;
 struct udata;
 
 enum mstor_op_ty {
+	/** Operation that creates a file
+	 * Locking: uses range locker */
 	MSTOR_OP_CREAT = 1,
+	/** Operation that opens a file
+	 * Locking: uses range locker */
 	MSTOR_OP_OPEN,
+	/** Operation that locates chunks within a file
+	 * Locking: uses range locker */
 	MSTOR_OP_CHUNKFIND,
+	/** Operation that allocates a new chunk
+	 * Locking: not required */
 	MSTOR_OP_CHUNKALLOC,
+	/** Operation that creates a directory or set of directories
+	 * Locking: uses range locker */
 	MSTOR_OP_MKDIRS,
+	/** Operation that lists entries in a directory
+	 * Locking: uses range locker */
 	MSTOR_OP_LISTDIR,
+	/** Operation that gets information about a file or directory
+	 * Locking: uses range locker */
 	MSTOR_OP_STAT,
+	/** Operation that changes the mode
+	 * Locking: uses range locker */
 	MSTOR_OP_CHMOD,
+	/** Operation that changes ownership
+	 * Locking: uses range locker */
 	MSTOR_OP_CHOWN,
+	/** Operation that changes modification and access times.
+	 * Locking: uses range locker */
 	MSTOR_OP_UTIMES,
+	/** Operation that unlinks a file or directory (HDFS semantics)
+	 * or a directory (POSIX semantics.)
+	 * Locking: uses range locker */
 	MSTOR_OP_RMDIR,
+	/** Operation that unlinks a file
+	 * Locking: uses range locker */
 	MSTOR_OP_UNLINK,
+	/** Operation that finds zombie chunks.
+	 * Locking: external */
 	MSTOR_OP_FIND_ZOMBIES,
+	/** Operation that destroys a zombie chunk.
+	 * Locking: external */
 	MSTOR_OP_DESTROY_ZOMBIE,
+	/** Operation that renames a directory or file
+	 * Locking: uses range locker */
 	MSTOR_OP_RENAME,
-	/** for internal use only */
+	/** For mstor internal use only */
 	MSTOR_OP_NODE_SEARCH,
 };
 
 struct mreq {
+	/** (caller sets) String range locker to use.
+	 * You must set lk->sem.  The other fields will be overwritten. */
+	struct srange_locker *lk;
 	/** (caller sets) Operation type */
 	enum mstor_op_ty op;
 	/** (caller sets) Full path of request */

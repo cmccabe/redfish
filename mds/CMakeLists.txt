@@ -7,6 +7,7 @@ add_executable(fishmds
     main.c
     mstor.c
     net.c
+    srange_lock.c
     user.c
 )
 target_link_libraries(fishmds
@@ -25,7 +26,13 @@ add_executable(leveldb_unit leveldb_unit.c force_cpp.cc)
 target_link_libraries(leveldb_unit ${LEVELDB_LIBRARIES} util utest)
 add_utest(leveldb_unit)
 
-add_executable(mstor_unit mstor_unit.c mstor.c force_cpp.cc user.c)
+add_executable(mstor_unit
+    force_cpp.cc
+    mstor.c
+    mstor_unit.c
+    srange_lock.c
+    user.c
+)
 target_link_libraries(mstor_unit core ${LEVELDB_LIBRARIES} util utest)
 add_utest(mstor_unit)
 
@@ -45,6 +52,7 @@ add_executable(fishmdump
     dump.c
     force_cpp.cc
     mstor.c
+    srange_lock.c
     user.c
 )
 target_link_libraries(fishmdump core ${LEVELDB_LIBRARIES} util)
