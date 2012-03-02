@@ -151,13 +151,15 @@ static int mstor_range_lock_by_op(struct mstor *mstor, struct mreq *mreq)
 	case MSTOR_OP_STAT:
 		/* Lock /a/b/ to /a/b/ */
 		do_dirname(mreq->full_path, (char*)lk->range[0].start, RF_PATH_MAX);
-		canon_path_append((char*)lk->range[0].start, RF_PATH_MAX + 1, "/");
+		canon_path_add_suffix((char*)lk->range[0].start,
+				RF_PATH_MAX + 1, '/');
 		snprintf((char*)lk->range[0].end, RF_PATH_MAX + 1,
 			"%s", (char*)lk->range[0].start);
 		/* Lock /a/b/c/ to /a/b/c/ */
 		snprintf((char*)lk->range[1].start, RF_PATH_MAX,
 			"%s", mreq->full_path);
-		canon_path_append((char*)lk->range[1].start, RF_PATH_MAX + 1, "/");
+		canon_path_add_suffix((char*)lk->range[1].start,
+				RF_PATH_MAX + 1, '/');
 		snprintf((char*)lk->range[1].end, RF_PATH_MAX + 1,
 			"%s", (char*)lk->range[1].start);
 		mreq->lk->num_range = 2;
@@ -168,17 +170,21 @@ static int mstor_range_lock_by_op(struct mstor *mstor, struct mreq *mreq)
 		/* Note: we might be able to do better than than this for
 		 * mkdirs, with a little bit of cleverness */
 		/* Lock /a/b/ to /a/b/ */
-		do_dirname(mreq->full_path, (char*)lk->range[0].start, RF_PATH_MAX);
-		canon_path_append((char*)lk->range[0].start, RF_PATH_MAX + 1, "/");
+		do_dirname(mreq->full_path, (char*)lk->range[0].start,
+				RF_PATH_MAX);
+		canon_path_add_suffix((char*)lk->range[0].start,
+				RF_PATH_MAX + 1, '/');
 		snprintf((char*)lk->range[0].end, RF_PATH_MAX,
 			"%s", (char*)lk->range[0].start);
 		/* Lock /a/b/c/ to /a/b/c0 */
 		snprintf((char*)lk->range[1].start, RF_PATH_MAX,
 			"%s", mreq->full_path);
-		canon_path_append((char*)lk->range[1].start, RF_PATH_MAX + 1, "/");
+		canon_path_add_suffix((char*)lk->range[1].start,
+				RF_PATH_MAX + 1, '/');
 		snprintf((char*)lk->range[1].end, RF_PATH_MAX,
 			"%s", mreq->full_path);
-		canon_path_append((char*)lk->range[1].end, RF_PATH_MAX + 1, "0");
+		canon_path_add_suffix((char*)lk->range[1].end,
+				RF_PATH_MAX + 1, '0');
 		mreq->lk->num_range = 2;
 		srange_lock(mstor->tk, mreq->lk);
 		return 1;
@@ -188,7 +194,8 @@ static int mstor_range_lock_by_op(struct mstor *mstor, struct mreq *mreq)
 	case MSTOR_OP_UTIMES:
 		/* Lock /a/b/ to /a/b/ */
 		do_dirname(mreq->full_path, (char*)lk->range[0].start, RF_PATH_MAX);
-		canon_path_append((char*)lk->range[0].start, RF_PATH_MAX + 1, "/");
+		canon_path_add_suffix((char*)lk->range[0].start,
+				RF_PATH_MAX + 1, '/');
 		snprintf((char*)lk->range[0].end, RF_PATH_MAX + 1,
 			"%s", (char*)lk->range[0].start);
 		mreq->lk->num_range = 1;
@@ -202,12 +209,15 @@ static int mstor_range_lock_by_op(struct mstor *mstor, struct mreq *mreq)
 		do_dirname(mreq->full_path, (char*)lk->range[0].start, RF_PATH_MAX);
 		snprintf((char*)lk->range[0].end, RF_PATH_MAX,
 			"%s", (char*)lk->range[0].start);
-		canon_path_append((char*)lk->range[0].start, RF_PATH_MAX + 1, "/");
-		canon_path_append((char*)lk->range[0].end, RF_PATH_MAX + 1, "0");
+		canon_path_add_suffix((char*)lk->range[0].start,
+				RF_PATH_MAX + 1, '/');
+		canon_path_add_suffix((char*)lk->range[0].end,
+				RF_PATH_MAX + 1, '0');
 		/* Lock /d/e/f/ to /d/e/f/ */
 		do_dirname(((struct mreq_rename*)mreq)->dst_path,
 			   (char*)lk->range[1].start, RF_PATH_MAX);
-		canon_path_append((char*)lk->range[1].start, RF_PATH_MAX + 1, "/");
+		canon_path_add_suffix((char*)lk->range[1].start,
+				RF_PATH_MAX + 1, '/');
 		snprintf((char*)lk->range[1].end, RF_PATH_MAX + 1,
 			"%s", (char*)lk->range[1].start);
 		mreq->lk->num_range = 2;
