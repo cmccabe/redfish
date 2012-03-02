@@ -129,7 +129,8 @@ struct mstor {
 	uint64_t next_cid;
 	/** Protects next_cid */
 	pthread_mutex_t next_cid_lock;
-	/** user data */
+	/** user data.  You cannot modify this without quiescing all threads
+	 * that modify the mstor. */
 	struct udata *udata;
 };
 
