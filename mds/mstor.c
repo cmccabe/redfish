@@ -2094,9 +2094,9 @@ int mstor_do_operation(struct mstor *mstor, struct mreq *mreq)
 		mnode_free(&cnode);
 		break;
 	}
+done:
 	if (rlocked)
 		srange_unlock(mstor->tk, mreq->lk);
-done:
 	glitch_log("mreq type %s returning result %d\n",
 		mstor_op_ty_to_str(mreq->op), ret);
 	return ret;

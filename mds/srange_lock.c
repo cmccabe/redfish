@@ -99,7 +99,9 @@ int srange_lock(struct srange_tracker *tk, struct srange_locker *lk)
 		goto done;
 	}
 	for (i = 0; i < num_lockers; ++i) {
-		if (!srange_has_overlap(lk, tk->lockers[i]))
+		if (tk->lockers[i] == lk)
+			abort();
+		if (srange_has_overlap(lk, tk->lockers[i]))
 			break;
 	}
 	if (i != num_lockers) {
@@ -128,6 +130,7 @@ void srange_unlock(struct srange_tracker *tk, struct srange_locker *lk)
 {
 	int i, j, POSSIBLY_UNUSED(ret);
 	struct srange_locker **waiters;
+	sem_t *sem;
 		
 	ret = 0;
 	pthread_spin_lock(&tk->lock);
@@ -136,31 +139,29 @@ void srange_unlock(struct srange_tracker *tk, struct srange_locker *lk)
 			break;
 	}
 	if (i == tk->num_lockers) {
-		ret = -EINVAL;
-		goto done;
+		abort();
 	}
 	/* Can we wake anyone up? */
 	waiters = get_waiters(tk);
 	for (j = 0; j < tk->num_waiters; ++j) {
 		if (srange_has_overlap(lk, waiters[j]))
 			break;
-		break;
 	}
 	if (j != tk->num_waiters) {
 		/* Wake someone up */
 		tk->lockers[i] = waiters[j];
+		sem = waiters[j]->sem;
 		if (tk->num_waiters != 1) {
 			waiters[j] = waiters[tk->num_waiters - 1];
 		}
 		tk->num_waiters--;
 		pthread_spin_unlock(&tk->lock);
-		sem_post(tk->lockers[i]->sem);
+		sem_post(sem);
 		return;
 	}
 	else {
 		/* There are fewer locks now. */
 		tk->num_lockers--;
 	}
-done:
 	pthread_spin_unlock(&tk->lock);
 }
