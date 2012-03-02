@@ -132,8 +132,9 @@ int stest_fuse_readdir(struct redfish_dirp* dp,
 
 #define ST_EXPECT_NONZERO(expr) \
 	do { \
-		if (!expr) { \
-			stest_add_error("failed on file %s, line %d: %s\n", \
+		int __e__ = expr; \
+		if (!__e__) { \
+			stest_add_error("failed on file %s, line %d: %s\n" \
 					"expected nonzero, got 0\n", \
 					__FILE__, __LINE__, #expr); \
 			return 1; \

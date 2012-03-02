@@ -29,5 +29,9 @@ add_executable(trivial_unit trivial_unit.c)
 target_link_libraries(trivial_unit util utest)
 add_utest(trivial_unit)
 
+add_executable(st_fuse1 fuse1.c)
+target_link_libraries(st_fuse1 stest)
+install_stest(st_fuse1)
+
 add_executable(posix_rename_test posix_rename_test.c)
 target_link_libraries(posix_rename_test core utest)
