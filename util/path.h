@@ -31,6 +31,23 @@
  */
 extern int canonicalize_path(char *path);
 
+/** Canonicalize paths so that they have only one slash between path
+ * components, and do not end with a slash.
+ *
+ * The only exception is the root directory, which is always canonicalized as
+ * a single slash.
+ *
+ * @param dst		(out param) The canonicalized path
+ * @param dst_len	length of dst
+ * @param src		The (absolute) input path
+ *
+ * @return		Length of dst_len on success.
+ *			-ENOTSUP if the path was not absolute.
+ * 			-ENAMETOOLONG if the canonicalized path did not fit in
+ * 			dst.
+ */
+extern int canonicalize_path2(char *dst, size_t dst_len, const char *src);
+
 /** Append a relative path to a canonical path.
  *
  * Since the root directory ends in a slash, you can't just append a slash and a

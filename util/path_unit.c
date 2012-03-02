@@ -19,6 +19,7 @@
 #include "util/string.h"
 #include "util/test.h"
 
+#include <errno.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,9 +32,12 @@ static int test_canonicalize_path(const char *path, const char *expected)
 	EXPECT_ZERO(zsnprintf(epath, PATH_MAX, "%s", path));
 	if (!expected) {
 		EXPECT_NONZERO(canonicalize_path(epath));
+		EXPECT_LT(canonicalize_path2(epath, sizeof(epath), path), 0);
 	}
 	else {
 		EXPECT_ZERO(canonicalize_path(epath));
+		EXPECT_ZERO(strcmp(epath, expected));
+		EXPECT_GT(canonicalize_path2(epath, sizeof(epath), path), 0);
 		EXPECT_ZERO(strcmp(epath, expected));
 	}
 	return 0;
@@ -64,6 +68,8 @@ static int test_canon_path_append(void)
 
 int main(void)
 {
+	char buf[4];
+
 	EXPECT_ZERO(test_canonicalize_path("", NULL));
 	EXPECT_ZERO(test_canonicalize_path("./foo", NULL));
 	EXPECT_ZERO(test_canonicalize_path("/tmp//foo", "/tmp/foo"));
@@ -77,6 +83,10 @@ int main(void)
 	EXPECT_ZERO(test_do_dirname("/tmp/foo", "/tmp"));
 	EXPECT_ZERO(test_do_dirname("/longer/path/here", "/longer/path"));
 	EXPECT_ZERO(test_canon_path_append());
+
+	EXPECT_EQ(canonicalize_path2(buf, sizeof(buf), "/a"), 2);
+	EXPECT_EQ(canonicalize_path2(buf, sizeof(buf), "/a/b/c"),
+		-ENAMETOOLONG);
 
 	return EXIT_SUCCESS;
 }

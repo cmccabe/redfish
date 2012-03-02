@@ -54,6 +54,39 @@ int canonicalize_path(char *src)
 	return 0;
 }
 
+int canonicalize_path2(char *dst, size_t dst_len, const char *src)
+{
+	int saw_non_slash = 0, last_was_slash = 0;
+	size_t cnt = 0;
+	char c;
+
+	if (src[0] != '/')
+		return -ENOTSUP;
+
+	while (1) {
+		if (++cnt >= dst_len)
+			return -ENAMETOOLONG;
+		c = *src++;
+		if (c == '\0') {
+			if (saw_non_slash && last_was_slash)
+				dst--;
+			break;
+		}
+		else if (c == '/') {
+			if (!last_was_slash)
+				*dst++ = c;
+			last_was_slash = 1;
+		}
+		else {
+			*dst++ = c;
+			last_was_slash = 0;
+			saw_non_slash = 1;
+		}
+	}
+	*dst = '\0';
+	return cnt - 1;
+}
+
 int canon_path_append(char *base, size_t out_len, const char *suffix)
 {
 	size_t cbase_len;
