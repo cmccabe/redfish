@@ -39,7 +39,7 @@
 
 struct fast_log_mgr *g_fast_log_mgr;
 
-static void fast_log_to_core_log(char *buf)
+static void fast_log_to_core_log(const char *buf)
 {
 	glitch_log("%s", buf);
 }
