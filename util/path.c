@@ -99,6 +99,16 @@ int canon_path_append(char *base, size_t out_len, const char *suffix)
 	return zsnprintf(base + cbase_len, out_len - cbase_len, "/%s", suffix);
 }
 
+int canon_path_add_suffix(char *base, size_t out_len, char suffix)
+{
+	size_t cbase_len;
+
+	cbase_len = strlen(base);
+	if (cbase_len < 2)
+		return zsnprintf(base, out_len, "%c", suffix);
+	return zsnprintf(base + cbase_len, out_len - cbase_len, "%c", suffix);
+}
+
 void do_dirname(const char *fname, char *dname, size_t dname_len)
 {
 	char *ls;

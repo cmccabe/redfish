@@ -66,6 +66,24 @@ static int test_canon_path_append(void)
 	return 0;
 }
 
+static int test_canon_path_add_suffix(void)
+{
+	char path1[RF_PATH_MAX] = "/";
+	char path2[RF_PATH_MAX] = "/a";
+
+	EXPECT_ZERO(canon_path_add_suffix(path1, sizeof(path1), '/'));
+	EXPECT_ZERO(strcmp(path1, "/"));
+	EXPECT_ZERO(canon_path_add_suffix(path1, sizeof(path1), '0'));
+	EXPECT_ZERO(strcmp(path1, "0"));
+	EXPECT_ZERO(canon_path_add_suffix(path2, sizeof(path2), '/'));
+	EXPECT_ZERO(strcmp(path2, "/a/"));
+	strcpy(path2, "/a");
+	EXPECT_ZERO(canon_path_add_suffix(path2, sizeof(path2), '0'));
+	EXPECT_ZERO(strcmp(path2, "/a0"));
+
+	return 0;
+}
+
 int main(void)
 {
 	char buf[4];
@@ -83,6 +101,7 @@ int main(void)
 	EXPECT_ZERO(test_do_dirname("/tmp/foo", "/tmp"));
 	EXPECT_ZERO(test_do_dirname("/longer/path/here", "/longer/path"));
 	EXPECT_ZERO(test_canon_path_append());
+	EXPECT_ZERO(test_canon_path_add_suffix());
 
 	EXPECT_EQ(canonicalize_path2(buf, sizeof(buf), "/a"), 2);
 	EXPECT_EQ(canonicalize_path2(buf, sizeof(buf), "/a/b/c"),

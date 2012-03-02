@@ -62,6 +62,19 @@ extern int canonicalize_path2(char *dst, size_t dst_len, const char *src);
  */
 extern int canon_path_append(char *out, size_t out_len, const char *suffix);
 
+/** Append a charater path to a canonical path.
+ *
+ * Put a single character at the end of the path.  For the root path (/),
+ * replace the root path with the suffix.
+ *
+ * @param base		(out param) the canonicalized path to append to
+ * @param base_len	length of 'base'
+ * @param suffix	the relative path to append
+ *
+ * @return		0 on success; -ENAMETOOLONG if there isn't enough space
+ */
+extern int canon_path_add_suffix(char *base, size_t out_len, char suffix);
+
 /** Get the name of the directory enclosing a file
  *
  * @param path		The path
