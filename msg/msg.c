@@ -47,31 +47,35 @@ void *calloc_msg(uint32_t ty, uint32_t len)
 		return NULL;
 	pack_to_be32(&m->len, len);
 	pack_to_be16(&m->ty, ty);
+	pack_to_8(&m->refcnt, 1);
 	return m;
 }
 
-struct msg *copy_msg(const struct msg *m)
+void msg_addref(struct msg *msg)
 {
-	struct msg *m2;
-	uint32_t len;
+	int refcnt;
 
-	len = unpack_from_be32(&m->len);
-	m2 = malloc(len);
-	memcpy(m2, m, len);
-	return m2;
+	refcnt = unpack_from_8(&msg->refcnt);
+	++refcnt;
+	if (refcnt > 0xff)
+		abort();
+	pack_to_8(&msg->refcnt, refcnt);
 }
 
-struct msg *calloc_nack_msg(uint32_t error)
+void msg_release(struct msg *msg)
 {
-	struct msg *m;
-	struct mmm_nack *mout;
+	int refcnt;
 
-	m = calloc_msg(MMM_NACK, sizeof(struct mmm_nack));
-	if (!m)
-		return NULL;
-	mout =(struct mmm_nack*)m;
-	pack_to_be32(&mout->error, error);
-	return m;
+	refcnt = unpack_from_8(&msg->refcnt);
+	if (refcnt == 0)
+		abort();
+	--refcnt;
+	if (refcnt == 0) {
+		free(msg);
+	}
+	else {
+		pack_to_8(&msg->refcnt, refcnt);
+	}
 }
 
 void dump_msg_hdr(struct msg *msg, char *buf, size_t buf_len)

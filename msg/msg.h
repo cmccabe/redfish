@@ -27,14 +27,32 @@
 struct mconn;
 struct mtran;
 
+/** When present on message from a client, this flag indicates that the primary
+ * MDS we were talking to earlier died after reading our message, but before
+ * responding.  We should make a guess as to whether the operation succeeded.
+ * TODO: eliminate this fudge with a duplicate request cache? */
+#define MSG_FLAG_RETRANSMIT	0x1
+
+/** When present on a message to an MDS, indicates that the operation must
+ * succeed.  All messages from the primary to replicas should set this flag. */
+#define MSG_FLAG_MUSTDO		0x2
+
 /** Represents a message sent or received over the network */
 PACKED(
 struct msg {
+	/** ID of the transactor associated with this message */
 	uint32_t trid;
+	/** ID of the remote transactor associated with this message */
 	uint32_t rem_trid;
+	/** Total length of this message, including this header */
 	uint32_t len;
+	/** Type of the message. */
 	uint16_t ty;
-	uint16_t pad;
+	/** Message flags. */
+	uint8_t flags;
+	/** Reference count for this message. */
+	uint8_t refcnt;
+	/** Type-specific message data */
 	char data[0];
 });
 
@@ -135,10 +153,33 @@ extern const char *mtran_state_to_str(uint16_t state);
  */
 extern void mtran_ep_to_str(const struct mtran *tr, char *buf, size_t buf_len);
 
+/** Allocate a new message.
+ *
+ * @param ty		Type of the message
+ * @param len		Length of the message
+ *
+ * @return		The new message, or NULL on OOM
+ */
 extern void *calloc_msg(uint32_t ty, uint32_t len);
 
-extern struct msg *copy_msg(const struct msg *m);
+/** Increment a message's reference count.
+ *
+ * @param msg		The message
+ */
+extern void msg_addref(struct msg *msg);
 
+/** Decrement a message's reference count.  Free it if necessary.
+ *
+ * @param msg		The message
+ */
+extern void msg_release(struct msg *msg);
+
+/** Dump out a message header in human-readable form
+ *
+ * @param msg		The message
+ * @param buf		(out param) output buffer
+ * @param buf_len	length of buf
+ */
 extern void dump_msg_hdr(struct msg *msg, char *buf, size_t buf_len);
 
 /** Get ipv4 address of localhost

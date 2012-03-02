@@ -25,6 +25,7 @@
 #include "util/fast_log_types.h"
 #include "util/macro.h"
 #include "util/net.h"
+#include "util/packed.h"
 #include "util/platform/socket.h"
 #include "util/queue.h"
 #include "util/thread.h"
@@ -211,7 +212,7 @@ void *mtran_alloc(struct msgr *msgr)
 void mtran_free(struct mtran *tr)
 {
 	if (!IS_ERR(tr->m))
-		free(tr->m);
+		msg_release(tr->m);
 	free(tr);
 }
 
@@ -335,7 +336,7 @@ static void mtran_deliver_netfail(struct mtran *tr, int err)
 	else
 		tr->state = MTRAN_STATE_RECV;
 	if (!IS_ERR(tr->m))
-		free(tr->m);
+		msg_release(tr->m);
 	tr->m = ERR_PTR(FORCE_POSITIVE(err));
 	tr->cb(NULL, tr);
 }
@@ -446,7 +447,7 @@ static void mconn_teardown(struct mconn *conn, int failcode)
 	ev_io_stop(conn->msgr->loop, &conn->w_write);
 	ev_io_stop(conn->msgr->loop, &conn->w_read);
 	if (conn->inbound_msg) {
-		free(conn->inbound_msg);
+		msg_release(conn->inbound_msg);
 		conn->inbound_msg = NULL;
 	}
 	/* We don't have to check conn->inbound_tr here.  If it's non-NULL, it
@@ -573,7 +574,7 @@ static void mconn_writable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 	RB_REMOVE(timeo_tr, &conn->timeo_head, tr);
 	if (!STAILQ_FIRST(&conn->pending_head))
 		ev_io_stop(msgr->loop, &conn->w_write);
-	free(tr->m);
+	msg_release(tr->m);
 	tr->m = NULL;
 	tr->state = MTRAN_STATE_SENT;
 	tr->cb(conn, tr);
@@ -641,7 +642,11 @@ static int mconn_read_msg_hdr(struct msgr *msgr, struct mconn *conn)
 		}
 	}
 	amt = sizeof(struct msg) - conn->recv_cnt;
-	res = read(conn->sock, conn->inbound_msg, amt);
+	res = read(conn->sock,
+		((char*)conn->inbound_msg) + conn->recv_cnt, amt);
+	/* refcnt needs to stay at 1 so that if we shut down this connection,
+	 * the message gets properly freed. */
+	pack_to_8(&conn->inbound_msg->refcnt, 1);
 	if (res < 0) {
 		ret = errno;
 		if (is_temporary_socket_error(ret))
