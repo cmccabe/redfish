@@ -25,6 +25,12 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_REENTRANT -D_FILE_OFFSET_BITS=64")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_GNU_SOURCE")
 # Enable -rdynamic to get readable backtraces in the signal handlers.
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -rdynamic")
+# We use pthread_key_create with a non-NULL destructor parameter, so don't
+# allow unloading our shared libraries.  If we did allow this, we might get
+# users into a situation where the destructor functions were invoked, but they
+# had been unloaded.
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -z nodelete")
+
 
 set(CMAKE_C_FLAGS_RELEASE "-O3 -Wuninitialized")
 set(CMAKE_C_FLAGS_DEBUG "-g -O0 -fstack-protector -Werror")
