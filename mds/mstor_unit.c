@@ -671,6 +671,60 @@ static int mstoru_test1(const char *tdir)
 	return 0;
 }
 
+struct mstoru_test2_tinfo {
+	int tid;
+	struct mstor *mstor;
+};
+
+static int do_mstoru_test2_impl(struct mstor *mstor)
+{
+	EXPECT_ZERO(mstoru_do_mkdirs(mstor, "/b/c/d",
+		0755, 123, MSTORU_WOOT_USER));
+	EXPECT_ZERO(mstoru_do_mkdirs(mstor, "/b/c/d/e",
+		0755, 124, MSTORU_WOOT_USER));
+	EXPECT_ZERO(mstoru_do_mkdirs(mstor, "/b/c/d/e/f",
+		0755, 124, MSTORU_WOOT_USER));
+	return 0;
+}
+
+static void* do_mstoru_test2(void *v)
+{
+	int ret;
+	struct mstoru_test2_tinfo *tp = (struct mstoru_test2_tinfo*)v;
+
+	ret = do_mstoru_test2_impl(tp->mstor);
+	return (void*)(uintptr_t)FORCE_POSITIVE(ret);
+}
+
+static int mstoru_test2(const char *tdir)
+{
+	int i;
+	struct mstor *mstor;
+	struct udata *udata;
+	pthread_t threads[MSTORU_NUM_IO_THREADS];
+	struct mstoru_test2_tinfo tinfos[MSTORU_NUM_IO_THREADS];
+	void *rval;
+
+	udata = udata_unit_create_default();
+	EXPECT_NOT_ERRPTR(udata);
+	mstor = mstoru_init_unit(tdir, "test1", 1024, udata);
+	EXPECT_NOT_ERRPTR(mstor);
+	for (i = 0; i < MSTORU_NUM_IO_THREADS; ++i) {
+		tinfos[i].tid = i;
+		tinfos[i].mstor = mstor;
+		EXPECT_ZERO(pthread_create(&threads[i], NULL, do_mstoru_test2,
+			&tinfos[i]));
+	}
+	for (i = 0; i < MSTORU_NUM_IO_THREADS; ++i) {
+		EXPECT_ZERO(pthread_join(threads[i], &rval));
+		EXPECT_EQ(rval, NULL);
+	}
+
+	mstor_shutdown(mstor);
+	udata_free(udata);
+	return 0;
+}
+
 int main(POSSIBLY_UNUSED(int argc), char **argv)
 {
 	char tdir[PATH_MAX];
@@ -682,6 +736,7 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 	EXPECT_ZERO(register_tempdir_for_cleanup(tdir));
 	EXPECT_ZERO(mstoru_test_open_close(tdir));
 	EXPECT_ZERO(mstoru_test1(tdir));
+	EXPECT_ZERO(mstoru_test2(tdir));
 
 	EXPECT_ZERO(pthread_key_delete(g_tls_key));
 	process_ctx_shutdown();
