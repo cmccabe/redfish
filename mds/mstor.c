@@ -226,11 +226,6 @@ static int mstor_range_lock_by_op(struct mstor *mstor, struct mreq *mreq)
 	}
 }
 
-static void mstor_range_unlock(struct mstor *mstor, struct mreq *mreq)
-{
-	srange_unlock(mstor->tk, mreq->lk);
-}
-
 BUILD_BUG_ON(SRANGE_LOCKER_MAX_RANGE < 2);
 
 const char *mstor_op_ty_to_str(enum mstor_op_ty op)
@@ -2090,7 +2085,7 @@ int mstor_do_operation(struct mstor *mstor, struct mreq *mreq)
 		break;
 	}
 	if (rlocked)
-		mstor_range_unlock(mstor, mreq);
+		srange_unlock(mstor->tk, mreq->lk);
 done:
 	glitch_log("mreq type %s returning result %d\n",
 		mstor_op_ty_to_str(mreq->op), ret);
