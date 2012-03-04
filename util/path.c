@@ -127,3 +127,14 @@ void do_dirname(const char *fname, char *dname, size_t dname_len)
 	}
 	*ls = '\0';
 }
+
+int do_basename(char *bname, size_t bname_len, const char *fname)
+{
+	char *base;
+
+	base = strrchr(fname, '/');
+	if (!base) {
+		return zsnprintf(bname, bname_len, "%s", fname);
+	}
+	return zsnprintf(bname, bname_len, "%s", base + 1);
+}

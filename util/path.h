@@ -83,4 +83,17 @@ extern int canon_path_add_suffix(char *base, size_t out_len, char suffix);
  */
 extern void do_dirname(const char *fname, char *dname, size_t dname_len);
 
+/** Get the last path component of a path
+ *
+ * Note: The last path component of / is considered to be the empty string.
+ *
+ * @param path		The path
+ * @param dir		(out param) The last path component of 'path'
+ * @param dir_len	Length of the dir buffer
+ *
+ * @return		0 on success; -ENAMETOOLONG if bname_len wasn't long
+ *			enough.
+ */
+extern int do_basename(char *bname, size_t bname_len, const char *fname);
+
 #endif

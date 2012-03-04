@@ -51,6 +51,14 @@ static int test_do_dirname(const char *fname, const char *expected)
 	return strcmp(dname, expected);
 }
 
+static int test_do_basename(const char *fname, const char *expected)
+{
+	char bname[PATH_MAX] = { 0 };
+
+	EXPECT_ZERO(do_basename(bname, PATH_MAX, fname));
+	return strcmp(bname, expected);
+}
+
 static int test_canon_path_append(void)
 {
 	char base1[RF_PATH_MAX] = "/";
@@ -100,6 +108,9 @@ int main(void)
 	EXPECT_ZERO(test_do_dirname("/", "/"));
 	EXPECT_ZERO(test_do_dirname("/tmp/foo", "/tmp"));
 	EXPECT_ZERO(test_do_dirname("/longer/path/here", "/longer/path"));
+	EXPECT_ZERO(test_do_basename("/", ""));
+	EXPECT_ZERO(test_do_basename("/tmp/foo", "foo"));
+	EXPECT_ZERO(test_do_basename("/longer/path/here", "here"));
 	EXPECT_ZERO(test_canon_path_append());
 	EXPECT_ZERO(test_canon_path_add_suffix());
 
