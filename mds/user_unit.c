@@ -44,6 +44,9 @@ static int do_test_lookups(struct udata *udata)
 	g = udata_lookup_group(udata, RF_SUPERUSER_NAME);
 	EXPECT_NOT_ERRPTR(g);
 	EXPECT_ZERO(strcmp(g->name, RF_SUPERUSER_NAME));
+	g = udata_lookup_gid(udata, RF_SUPERUSER_GID);
+	EXPECT_NOT_ERRPTR(g);
+	EXPECT_ZERO(strcmp(g->name, RF_SUPERUSER_NAME));
 	g = udata_lookup_group(udata, RF_NOBODY_NAME);
 	EXPECT_NOT_ERRPTR(g);
 	EXPECT_ZERO(strcmp(g->name, RF_NOBODY_NAME));
@@ -51,6 +54,9 @@ static int do_test_lookups(struct udata *udata)
 	EXPECT_NOT_ERRPTR(u);
 	EXPECT_ZERO(strcmp(u->name, RF_SUPERUSER_NAME));
 	EXPECT_EQ(user_in_gid(u, RF_SUPERUSER_GID), 1);
+	u = udata_lookup_uid(udata, RF_SUPERUSER_GID);
+	EXPECT_NOT_ERRPTR(u);
+	EXPECT_ZERO(strcmp(u->name, RF_SUPERUSER_NAME));
 	return 0;
 }
 

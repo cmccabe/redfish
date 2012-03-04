@@ -24,7 +24,8 @@
 #include "util/tree.h" /* for RB_ENTRY */
 
 struct user {
-	RB_ENTRY(user) entry;
+	RB_ENTRY(user) by_name_entry;
+	RB_ENTRY(user) by_uid_entry;
 	/** user ID */
 	uint32_t uid;
 	/** user name */
@@ -38,7 +39,8 @@ struct user {
 };
 
 struct group {
-	RB_ENTRY(group) entry;
+	RB_ENTRY(group) by_name_entry;
+	RB_ENTRY(group) by_gid_entry;
 	/** group ID */
 	uint32_t gid;
 	/** group name */
@@ -84,6 +86,16 @@ extern int user_in_gid(const struct user *user, uint32_t gid);
 extern int user_add_segid(struct udata *udata, const char *name,
 			uint32_t segid);
 
+/** Get information about a user given his user ID
+ *
+ * @param udata		The user data
+ * @param uid		The user ID
+ *
+ * @return		The user data, or an error pointer
+ */
+extern struct user *udata_lookup_uid(struct udata *udata,
+		uint32_t uid);
+
 /** Get information about a user given his name
  *
  * @param udata		The user data
@@ -93,6 +105,16 @@ extern int user_add_segid(struct udata *udata, const char *name,
  */
 extern struct user *udata_lookup_user(struct udata *udata,
 		const char *name);
+
+/** Get information about a group given the group ID
+ *
+ * @param udata		The user data
+ * @param gid		The group ID
+ *
+ * @return		The group data, or an error pointer
+ */
+extern struct group *udata_lookup_gid(struct udata *udata,
+		uint32_t gid);
 
 /** Get information about a group given its name
  *

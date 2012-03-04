@@ -45,8 +45,8 @@ struct packed_user {
 	uint32_t gid;
 	/** number of secondary groups */
 	uint32_t num_segid;
-	/** secondary groups */
 	char data[0];
+	/** secondary groups */
 	/** user name */
 });
 
@@ -54,28 +54,56 @@ PACKED(
 struct packed_group {
 	/** group ID */
 	uint32_t gid;
-	/** group name */
 	char data[0];
+	/** group name */
 });
 
-static int user_compare(struct user *a, struct user *b) PURE;
-static int group_compare(struct group *a, struct group *b) PURE;
+static int user_name_compare(struct user *a, struct user *b) PURE;
+static int user_id_compare(struct user *a, struct user *b) PURE;
+static int group_name_compare(struct group *a, struct group *b) PURE;
+static int group_id_compare(struct group *a, struct group *b) PURE;
 
-static int user_compare(struct user *a, struct user *b)
+static int user_name_compare(struct user *a, struct user *b)
 {
 	return strcmp(a->name, b->name);
 }
 
-static int group_compare(struct group *a, struct group *b)
+static int user_id_compare(struct user *a, struct user *b)
+{
+	if (a->uid < b->uid)
+		return -1;
+	else if (a->uid > b->uid)
+		return 1;
+	else
+		return 0;
+}
+
+static int group_name_compare(struct group *a, struct group *b)
 {
 	return strcmp(a->name, b->name);
 }
 
-RB_HEAD(users, user);
-RB_GENERATE(users, user, entry, user_compare);
+static int group_id_compare(struct group *a, struct group *b)
+{
+	if (a->gid < b->gid)
+		return -1;
+	else if (a->gid > b->gid)
+		return 1;
+	else
+		return 0;
+}
 
-RB_HEAD(groups, group);
-RB_GENERATE(groups, group, entry, group_compare);
+RB_HEAD(users_by_name, user);
+RB_GENERATE(users_by_name, user, by_name_entry, user_name_compare);
+
+RB_HEAD(users_by_uid, user);
+RB_GENERATE(users_by_uid, user, by_uid_entry, user_id_compare);
+
+RB_HEAD(groups_by_name, group);
+RB_GENERATE(groups_by_name, group, by_name_entry, group_name_compare);
+
+RB_HEAD(groups_by_gid, group);
+RB_GENERATE(groups_by_gid, group, by_gid_entry, group_id_compare);
 
 struct udata {
 	/** Next user ID to assign */
@@ -83,9 +111,13 @@ struct udata {
 	/** Next group ID to assign */
 	uint32_t next_gid;
 	/** All users, sorted by name */
-	struct users users_head;
+	struct users_by_name users_name_head;
+	/** All users, sorted by uid */
+	struct users_by_uid users_uid_head;
 	/** All groups, sorted by name */
-	struct groups groups_head;
+	struct groups_by_name groups_name_head;
+	/** All groups, sorted by gid */
+	struct groups_by_gid groups_gid_head;
 };
 
 struct udata *udata_alloc(void)
@@ -95,8 +127,10 @@ struct udata *udata_alloc(void)
 	udata = calloc(1, sizeof(struct udata));
 	if (!udata)
 		return NULL;
-	RB_INIT(&udata->users_head);
-	RB_INIT(&udata->groups_head);
+	RB_INIT(&udata->users_name_head);
+	RB_INIT(&udata->users_uid_head);
+	RB_INIT(&udata->groups_name_head);
+	RB_INIT(&udata->groups_gid_head);
 	return udata;
 }
 
@@ -139,12 +173,12 @@ void udata_free(struct udata *udata)
 	struct user *u, *u_tmp;
 	struct group *g, *g_tmp;
 
-	RB_FOREACH_SAFE(u, users, &udata->users_head, u_tmp) {
-		RB_REMOVE(users, &udata->users_head, u);
+	RB_FOREACH_SAFE(u, users_by_name, &udata->users_name_head, u_tmp) {
+		RB_REMOVE(users_by_name, &udata->users_name_head, u);
 		free(u);
 	}
-	RB_FOREACH_SAFE(g, groups, &udata->groups_head, g_tmp) {
-		RB_REMOVE(groups, &udata->groups_head, g);
+	RB_FOREACH_SAFE(g, groups_by_name, &udata->groups_name_head, g_tmp) {
+		RB_REMOVE(groups_by_name, &udata->groups_name_head, g);
 		free(g);
 	}
 	free(udata);
@@ -173,7 +207,7 @@ int user_add_segid(struct udata *udata, const char *name, uint32_t segid)
 	memset(&exemplar, 0, sizeof(exemplar));
 	if (zsnprintf(exemplar.name, RF_USER_MAX, "%s", name))
 		return -ENAMETOOLONG;
-	user = RB_FIND(users, &udata->users_head, &exemplar);
+	user = RB_FIND(users_by_name, &udata->users_name_head, &exemplar);
 	if (!user)
 		return -ENOENT;
 	num_segid = user->num_segid;
@@ -181,18 +215,33 @@ int user_add_segid(struct udata *udata, const char *name, uint32_t segid)
 		if (user->segid[i] == segid)
 			return -EEXIST;
 	}
-	RB_REMOVE(users, &udata->users_head, user);
+	RB_REMOVE(users_by_name, &udata->users_name_head, user);
+	RB_REMOVE(users_by_uid, &udata->users_uid_head, user);
 	num_segid++;
 	nuser = realloc(user, sizeof(struct user) +
 		(sizeof(uint32_t) * num_segid));
 	if (!nuser) {
-		RB_INSERT(users, &udata->users_head, user);
+		RB_INSERT(users_by_name, &udata->users_name_head, user);
+		RB_INSERT(users_by_uid, &udata->users_uid_head, user);
 		return -ENOMEM;
 	}
 	nuser->num_segid = num_segid;
 	nuser->segid[num_segid - 1] = segid;
-	RB_INSERT(users, &udata->users_head, nuser);
+	RB_INSERT(users_by_name, &udata->users_name_head, nuser);
+	RB_INSERT(users_by_uid, &udata->users_uid_head, user);
 	return 0;
+}
+
+struct user *udata_lookup_uid(struct udata *udata, uint32_t uid)
+{
+	struct user *user, exemplar;
+
+	memset(&exemplar, 0, sizeof(exemplar));
+	exemplar.uid = uid;
+	user = RB_FIND(users_by_uid, &udata->users_uid_head, &exemplar);
+	if (!user)
+		return ERR_PTR(ENOENT);
+	return user;
 }
 
 struct user *udata_lookup_user(struct udata *udata,
@@ -203,21 +252,32 @@ struct user *udata_lookup_user(struct udata *udata,
 	memset(&exemplar, 0, sizeof(exemplar));
 	if (zsnprintf(exemplar.name, RF_USER_MAX, "%s", name))
 		return ERR_PTR(ENAMETOOLONG);
-	user = RB_FIND(users, &udata->users_head, &exemplar);
+	user = RB_FIND(users_by_name, &udata->users_name_head, &exemplar);
 	if (!user)
 		return ERR_PTR(ENOENT);
 	return user;
 }
 
-struct group *udata_lookup_group(struct udata *udata,
-		const char *name)
+struct group *udata_lookup_gid(struct udata *udata, uint32_t gid)
+{
+	struct group *group, exemplar;
+
+	memset(&exemplar, 0, sizeof(exemplar));
+	exemplar.gid = gid;
+	group = RB_FIND(groups_by_gid, &udata->groups_gid_head, &exemplar);
+	if (!group)
+		return ERR_PTR(ENOENT);
+	return group;
+}
+
+struct group *udata_lookup_group(struct udata *udata, const char *name)
 {
 	struct group *group, exemplar;
 
 	memset(&exemplar, 0, sizeof(exemplar));
 	if (zsnprintf(exemplar.name, RF_USER_MAX, "%s", name))
 		return ERR_PTR(ENAMETOOLONG);
-	group = RB_FIND(groups, &udata->groups_head, &exemplar);
+	group = RB_FIND(groups_by_name, &udata->groups_name_head, &exemplar);
 	if (!group)
 		return ERR_PTR(ENOENT);
 	return group;
@@ -244,8 +304,14 @@ struct user* udata_add_user(struct udata *udata, const char *name,
 	}
 	user->gid = gid;
 	user->num_segid = 0;
-	prev_user = RB_INSERT(users, &udata->users_head, user);
+	prev_user = RB_INSERT(users_by_name, &udata->users_name_head, user);
 	if (prev_user != NULL) {
+		free(user);
+		return ERR_PTR(EEXIST);
+	}
+	prev_user = RB_INSERT(users_by_uid, &udata->users_uid_head, user);
+	if (prev_user != NULL) {
+		RB_REMOVE(users_by_name, &udata->users_name_head, user);
 		free(user);
 		return ERR_PTR(EEXIST);
 	}
@@ -266,8 +332,15 @@ struct group* udata_add_group(struct udata *udata, const char *name,
 		gid = udata->next_gid;
 	group->gid = gid;
 	strcpy(group->name, name);
-	prev_group = RB_INSERT(groups, &udata->groups_head, group);
+	prev_group = RB_INSERT(groups_by_name,
+			&udata->groups_name_head, group);
 	if (prev_group != NULL) {
+		free(group);
+		return ERR_PTR(EEXIST);
+	}
+	prev_group = RB_INSERT(groups_by_gid, &udata->groups_gid_head, group);
+	if (prev_group != NULL) {
+		RB_REMOVE(groups_by_name, &udata->groups_name_head, group);
 		free(group);
 		return ERR_PTR(EEXIST);
 	}
@@ -341,13 +414,13 @@ int pack_udata(struct udata *udata, char *buf,
 		return -ENAMETOOLONG;
 	hdr = (struct packed_udata*)(buf + o);
 	o += need;
-	RB_FOREACH(u, users, &udata->users_head) {
+	RB_FOREACH(u, users_by_name, &udata->users_name_head) {
 		ret = pack_user(u, buf, &o, max);
 		if (ret)
 			return ret;
 		num_user++;
 	}
-	RB_FOREACH(g, groups, &udata->groups_head) {
+	RB_FOREACH(g, groups_by_name, &udata->groups_name_head) {
 		ret = pack_group(g, buf, &o, max);
 		if (ret)
 			return ret;
@@ -451,7 +524,8 @@ struct udata* unpack_udata(char *buf, uint32_t *off, uint32_t max)
 			udata_free(udata);
 			return (struct udata*)u;
 		}
-		RB_INSERT(users, &udata->users_head, u);
+		RB_INSERT(users_by_name, &udata->users_name_head, u);
+		RB_INSERT(users_by_uid, &udata->users_uid_head, u);
 	}
 	for (i = 0; i < num_group; ++i) {
 		g = unpack_group(buf, &o, max);
@@ -459,7 +533,8 @@ struct udata* unpack_udata(char *buf, uint32_t *off, uint32_t max)
 			udata_free(udata);
 			return (struct udata*)g;
 		}
-		RB_INSERT(groups, &udata->groups_head, g);
+		RB_INSERT(groups_by_name, &udata->groups_name_head, g);
+		RB_INSERT(groups_by_gid, &udata->groups_gid_head, g);
 	}
 	return udata;
 }
@@ -505,7 +580,7 @@ void udata_to_str(struct udata *udata, char *buf,
 		  udata->next_uid, udata->next_gid);
 	prefix = "";
 	fwdprintf(buf, off, buf_len, "\"users\" : [");
-	RB_FOREACH(u, users, &udata->users_head) {
+	RB_FOREACH(u, users_by_name, &udata->users_name_head) {
 		fwdprintf(buf, off, buf_len, "%s", prefix);
 		user_to_str(u, buf, off, buf_len);
 		prefix = ", ";
@@ -513,7 +588,7 @@ void udata_to_str(struct udata *udata, char *buf,
 	fwdprintf(buf, off, buf_len, "],");
 	prefix = "";
 	fwdprintf(buf, off, buf_len, "\"groups\" : [");
-	RB_FOREACH(g, groups, &udata->groups_head) {
+	RB_FOREACH(g, groups_by_name, &udata->groups_name_head) {
 		fwdprintf(buf, off, buf_len, "%s", prefix);
 		group_to_str(g, buf, off, buf_len);
 		prefix = ", ";
