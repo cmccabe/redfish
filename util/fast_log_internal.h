@@ -56,7 +56,7 @@ struct fast_log_mgr
 	/** Normally: empty
 	 * During a "dump all" operation: the buffers we already dumped */
 	struct fast_log_buf_list dumped_head;
-	/** Spinlock protecting the fast log buffer list */
+	/** Spinlock protecting the fast log buffer list and refcnt */
 	pthread_spinlock_t lock;
 	/** A fast log buffer used as scratch during the dumping process */
 	struct fast_log_buf *scratch;
@@ -69,6 +69,8 @@ struct fast_log_mgr
 	fast_log_storage_fn_t store;
 	/** Storage callback context */
 	void *store_ctx;
+	/** Reference count to this fast log manager */
+	int refcnt;
 };
 
 /** Allocate a fast_log buffer.

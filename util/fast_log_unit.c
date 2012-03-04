@@ -112,7 +112,7 @@ static int dump_empty_buf(const char *tdir)
 	fast_log_free(empty);
 	EXPECT_GT(simple_io_read_whole_file_zt(fname, buf, sizeof(buf)), 0);
 	EXPECT_ZERO(strcmp(buf, expected));
-	fast_log_mgr_free(mgr);
+	fast_log_mgr_release(mgr);
 	return 0;
 }
 
@@ -171,7 +171,7 @@ blah blah\n";
 			buf, expected);
 		return 1;
 	}
-	fast_log_mgr_free(mgr);
+	fast_log_mgr_release(mgr);
 	return 0;
 }
 
@@ -208,7 +208,7 @@ foo=0x1, bar=0x2, bar=0x3\n";
 	fast_log_free(full);
 	EXPECT_GT(simple_io_read_whole_file_zt(fname, buf, sizeof(buf)), 0);
 	EXPECT_ZERO(strncmp(buf, expected, strlen(expected)));
-	fast_log_mgr_free(mgr);
+	fast_log_mgr_release(mgr);
 	return 0;
 }
 
@@ -265,7 +265,7 @@ static int test_dump_all(const char *tdir)
 		return 1;
 	}
 	free(expected);
-	fast_log_mgr_free(mgr);
+	fast_log_mgr_release(mgr);
 	return 0;
 }
 

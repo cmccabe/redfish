@@ -102,6 +102,6 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 	EXPECT_ZERO(test_signal_handler(argv[0], tempdir, SIGFPE));
 	EXPECT_ZERO(test_signal_handler(argv[0], tempdir, SIGABRT));
 	EXPECT_ZERO(test_signal_handler(argv[0], tempdir, SIGINT));
-	fast_log_mgr_free(g_fast_log_mgr);
+	fast_log_mgr_release(g_fast_log_mgr);
 	return EXIT_SUCCESS;
 }

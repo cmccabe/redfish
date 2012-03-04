@@ -102,7 +102,7 @@ static int process_ctx_init_impl(const char *argv0, int daemonize,
 error_signal_shutdown:
 	signal_shutdown();
 error_free_fast_log_mgr:
-	fast_log_mgr_free(g_fast_log_mgr);
+	fast_log_mgr_release(g_fast_log_mgr);
 	g_fast_log_mgr = NULL;
 error_close_glitchlog:
 	close_glitch_log();
@@ -133,7 +133,7 @@ void process_ctx_shutdown(void)
 {
 	signal_shutdown();
 	if (g_fast_log_mgr) {
-		fast_log_mgr_free(g_fast_log_mgr);
+		fast_log_mgr_release(g_fast_log_mgr);
 		g_fast_log_mgr = NULL;
 	}
 	close_glitch_log();

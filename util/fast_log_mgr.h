@@ -45,14 +45,14 @@ struct fast_log_buf;
  */
 extern struct fast_log_mgr* fast_log_mgr_init(const fast_log_dumper_fn_t *dumpers);
 
-/** Destroy a fast log manager
+/** Release a fast log manager
  *
- * You are responsible for making sure nobody has a reference to the manager
- * before calling this.
+ * Decrement the reference count on the fast log manager, freeing it if
+ * necessary.
  *
  * @param mgr		The fast log manager
  */
-extern void fast_log_mgr_free(struct fast_log_mgr* mgr);
+extern void fast_log_mgr_release(struct fast_log_mgr* mgr);
 
 /** Registers a fast log buffer with a manager
  *

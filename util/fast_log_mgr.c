@@ -39,6 +39,7 @@ struct fast_log_mgr* fast_log_mgr_init(const fast_log_dumper_fn_t *dumpers)
 	mgr = calloc(1, sizeof(struct fast_log_mgr));
 	if (!mgr)
 		return ERR_PTR(ENOMEM);
+	mgr->refcnt = 1;
 	ret = pthread_spin_init(&mgr->lock, 0);
 	if (ret) {
 		free(mgr);
@@ -58,8 +59,17 @@ struct fast_log_mgr* fast_log_mgr_init(const fast_log_dumper_fn_t *dumpers)
 	return mgr;
 }
 
-void fast_log_mgr_free(struct fast_log_mgr* mgr)
+void fast_log_mgr_release(struct fast_log_mgr* mgr)
 {
+	int refcnt;
+
+	pthread_spin_lock(&mgr->lock);
+	if (mgr->refcnt == 0)
+		abort();
+	refcnt = --mgr->refcnt;
+	pthread_spin_unlock(&mgr->lock);
+	if (refcnt > 0)
+		return;
 	pthread_spin_destroy(&mgr->lock);
 	fast_log_free(mgr->scratch);
 	mgr->scratch = NULL;
@@ -82,6 +92,7 @@ void fast_log_mgr_free(struct fast_log_mgr* mgr)
 void fast_log_mgr_register_buffer(struct fast_log_mgr *mgr, struct fast_log_buf *fb)
 {
 	pthread_spin_lock(&mgr->lock);
+	mgr->refcnt++;
 	LIST_INSERT_HEAD(&mgr->buf_head, fb, entry);
 	pthread_spin_unlock(&mgr->lock);
 }
@@ -89,6 +100,9 @@ void fast_log_mgr_register_buffer(struct fast_log_mgr *mgr, struct fast_log_buf 
 void fast_log_mgr_unregister_buffer(struct fast_log_mgr *mgr, struct fast_log_buf *fb)
 {
 	pthread_spin_lock(&mgr->lock);
+	if (mgr->refcnt == 0)
+		abort();
+	mgr->refcnt--;
 	LIST_REMOVE(fb, entry);
 	pthread_spin_unlock(&mgr->lock);
 }
