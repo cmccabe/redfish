@@ -24,43 +24,29 @@
 #include <unistd.h> /* for size_t */
 
 /* Network messages that can be sent to anyone */
-
 enum {
 	/** Acknowledge request */
-	MMM_ACK = 1000,
-	/** Deny request */
-	MMM_NACK,
+	MMM_RESP = 1000,
 };
 
 PACKED(
-struct mmm_nack {
+struct mmm_resp {
 	struct msg base;
 	uint32_t error;
 });
 
-/* stat information for a file or directory
- *
- * 'A packed stat array' is just a series of mmm_stat structures put together
- * without any padding. At the very end is 16 bits of 0.  (This exploits the
- * fact that stat_len cannot be 0 for a valid stat entry.)
- */
+/** Stat information for a file or directory */
 PACKED(
-struct mmm_stat_hdr {
-	uint16_t stat_len;
-	uint16_t mode_and_type;
-	uint32_t uid;
-	uint32_t gid;
-	uint32_t block_sz;
+struct mmm_packed_stat {
 	uint64_t mtime;
 	uint64_t atime;
 	uint64_t length;
+	uint32_t block_sz;
+	uint16_t mode_and_type;
 	uint8_t man_repl;
 	char data[0];
-	/* pcomp */
+	/* owner */
+	/* group */
 });
-
-extern int send_nack(int fd, int error);
-
-extern int send_ack(int fd);
 
 #endif

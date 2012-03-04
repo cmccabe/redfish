@@ -31,10 +31,10 @@
 /* Network messages that can be sent to the metadata server */
 
 enum {
-	/** Debug message: get current MDS status */
-	MMMD_GET_MDS_STATUS = 3000,
-	/** Debug respose: current MDS status */
-	MMMD_MDS_STATUS,
+	/** Get current MDS status */
+	MMM_GET_MDS_STATUS = 3000,
+	/** Current MDS status */
+	MMM_MDS_STATUS,
 	/** Client request to create a new file */
 	MMM_CREATE_RFILE_REQ,
 	/** Client request to open a new file */
@@ -52,7 +52,7 @@ enum {
 	/** List all files in a directory */
 	MMM_LISTDIR_REQ,
 	/** Give stat information regarding a path */
-	MMM_STAT_REQ,
+	MMM_PATH_STAT_REQ,
 	/** Client Change permissions request */
 	MMM_CHMOD_REQ,
 	/** Client change ownership request */
@@ -78,13 +78,14 @@ enum {
 };
 
 PACKED(
-struct mmmd_get_mds_status {
+struct mmm_get_mds_status {
 	struct msg base;
 });
 PACKED(
-struct mmmd_mds_status {
+struct mmm_mds_status {
 	struct msg base;
 	uint16_t mid;
+	uint16_t pri_mid;
 });
 /* Create file */
 PACKED(
@@ -138,25 +139,25 @@ struct mmm_list_directory_req {
 	char path[0];
 });
 PACKED(
-struct mmm_stat_req {
+struct mmm_path_stat_req {
 	struct msg base;
-	uint16_t path_len;
-	char path[0];
+	char data[0];
+	/* path */
 });
 PACKED(
 struct mmm_chmod_req {
 	struct msg base;
 	uint16_t mode;
-	uint16_t path_len;
-	char path[0];
+	char data[0];
+	/* path */
 });
 PACKED(
 struct mmm_chown_req {
 	struct msg base;
-	uint16_t user;
-	uint16_t group;
-	uint16_t path_len;
-	char path[0];
+	char data[0];
+	/* path */
+	/* user */
+	/* group */
 });
 PACKED(
 struct mmm_utimes_req {

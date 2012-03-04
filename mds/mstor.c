@@ -1164,19 +1164,19 @@ static int mstor_do_mkdir(struct mstor *mstor, struct mreq *mreq,
 }
 
 static int add_stat_to_list(struct mstor *mstor, uint32_t *off,
-		uint32_t out_len, const char *pcomp,
-		const struct mnode *node, char *out)
+		uint32_t out_len, const struct mnode *node, char *out)
 {
 	int ret;
-	struct mmm_stat_hdr *hdr;
-	uint32_t old, o;
-	uint32_t stat_len;
+	struct mmm_packed_stat *hdr;
+	uint32_t o, uid, gid;
+	struct user *user;
+	struct group *group;
 
-	old = o = *off;
-	if ((out_len - o) < sizeof(struct mmm_stat_hdr)) {
+	o = *off;
+	if ((out_len - o) < sizeof(struct mmm_packed_stat)) {
 		return -ENAMETOOLONG;
 	}
-	hdr = (struct mmm_stat_hdr*)(out + o);
+	hdr = (struct mmm_packed_stat*)(out + o);
 	hdr->mode_and_type = node->val->mode_and_type;
 	hdr->block_sz = 0; // TODO: fill in
 	hdr->mtime = node->val->mtime;
@@ -1184,21 +1184,23 @@ static int add_stat_to_list(struct mstor *mstor, uint32_t *off,
 	hdr->length = node->val->length;
 	// TODO: support custom per-file replication settings
 	pack_to_8(&hdr->man_repl, mstor->man_repl);
-	o += sizeof(struct mmm_stat_hdr);
-	/* path name */
-	ret = pack_str(out, &o, out_len, pcomp);
+	o += sizeof(struct mmm_packed_stat);
+	/* owner */
+	uid = unpack_from_be32(&node->val->uid);
+	user = udata_lookup_uid(mstor->udata, uid);
+	ret = pack_str(out, &o, out_len,
+		IS_ERR(user) ? RF_NOBODY_NAME : user->name);
 	if (ret)
 		return ret;
-	/* owner */
-	hdr->uid = node->val->uid;
 	/* group */
-	hdr->gid = node->val->gid;
+	gid = unpack_from_be32(&node->val->gid);
+	group = udata_lookup_gid(mstor->udata, gid);
+	ret = pack_str(out, &o, out_len,
+		IS_ERR(group) ? RF_NOBODY_NAME : group->name);
+	if (ret)
+		return ret;
 	/* success */
-	stat_len = o - old;
-	if (stat_len > 0xffff)
-		return -ENAMETOOLONG;
 	*off = o;
-	pack_to_be16(&hdr->stat_len, (uint16_t)stat_len);
 	return 0;
 }
 
@@ -1282,7 +1284,10 @@ static int mstor_do_listdir(struct mstor *mstor, struct mreq *mreq,
 			/* error condition */
 			goto done;
 		}
-		ret = add_stat_to_list(mstor, &off, req->out_len, pcomp,
+		ret = pack_str(req->out, &off, req->out_len, pcomp);
+		if (ret)
+			goto done;
+		ret = add_stat_to_list(mstor, &off, req->out_len,
 				&node, req->out);
 		if (ret)
 			goto done;
@@ -1302,7 +1307,7 @@ done:
 }
 
 static int mstor_do_stat(struct mstor *mstor, struct mreq *mreq,
-		const char *pcomp, const struct mnode *pnode,
+		const struct mnode *pnode,
 		const struct mnode *cnode)
 {
 	int ret;
@@ -1320,8 +1325,7 @@ static int mstor_do_stat(struct mstor *mstor, struct mreq *mreq,
 			return ret;
 	}
 	req = (struct mreq_stat*)mreq;
-	ret = add_stat_to_list(mstor, &off, req->out_len, pcomp,
-			cnode, req->out);
+	ret = add_stat_to_list(mstor, &off, req->out_len, cnode, req->out);
 	return ret;
 }
 
@@ -1883,7 +1887,7 @@ static int mstor_do_path_operation(struct mstor *mstor, struct mreq *mreq,
 	case MSTOR_OP_LISTDIR:
 		return mstor_do_listdir(mstor, mreq, cnode);
 	case MSTOR_OP_STAT:
-		return mstor_do_stat(mstor, mreq, pcomp, pnode, cnode);
+		return mstor_do_stat(mstor, mreq, pnode, cnode);
 	case MSTOR_OP_CHMOD:
 		return mstor_do_chmod(mstor, mreq, cnode);
 	case MSTOR_OP_CHOWN:

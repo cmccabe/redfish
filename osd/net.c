@@ -55,7 +55,7 @@ static void handle_request_chunk(int fd)
 	uint64_t req_chunk_id;
 	struct mmm_fetch_chunk_req req;
 	struct mmm_fetch_chunk_resp *out;
-	struct mmm_nack nack;
+	struct mmm_resp resp;
 
 	res = safe_read(fd, &req, sizeof(req));
 	if (res != sizeof(req)) {
@@ -101,18 +101,18 @@ static void handle_request_chunk(int fd)
 	return;
 
 send_error:
-	ty = htobe32(MMM_NACK);
+	ty = htobe32(MMM_RESP);
 	ret = safe_write(fd, &ty, sizeof(ty));
 	if (ret) {
-		glitch_log("safe_write of MMM_NACK returned "
+		glitch_log("safe_write of MMM_RESP returned "
 			   "%d\n", ret);
 		return;
 	}
-	memset(&nack, 0, sizeof(nack));
-	nack.error = htobe32(ret);
-	ret = safe_write(fd, &nack, sizeof(nack));
+	memset(&resp, 0, sizeof(resp));
+	resp.error = htobe32(ret);
+	ret = safe_write(fd, &resp, sizeof(resp));
 	if (ret) {
-		glitch_log("safe_write of mmm_nack returned %d\n", ret);
+		glitch_log("safe_write of mmm_resp returned %d\n", ret);
 		return;
 	}
 }
@@ -123,8 +123,9 @@ static void handle_put_chunk(int fd)
 	uint64_t req_chunk_id;
 	uint32_t ty, req_len;
 	struct mmm_put_chunk_req req;
-	struct mmm_nack nack;
+	struct mmm_resp resp;
 	char *min;
+	uint32_t zero = 0;
 
 	ret = safe_read(fd, &req, sizeof(req));
 	if (ret != sizeof(req)) {
@@ -145,27 +146,32 @@ static void handle_put_chunk(int fd)
 	if (ret < 0) {
 		goto send_error;
 	}
-	ty = htobe32(MMM_ACK);
+	ty = htobe32(MMM_RESP);
 	ret = safe_write(fd, &ty, sizeof(ty));
 	if (ret) {
-		glitch_log("safe_write of MMM_ACK returned %d\n", ret);
+		glitch_log("safe_write of MMM_RESP returned %d\n", ret);
+		return;
+	}
+	ret = safe_write(fd, &zero, sizeof(zero));
+	if (ret) {
+		glitch_log("safe_write of MMM_RESP returned %d\n", ret);
 		return;
 	}
 	return;
 
 send_error:
-	ty = htobe32(MMM_NACK);
+	ty = htobe32(MMM_RESP);
 	ret = safe_write(fd, &ty, sizeof(ty));
 	if (ret) {
-		glitch_log("safe_write of MMM_NACK returned "
+		glitch_log("safe_write of MMM_RESP returned "
 			   "%d\n", ret);
 		return;
 	}
-	memset(&nack, 0, sizeof(nack));
-	nack.error = htobe32(ret);
-	ret = safe_write(fd, &nack, sizeof(nack));
+	memset(&resp, 0, sizeof(resp));
+	resp.error = htobe32(ret);
+	ret = safe_write(fd, &resp, sizeof(resp));
 	if (ret) {
-		glitch_log("safe_write of mmm_nack returned %d\n", ret);
+		glitch_log("safe_write of mmm_resp returned %d\n", ret);
 		return;
 	}
 }

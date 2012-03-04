@@ -201,16 +201,17 @@ static void mds_net_heartbeat_start(void)
 	}
 }
 
-static int handle_mmmd_get_mds_status(struct recv_pool_thread *rt, struct mtran *tr)
+static int handle_mmm_get_mds_status(struct recv_pool_thread *rt, struct mtran *tr)
 {
 	int ret;
-	struct mmmd_mds_status *m;
+	struct mmm_mds_status *m;
 	struct bsend *ctx = rt->ctx;
 
-	m = calloc_msg(MMMD_MDS_STATUS, sizeof(struct mmmd_mds_status));
+	m = calloc_msg(MMM_MDS_STATUS, sizeof(struct mmm_mds_status));
 	if (!m)
 		return -ENOMEM;
 	pack_to_be16(&m->mid, g_mid);
+	pack_to_be16(&m->pri_mid, g_pri_mid);
 	ret = bsend_add_tr_or_free(ctx, g_mds_msgr, 0, (struct msg*)m, tr,
 				DGOP_STD_TIMEO);
 	if (ret)
@@ -236,8 +237,8 @@ static int mds_net_handle_mds_tr(struct recv_pool_thread *rt, struct mtran *tr)
 	ty = unpack_from_be16(&tr->m->ty);
 	glitch_log("mds_net_handle_mds_tr: incoming message of type %d\n", ty);
 	switch (ty) {
-	case MMMD_GET_MDS_STATUS:
-		ret = handle_mmmd_get_mds_status(rt, tr);
+	case MMM_GET_MDS_STATUS:
+		ret = handle_mmm_get_mds_status(rt, tr);
 		break;
 	case MMM_MDS_HEARTBEAT:
 		// FIXME: record this

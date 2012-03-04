@@ -39,6 +39,9 @@ EXTERN struct dslots *g_dslots;
 /** The metadata server ID for this server */
 EXTERN uint16_t g_mid;
 
+/** The primary metadata server ID */
+EXTERN uint16_t g_pri_mid;
+
 /** Current cluster map */
 EXTERN struct cmap *g_cmap;
 

@@ -31,6 +31,8 @@ enum {
 	MMM_NEW_CHUNK = 2000,
 	/** MDS response to an 'open file' request */
 	MMM_OPEN_RFILE_RESP,
+	/** MDS response to an stat request */
+	MMM_STAT_RESP,
 	/** MDS response to a 'list directory' or 'list entries' request */
 	MMM_LIST_RESP,
 	/** OSD response to a request for a chunk */
@@ -52,17 +54,25 @@ struct mmm_open_rfile_resp {
 	uint32_t chunk_addr;
 	uint64_t chunk_id;
 });
+
+#define MMM_PACKED_STAT_IS_DIR 0x8000
+
 PACKED(
 struct mmm_stat_resp {
 	struct msg base;
-	/* see net/generic for a description of this format */
-	char packed_stat[0];
+	char data[0];
+	/* struct packed_stat */
 });
 PACKED(
 struct mmm_list_resp {
 	struct msg base;
-	/* see net/generic for a description of this format */
-	char packed_stat[0];
+	uint32_t num_elem;
+	char data[0];
+	/* Packed array of num_elem {
+	 * 	pcomp
+	 * 	struct packed_stat
+	 * }
+	 */
 });
 PACKED(
 struct mmm_fetch_chunk_resp {
