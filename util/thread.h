@@ -36,6 +36,18 @@ struct redfish_thread
 
 /** Create a redfish thread
  *
+ * @param fb		fast log buffer to use
+ * @param rt		(out param) thread structure to be initialized
+ * @param fn		function to run
+ * @param priv		some data to pass to the new thread
+ *
+ * @return		0 on success; error code otherwise
+ */
+int redfish_thread_create_with_fb(struct fast_log_buf *fb,
+	struct redfish_thread* rt, redfish_thread_fn_t fn, void *priv);
+
+/** Create a redfish thread
+ *
  * @param mgr		fast log manager to use
  * @param rt		(out param) thread structure to be initialized
  * @param fn		function to run

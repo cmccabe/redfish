@@ -48,6 +48,22 @@ void* redfish_thread_trampoline(void *v)
 		return 0;
 }
 
+int redfish_thread_create_with_fb(struct fast_log_buf *fb,
+	struct redfish_thread* rt, redfish_thread_fn_t fn, void *priv)
+{
+	int ret;
+
+	memset(rt, 0, sizeof(struct redfish_thread));
+	rt->fb = fb;
+	rt->fn = fn;
+	rt->priv = priv;
+	ret = pthread_create(&rt->pthread, NULL,
+			redfish_thread_trampoline, rt);
+	if (ret)
+		return ret;
+	return 0;
+}
+
 int redfish_thread_create(struct fast_log_mgr *mgr, struct redfish_thread* rt,
 		redfish_thread_fn_t fn, void *priv)
 {
