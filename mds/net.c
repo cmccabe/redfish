@@ -56,8 +56,6 @@
 
 #define DEFAULT_CLI_TR_THREADS 8
 
-#define MAX_TR_THREADS 16
-
 #define DEFAULT_MDS_MDS_PORT 9000
 #define MDS_MDS_TCP_TIMEOUT 900
 
@@ -81,42 +79,19 @@
 /** Maximum number of simultaneous TCP sockets to allow for the client messenger. */
 #define RF_MAX_CLI_CONN 65536
 
-struct mds_tr_thread {
-	struct recv_pool_thread base;
-};
-
-struct osd_tr_thread {
-	struct recv_pool_thread base;
-};
-
-struct cli_tr_thread {
-	struct recv_pool_thread base;
-};
-
-struct maint_thread {
-	struct recv_pool_thread base;
-};
-
 /** recv_pool listening for connections from other MDSes */
 struct recv_pool *g_mds_rpool;
-/** threads listening for connections from other MDSes */
-struct mds_tr_thread g_mds_rts[MAX_TR_THREADS];
 
 /** recv_pool listening for connections from OSDs */
 struct recv_pool *g_osd_rpool;
-/** threads listening for connections from OSDs */
-struct mds_tr_thread g_osd_rts[MAX_TR_THREADS];
 
 /** recv_pool listening for connections from clients */
 struct recv_pool *g_cli_rpool;
-/** threads listening for connections from clients */
-struct mds_tr_thread g_cli_rts[MAX_TR_THREADS];
 
 /** Thread that sends heartbeats */
 struct redfish_thread g_mds_send_hb_thread;
 
 static void mds_net_msgr_init(struct recv_pool **rpool, struct msgr **msgr,
-	struct recv_pool_thread *rts, size_t th_sz,
 	const char *thread_pool_name, int max_conn,
 	recv_pool_handler_fn_t handler, int nthreads, uint16_t port,
 	int tcp_timeo, const char *name)
@@ -124,13 +99,7 @@ static void mds_net_msgr_init(struct recv_pool **rpool, struct msgr **msgr,
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 	int i, ret;
-	struct recv_pool_thread *rt;
 
-	if (nthreads > MAX_TR_THREADS) {
-		glitch_log("mds_net_msgr_init: compile-time limit violated: "
-			   "nthreads > %d\n", MAX_TR_THREADS);
-		abort();
-	}
 	*msgr = msgr_init(err, err_len, max_conn, RF_MAX_TRAN,
 			tcp_timeo, g_fast_log_mgr, name);
 	if (err[0]) {
@@ -145,9 +114,8 @@ static void mds_net_msgr_init(struct recv_pool **rpool, struct msgr **msgr,
 		abort();
 	}
 	for (i = 0; i < nthreads; ++i) {
-		rt = (struct recv_pool_thread *)(((char*)rts) + (th_sz * i));
 		ret = recv_pool_thread_create(*rpool, g_fast_log_mgr,
-				rt, handler, NULL);
+				handler, NULL);
 		if (ret) {
 			glitch_log("mds_net_msgr_init: recv_pool_thread_create"
 				"failed with error %d\n", ret);
@@ -395,21 +363,18 @@ void mds_net_init(POSSIBLY_UNUSED(struct fast_log_buf *fb),
 	}
 	mds_net_root_delegation_setup();
 	mds_net_msgr_init(&g_mds_rpool, &g_mds_msgr,
-		(struct recv_pool_thread *)g_mds_rts, sizeof(g_mds_rts[0]),
 		"mds_mds_tpool", RF_MAX_MDS, mds_net_handle_mds_tr,
 		DEFAULT_MDS_TR_THREADS,
 		((mconf->mds_port == JORM_INVAL_INT) ?
 		 	DEFAULT_MDS_MDS_PORT : mconf->mds_port),
 		MDS_MDS_TCP_TIMEOUT, "g_mds_msgr");
 	mds_net_msgr_init(&g_osd_rpool, &g_osd_msgr,
-		(struct recv_pool_thread *)g_osd_rts, sizeof(g_osd_rts[0]),
 		"mds_osd_tpool", RF_MAX_OSD_CONN, mds_net_handle_osd_tr,
 		DEFAULT_OSD_TR_THREADS,
 		((mconf->osd_port == JORM_INVAL_INT) ?
 		 	DEFAULT_MDS_OSD_PORT : mconf->osd_port),
 		MDS_OSD_TCP_TIMEOUT, "g_osd_msgr");
 	mds_net_msgr_init(&g_cli_rpool, &g_cli_msgr,
-		(struct recv_pool_thread *)g_cli_rts, sizeof(g_cli_rts[0]),
 		"mds_cli_tpool", RF_MAX_CLI_CONN, mds_net_handle_cli_tr,
 		DEFAULT_CLI_TR_THREADS,
 		((mconf->cli_port == JORM_INVAL_INT) ?

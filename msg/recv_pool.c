@@ -34,7 +34,6 @@
 
 #define RECV_POOL_MAX_BSEND_TR 100000
 
-STAILQ_HEAD(recv_pool_th, recv_pool_thread);
 STAILQ_HEAD(pending_tr, mtran);
 
 struct recv_pool {
@@ -42,14 +41,16 @@ struct recv_pool {
 	pthread_mutex_t lock;
 	/** Condition variable to wait on */
 	pthread_cond_t cond;
-	/** List of recv_pool threads */
-	struct recv_pool_th worker_head;
 	/** List of incoming transactors with messages */
 	struct pending_tr pending_head;
 	/** recv_pool has been cancelled */
 	int cancel;
 	/** Name of receive pool */
 	const char *name;
+	/** Number of threads */
+	int num_threads;
+	/** Array of pointers to threads */
+	struct recv_pool_thread **threads;
 };
 
 struct recv_pool *recv_pool_init(const char *name)
@@ -63,7 +64,8 @@ struct recv_pool *recv_pool_init(const char *name)
 		goto error;
 	}
 	rpool->name = name;
-	STAILQ_INIT(&rpool->worker_head);
+	rpool->num_threads = 0;
+	rpool->threads = 0;
 	STAILQ_INIT(&rpool->pending_head);
 	ret = pthread_mutex_init(&rpool->lock, NULL);
 	if (ret)
@@ -148,10 +150,11 @@ static int recv_pool_thread_trampoline(struct redfish_thread *rt)
 }
 
 int recv_pool_thread_create(struct recv_pool *rpool, struct fast_log_mgr *mgr,
-		struct recv_pool_thread *rt, recv_pool_handler_fn_t handler,
-		void *priv)
+		recv_pool_handler_fn_t handler, void *priv)
 {
 	int ret;
+	struct recv_pool_thread **threads;
+	struct recv_pool_thread *rt;
 
 	/* create the Redfish thread */
 	pthread_mutex_lock(&rpool->lock);
@@ -159,36 +162,46 @@ int recv_pool_thread_create(struct recv_pool *rpool, struct fast_log_mgr *mgr,
 		pthread_mutex_unlock(&rpool->lock);
 		return -ECANCELED;
 	}
+	threads = realloc(rpool->threads,
+		sizeof (struct recv_pool_thread*) * rpool->num_threads + 1);
+	if (!threads) {
+		pthread_mutex_unlock(&rpool->lock);
+		return -ENOMEM;
+	}
+	rpool->threads = threads;
+	rt = calloc(1, sizeof(struct recv_pool_thread));
+	if (!rt) {
+		pthread_mutex_unlock(&rpool->lock);
+		return -ENOMEM;
+	}
+	threads[rpool->num_threads] = rt;
 	memset(rt, 0, sizeof(struct recv_pool_thread));
 	rt->rpool = rpool;
 	rt->handler = handler;
 	ret = redfish_thread_create(mgr, (struct redfish_thread*)rt,
 			recv_pool_thread_trampoline, priv);
 	if (ret) {
+		free(rt);
 		pthread_mutex_unlock(&rpool->lock);
 		return ret;
 	}
-	STAILQ_INSERT_TAIL(&rpool->worker_head, rt, entry);
+	rpool->num_threads++;
 	pthread_mutex_unlock(&rpool->lock);
 	return 0;
 }
 
 void recv_pool_join(struct recv_pool *rpool)
 {
-	int POSSIBLY_UNUSED(ret);
-	struct recv_pool_thread *rt;
+	int i, POSSIBLY_UNUSED(ret);
 
 	pthread_mutex_lock(&rpool->lock);
 	rpool->cancel = 1;
 	pthread_cond_broadcast(&rpool->cond);
 	pthread_mutex_unlock(&rpool->lock);
 
-	while (1) {
-		rt = STAILQ_FIRST(&rpool->worker_head);
-		if (!rt)
-			break;
-		ret = redfish_thread_join((struct redfish_thread*)rt);
-		STAILQ_REMOVE_HEAD(&rpool->worker_head, entry);
+	for (i = 0; i < rpool->num_threads; ++i) {
+		ret = redfish_thread_join((struct redfish_thread*)
+			rpool->threads[i]);
 	}
 }
 
@@ -196,5 +209,6 @@ void recv_pool_free(struct recv_pool *rp)
 {
 	pthread_cond_destroy(&rp->cond);
 	pthread_mutex_destroy(&rp->lock);
+	free(rp->threads);
 	free(rp);
 }

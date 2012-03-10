@@ -124,7 +124,6 @@ static int recv_pool_test_handler(POSSIBLY_UNUSED(struct recv_pool_thread *rt),
 static int recv_pool_test_recv(int nthreads, int niter)
 {
 	int i, iter;
-	struct recv_pool_thread rt[RECV_POOL_UNIT_RT_MAX];
 	struct msgr *foo_msgr, *bar_msgr;
 	struct recv_pool *rpool;
 	char err[512] = { 0 };
@@ -152,7 +151,7 @@ static int recv_pool_test_recv(int nthreads, int niter)
 
 	for (i = 0; i < nthreads; ++i) {
 		EXPECT_ZERO(recv_pool_thread_create(rpool,
-			g_fast_log_mgr, rt + i, recv_pool_test_handler,
+			g_fast_log_mgr, recv_pool_test_handler,
 			(void*)(uintptr_t)i));
 	}
 	for (iter = 0; iter < niter; ++iter) {

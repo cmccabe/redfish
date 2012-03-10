@@ -206,9 +206,10 @@ extern void msgr_shutdown(struct msgr *msgr);
 
 /** Free the memory associated with a messenger.
  *
- * You can only free messengers that have been shut down.  Before you free a
- * messenger, you must make absolutely sure that no threads are referencing it.
- * Most likely this means you will need to join those threads.
+ * You can only free messengers that have been shut down (or never started up in
+ * the first place.)  Before you free a messenger, you must make absolutely sure
+ * that no threads are referencing it.  Most likely this means you will need to
+ * join those threads.
  *
  * @param msgr		The messenger
  */
