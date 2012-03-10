@@ -28,6 +28,9 @@
 #include <strings.h>
 #include <unistd.h>
 
+extern void redfish_mkfs(const char *uconf, uint16_t mid, uint64_t fsid,
+	char *err, size_t err_len);
+
 static void fishmkfs_usage(int exitstatus)
 {
 	static const char *usage_lines[] = {

@@ -14,37 +14,16 @@
  * limitations under the License.
  */
 
-#ifndef REDFISH_MSG_OSD_DOT_H
-#define REDFISH_MSG_OSD_DOT_H
-
 #include "util/compiler.h"
 
 #include <stdint.h>
+#include <unistd.h>
 
-#define MMM_HFLUSH_FLAG_SYNC 0x1
+extern void redfish_mkfs_stub(char *err, size_t err_len);
 
-enum {
-	/** Client request to fetch a chunk from the OSD */
-	MMM_FETCH_CHUNK_REQ = 4000,
-	/** Client request to write a chunk to the OSD */
-	MMM_HFLUSH_REQ,
-};
-
-PACKED(
-struct mmm_fetch_chunk_req {
-	uint64_t chunk_id;
-	uint32_t start;
-	uint32_t len;
-});
-PACKED(
-struct mmm_hflush_req {
-	struct msg base;
-	uint64_t cid;
-	uint32_t off;
-	uint32_t len;
-	uint8_t flags;
-	char data[0];
-	/* flushed data */
-});
-
-#endif
+void redfish_mkfs(POSSIBLY_UNUSED(const char *uconf),
+	POSSIBLY_UNUSED(uint16_t mid), POSSIBLY_UNUSED(uint64_t fsid),
+	char *err, size_t err_len)
+{
+	redfish_mkfs_stub(err, err_len);
+}

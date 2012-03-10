@@ -38,21 +38,21 @@ struct redfish_version
 	uint32_t patchlevel;
 };
 
-/** Redfish logging callback
+/** Type of a Redfish logging callback
  *
  * @param log_ctx		The client-supplied logging context
  * @param str			The string to log
  */
 typedef void (*redfish_log_fn_t)(void *log_ctx, const char *str);
 
-/** Logging callback which discards logs
+/** A logging callback which discards logs
  *
  * @param log_ctx		The client-supplied logging context (unused)
  * @param str			The string to log (unused)
  */
 extern void redfish_log_to_dev_null(void *log_ctx, const char *str);
 
-/** Logging callback which logs to stderr
+/** A logging callback which logs to stderr
  *
  * @param log_ctx		The client-supplied logging context (unused)
  * @param str			The string to log
@@ -120,18 +120,6 @@ struct redfish_version redfish_get_version(void);
  * @return		a statically allocated string
  */
 const char* redfish_get_version_str(void);
-
-/** Create a new Redfish filesystem
- *
- * @param uconf		Local path to a Redfish configuration file
- * @param mid		The current metadata server ID
- * @param fsid		The filesystem ID of the new filesystem to create
- * @param err		(out param) error buffer.  If this is set, there was an
- *			error and mkfs failed.
- * @param err_len	Length of the error buffer
- */
-void redfish_mkfs(const char *uconf, uint16_t mid, uint64_t fsid,
-			char *err, size_t err_len);
 
 /** Initialize a Redfish client instance.
  *
@@ -215,7 +203,7 @@ int redfish_groupdel(struct redfish_client *cli, const char *group);
  *			On success, *ofe will contain a valid redfish file.
  */
 int redfish_create(struct redfish_client *cli, const char *path,
-	int mode, int bufsz, int repl, uint32_t blocksz,
+	int mode, uint64_t bufsz, int repl, uint32_t blocksz,
 	struct redfish_file **ofe);
 
 /** Open a Redfish file for reading
@@ -282,6 +270,13 @@ int redfish_get_path_status(struct redfish_client *cli, const char *path,
 				struct redfish_stat* osa);
 
 /** Given an open file, returns file status information
+ *
+ * This method will always go out to the MDSes, to get the latest status
+ * information.  If the file is open for write, however, we will return the true
+ * length, which may be longer than what the MDS thinks it is.
+ *
+ * This method is for the benefit of FUSE, mostly.  Hadoop doesn't really use
+ * it.
  *
  * @param ofe		the Redfish file
  * @param osa		(out-parameter): file status
@@ -350,7 +345,7 @@ int redfish_chown(struct redfish_client *cli, const char *path,
  * @return		0 on success; error code otherwise
  */
 int redfish_utimes(struct redfish_client *cli, const char *path,
-		int64_t mtime, int64_t atime);
+		uint64_t mtime, uint64_t atime);
 
 /** Disconnect a Redfish client instance
  *
@@ -443,7 +438,7 @@ int redfish_write(struct redfish_file *ofe, const void *data, int len);
  *
  * @return		0 on success; error code otherwise
  */
-int redfish_fseek_abs(struct redfish_file *ofe, int64_t off);
+int redfish_fseek_abs(struct redfish_file *ofe, uint64_t off);
 
 /** Set the current position in a file
  * This works only for files opened in read-only mode.

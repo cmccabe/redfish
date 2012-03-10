@@ -1,21 +1,21 @@
-add_library(io
-    io.c
-)
-target_link_libraries(io util)
-
-add_executable(fishosd
-    main.c
-    net.c
-)
-target_link_libraries(fishosd
-    ${LIBEV_LIBRARIES}
-    core
-    io
-    jorm
-)
-
-add_executable(io_unit io_unit.c)
-target_link_libraries(io_unit io utest)
-add_utest(io_unit)
-
-INSTALL(TARGETS fishosd DESTINATION bin)
+#add_library(io
+#    io.c
+#)
+#target_link_libraries(io util)
+#
+#add_executable(fishosd
+#    main.c
+#    net.c
+#)
+#target_link_libraries(fishosd
+#    ${LIBEV_LIBRARIES}
+#    core
+#    io
+#    jorm
+#)
+#
+#add_executable(io_unit io_unit.c)
+#target_link_libraries(io_unit io utest)
+#add_utest(io_unit)
+#
+#INSTALL(TARGETS fishosd DESTINATION bin)

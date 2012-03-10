@@ -28,6 +28,10 @@
 #define DEFAULT_OSD_TO_MDS_PORT 9091
 #define DEFAULT_CLIENT_TO_MDS_PORT 9092
 
+/** Use POSIX semantics for unlink_tree.  That is, refuse to unlink a non-empty
+ * directory.  If this flag is not set, HDFS semantics will be used. */
+#define MMM_UNLINK_TREE_FLAG_POSIX 0x1
+
 /* Network messages that can be sent to the metadata server */
 
 enum {
@@ -36,9 +40,9 @@ enum {
 	/** Current MDS status */
 	MMM_MDS_STATUS,
 	/** Client request to create a new file */
-	MMM_CREATE_RFILE_REQ,
+	MMM_CREATE_FILE_REQ,
 	/** Client request to open a new file */
-	MMM_OPEN_RFILE_REQ,
+	MMM_OPEN_FILE_REQ,
 	/** Response to a chunk examination message */
 	MMM_CHUNK_EXAM_RESP,
 	/** OSD heartbeat message */
@@ -53,6 +57,8 @@ enum {
 	MMM_LISTDIR_REQ,
 	/** Give stat information regarding a path */
 	MMM_PATH_STAT_REQ,
+	/** Give stat information regarding a nid */
+	MMM_NID_STAT_REQ,
 	/** Client Change permissions request */
 	MMM_CHMOD_REQ,
 	/** Client change ownership request */
@@ -89,17 +95,17 @@ struct mmm_mds_status {
 });
 /* Create file */
 PACKED(
-struct mmm_create_rfile_req {
+struct mmm_create_file_req {
 	struct msg base;
 	uint32_t block_sz;
 	uint16_t mode;
 	uint16_t repl;
 	uint64_t mtime;
-	uint16_t path_len;
-	char path[0];
+	char data[0];
+	/* path */
 });
 PACKED(
-struct mmm_open_rfile_req {
+struct mmm_open_file_req {
 	struct msg base;
 	uint64_t atime;
 	uint16_t path_len;
@@ -115,9 +121,9 @@ struct mmm_chunk_report {
 PACKED(
 struct mmm_lookup_chunks_req {
 	struct msg base;
-	int64_t start;
-	int64_t len;
-	int32_t rfile;
+	uint64_t start;
+	uint64_t end;
+	uint64_t nid;
 });
 PACKED(
 struct mmm_alloc_chunk_req {
@@ -129,20 +135,31 @@ struct mmm_mkdirs_req {
 	struct msg base;
 	uint64_t mtime;
 	uint16_t mode;
-	uint16_t path_len;
-	char path[0];
+	char data[0];
+	/* path */
 });
 PACKED(
-struct mmm_list_directory_req {
+struct mmm_chunkalloc_req {
 	struct msg base;
-	uint16_t path_len;
-	char path[0];
+	char data[0];
+	/* path */
+});
+PACKED(
+struct mmm_listdir_req {
+	struct msg base;
+	char data[0];
+	/* path */
 });
 PACKED(
 struct mmm_path_stat_req {
 	struct msg base;
 	char data[0];
 	/* path */
+});
+PACKED(
+struct mmm_nid_stat_req {
+	struct msg base;
+	uint64_t nid;
 });
 PACKED(
 struct mmm_chmod_req {
@@ -162,24 +179,30 @@ struct mmm_chown_req {
 PACKED(
 struct mmm_utimes_req {
 	struct msg base;
-	int64_t atime;
-	int64_t mtime;
-	uint16_t path_len;
-	char path[0];
+	uint64_t atime;
+	uint64_t mtime;
+	char data[0];
+	/* path */
 });
 PACKED(
 struct mmm_unlink_req {
 	struct msg base;
-	uint16_t path_len;
-	char path[0];
+	char data[0];
+	/* path */
+});
+PACKED(
+struct mmm_unlink_tree_req {
+	struct msg base;
+	uint8_t flags;
+	char data[0];
+	/* path */
 });
 PACKED(
 struct mmm_rename_req {
 	struct msg base;
-	uint16_t msg_len;
-	/* NULL-terminated source path, followed by NULL-terminated dest
-	 * path */
 	char data[0];
+	/* src path */
+	/* dst path */
 });
 PACKED(
 struct mmm_close_rfile_req {

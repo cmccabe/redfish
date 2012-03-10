@@ -131,9 +131,7 @@ static const char* get_stub_base_dir(void)
 		return sb;
 }
 
-void redfish_mkfs(POSSIBLY_UNUSED(const char *uconf),
-	POSSIBLY_UNUSED(uint16_t mid), POSSIBLY_UNUSED(uint64_t fsid),
-	char *err, size_t err_len)
+void redfish_mkfs_stub(char *err, size_t err_len)
 {
 	int ret;
 	const char *base;
@@ -406,7 +404,7 @@ static int set_group(int fd, const char *group)
 }
 
 int redfish_create(struct redfish_client *cli, const char *path,
-	int mode, POSSIBLY_UNUSED(int bufsz), POSSIBLY_UNUSED(int repl),
+	int mode, POSSIBLY_UNUSED(uint64_t bufsz), POSSIBLY_UNUSED(int repl),
 	POSSIBLY_UNUSED(uint32_t blocksz), struct redfish_file **ofe)
 {
 	int ret, fd = -1;
@@ -822,11 +820,13 @@ done:
 }
 
 int redfish_utimes(struct redfish_client *cli, const char *path,
-		      int64_t mtime, int64_t atime)
+		      uint64_t mtime, uint64_t atime)
 {
 	int ret;
 	char epath[PATH_MAX];
 	struct utimbuf tbuf;
+	struct stat sbuf;
+
 	memset(&tbuf, 0, sizeof(tbuf));
 	tbuf.actime = (time_t)atime;
 	tbuf.modtime = (time_t)mtime;
@@ -837,9 +837,24 @@ int redfish_utimes(struct redfish_client *cli, const char *path,
 	ret = stub_check_file_perm(cli, epath, STUB_VPERM_WRITE);
 	if (ret)
 		return ret;
-	ret = utime(epath, &tbuf);
+	if ((mtime == RF_INVAL_TIME) || (atime == RF_INVAL_TIME)) {
+		if (stat(epath, &sbuf) < 0) {
+			ret = errno;
+			goto done;
+		}
+		if (mtime == RF_INVAL_TIME)
+			tbuf.modtime = tbuf.modtime;
+		if (atime == RF_INVAL_TIME)
+			tbuf.actime = tbuf.actime;
+	}
+	if (utime(epath, &tbuf) == 0) {
+		ret = -errno;
+		goto done;
+	}
+	ret = 0;
+done:
 	pthread_mutex_unlock(&cli->lock);
-	return ret;
+	return FORCE_NEGATIVE(ret);
 }
 
 void redfish_disconnect(POSSIBLY_UNUSED(struct redfish_client *cli))
@@ -881,14 +896,14 @@ int32_t redfish_available(struct redfish_file *ofe)
 	}
 }
 
-int redfish_pread(struct redfish_file *ofe, void *data, int len, int64_t off)
+int redfish_pread(struct redfish_file *ofe, void *data, int32_t len, int64_t off)
 {
 	if (ofe->ty != FISH_OPEN_TY_RD)
 		return -ENOTSUP;
 	return safe_pread(ofe->fd, data, len, off);
 }
 
-int redfish_write(struct redfish_file *ofe, const void *data, int len)
+int redfish_write(struct redfish_file *ofe, const void *data, int32_t len)
 {
 	if (ofe->ty != FISH_OPEN_TY_WR)
 		return -ENOTSUP;

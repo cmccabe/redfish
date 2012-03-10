@@ -19,6 +19,7 @@
 
 #include "msg/msg.h"
 #include "util/compiler.h"
+#include "util/endpoint.h"
 
 #include <stdint.h>
 
@@ -28,29 +29,38 @@ enum {
 	/** A new chunk ID for the client.  The MDS will send this in
 	 * response to a 'create file' request, and also if the client requests
 	 * a new chunk ID for a file. */
-	MMM_NEW_CHUNK = 2000,
+	MMM_CHUNKALLOC_RESP = 2000,
+	/** MDS response to a 'create file' request */
+	MMM_CREATE_FILE_RESP,
 	/** MDS response to an 'open file' request */
-	MMM_OPEN_RFILE_RESP,
+	MMM_OPEN_FILE_RESP,
 	/** MDS response to an stat request */
 	MMM_STAT_RESP,
-	/** MDS response to a 'list directory' or 'list entries' request */
-	MMM_LIST_RESP,
+	/** MDS response to a 'list directory' request */
+	MMM_LISTDIR_RESP,
 	/** OSD response to a request for a chunk */
 	MMM_FETCH_CHUNK_RESP,
 };
 
 /* Create file */
 PACKED(
-struct mmm_new_chunk {
+struct mmm_chunkalloc_resp {
 	struct msg base;
-	uint64_t prid;
-	uint32_t chunk_ip;
-	uint16_t chunk_port;
+	uint64_t cid;
+	uint8_t num_ep;
+	struct packed_endpoint ep[0];
+});
+PACKED(
+struct mmm_create_file_resp {
+	struct msg base;
+	uint64_t nid;
+	uint8_t num_ep;
+	char data[0];
 });
 PACKED(
 struct mmm_open_rfile_resp {
 	struct msg base;
-	int32_t rfile;
+	uint64_t nid;
 	uint32_t chunk_addr;
 	uint64_t chunk_id;
 });
@@ -64,7 +74,7 @@ struct mmm_stat_resp {
 	/* struct packed_stat */
 });
 PACKED(
-struct mmm_list_resp {
+struct mmm_listdir_resp {
 	struct msg base;
 	uint32_t num_elem;
 	char data[0];
