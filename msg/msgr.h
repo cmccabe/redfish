@@ -46,6 +46,21 @@ struct listen_info {
 	uint16_t port;
 };
 
+/** Configuration to use for a messenger */
+struct msgr_conf {
+	/** Maximum number of connections to allow. */
+	int max_conn;
+	/** Maximum number of simultaneous transactors to allow */
+	int max_tran;
+	/* Number of seconds to allow a TCP connection to sit idle before
+	 * tearing it down */
+	int tcp_teardown_timeo;
+	/** Messenger name.  Will be deep-copied */
+	const char *name;
+	/** Fast log manager to use for fast logs.  Will be shallow-copied */
+	struct fast_log_mgr *fl_mgr;
+};
+
 /* The messenger
  *
  * Each messenger has a single thread which is handling potentially thousands of
@@ -75,20 +90,12 @@ struct listen_info {
  *
  * @param err			(out param) error buffer
  * @param err_len		length of err
- * @param max_conn		Maximum number of connections to allow.
- * @param max_tran		Maximum number of simultaneous transactors to
- *				allow
- * @param tcp_teardown_timeo	Number of messenger timeout periods to allow a TCP
- *				connection to sit idle before tearing it down
- * @param mgr			Fast log manager to use for fast logs
- * @param name			Messenger name.  The caller is responsible for
- *				managing the lifecycle of this string.
+ * @param conf			The messenger configuration
  *
  * @return			the messenger on success; NULL otherwise
  */
 extern struct msgr *msgr_init(char *err, size_t err_len,
-		int max_conn, int max_tran, int tcp_teardown_timeo,
-		struct fast_log_mgr *mgr, const char *name);
+	const struct msgr_conf *conf);
 
 /** Configure the messenger to listen on a given TCP port.
  *

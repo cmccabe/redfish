@@ -170,14 +170,14 @@ struct msgr {
 	/** Pending transactions not yet assigned to a connection */
 	struct pending_tr pending_tr_head;
 	/** Fast log buffer manager */
-	struct fast_log_mgr *fb_mgr;
+	struct fast_log_mgr *fl_mgr;
 	/** Maximum number of timeout periods to wait for before timing out a
 	 * connection or transactor */
 	int tcp_teardown_timeo;
 	/** Current timeout period ID. */
 	uint16_t timeo_id;
 	/** The name of this messenger */
-	const char *name;
+	char *name;
 };
 
 /****************************** utility ********************************/
@@ -764,33 +764,38 @@ static void mconn_readable_cb(POSSIBLY_UNUSED(struct ev_loop *loop),
 
 /****************************** msgr ********************************/
 struct msgr *msgr_init(char *err, size_t err_len,
-		int max_conn, int max_tran, int tcp_teardown_timeo,
-		struct fast_log_mgr *fb_mgr, const char *name)
+	const struct msgr_conf *conf)
 {
 	struct msgr *msgr;
 
 	msgr = calloc(1, sizeof(struct msgr));
 	if (!msgr) {
-		snprintf(err, err_len, "msgr_init: out of memory\n");
+		snprintf(err, err_len, "msgr_init: out of memory");
+		return NULL;
+	}
+	msgr->name = strdup(conf->name);
+	if (!msgr->name) {
+		snprintf(err, err_len, "msgr_init: out of memory");
+		free(msgr);
 		return NULL;
 	}
 	if (pthread_spin_init(&msgr->lock, 0)) {
 		snprintf(err, err_len, "msgr_init: failed to initialize "
 			"spinlock\n");
+		free(msgr->name);
 		free(msgr);
 		return NULL;
 	}
-	msgr->name = name;
 	msgr->state = MSGR_STATE_INIT;
 	msgr->listen.fd = -1;
 	msgr->next_trid = random();
 	if (msgr->next_trid == 0)
 		msgr->next_trid++;
 	msgr->cur_tran = 0;
-	msgr->max_tran = max_tran;
+	msgr->max_tran = conf->max_tran;
 	msgr->cur_conn = 0;
-	msgr->max_conn = max_conn;
-	msgr->tcp_teardown_timeo = tcp_teardown_timeo;
+	msgr->max_conn = conf->max_conn;
+	msgr->tcp_teardown_timeo = conf->tcp_teardown_timeo;
 	RB_INIT(&msgr->conn_head);
 	ev_init(&msgr->w_listen_fd, NULL);
 	STAILQ_INIT(&msgr->pending_tr_head);
@@ -805,7 +810,7 @@ struct msgr *msgr_init(char *err, size_t err_len,
 	}
 	ev_async_start(msgr->loop, &msgr->w_notify);
 	ev_timer_start(msgr->loop, &msgr->w_timeout);
-	msgr->fb_mgr = fb_mgr;
+	msgr->fl_mgr = conf->fl_mgr;
 	return msgr;
 }
 
@@ -841,6 +846,7 @@ void msgr_free(struct msgr *msgr)
 	ev_loop_destroy(msgr->loop);
 	if (msgr->listen.fd > 0)
 		RETRY_ON_EINTR(res, close(msgr->listen.fd));
+	free(msgr->name);
 	free(msgr);
 }
 
@@ -1134,7 +1140,7 @@ void msgr_start(struct msgr *msgr, char *err, size_t err_len)
 			msgr->listen.fd, EV_WRITE | EV_READ);
 		ev_io_start(msgr->loop, &msgr->w_listen_fd);
 	}
-	ret = redfish_thread_create(msgr->fb_mgr, &msgr->rt,
+	ret = redfish_thread_create(msgr->fl_mgr, &msgr->rt,
 				run_msgr, msgr);
 	if (ret) {
 		snprintf(err, err_len, "msgr_start: pthread_create failed "

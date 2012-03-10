@@ -56,6 +56,27 @@ static uint32_t g_localhost;
 
 static sem_t g_msgr_test_simple_send_sem;
 
+static struct msgr *msgr_init_helper(int max_conn, int max_tran,
+		int tcp_teardown_timeo, const char *name)
+{
+	struct msgr *msgr;
+	struct msgr_conf mconf;
+	char err[512] = { 0 };
+	size_t err_len = sizeof(err);
+
+	mconf.max_conn = max_conn;
+	mconf.max_tran = max_tran;
+	mconf.tcp_teardown_timeo = tcp_teardown_timeo;
+	mconf.name = name;
+	mconf.fl_mgr = g_fast_log_mgr;
+	msgr = msgr_init(err, err_len, &mconf);
+	if (!msgr) {
+		fprintf(stderr, "msgr_init error: %s\n", err);
+		abort();
+	}
+	return msgr;
+}
+
 static void foo_cb(struct mconn *conn, struct mtran *tr)
 {
 	struct mmm_test2 *mm;
@@ -146,14 +167,8 @@ static int msgr_test_init_shutdown(int start)
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 
-	foo_msgr = msgr_init(err, err_len, 10, 10,
-			360, g_fast_log_mgr, "foo_msgr");
-	if (err[0])
-		goto handle_error;
-	bar_msgr = msgr_init(err, err_len, 10, 10,
-			360, g_fast_log_mgr, "bar_msgr");
-	if (err[0])
-		goto handle_error;
+	foo_msgr = msgr_init_helper(10, 10, 360, "foo_msgr");
+	bar_msgr = msgr_init_helper(10, 10, 360, "bar_msgr");
 	if (start) {
 		msgr_start(foo_msgr, err, err_len);
 		if (err[0])
@@ -202,14 +217,8 @@ static int msgr_test_simple_send(int num_sends)
 
 	EXPECT_ZERO(sem_init(&g_msgr_test_simple_send_sem, 0, 0));
 
-	foo_msgr = msgr_init(err, err_len, 10, 10,
-				360, g_fast_log_mgr, "foo_msgr");
-	if (err[0])
-		goto handle_error;
-	bar_msgr = msgr_init(err, err_len, 10, 10,
-				360, g_fast_log_mgr, "bar_msgr");
-	if (err[0])
-		goto handle_error;
+	foo_msgr = msgr_init_helper(10, 10, 360, "foo_msgr");
+	bar_msgr = msgr_init_helper(10, 10, 360, "bar_msgr");
 	memset(&linfo, 0, sizeof(linfo));
 	linfo.cb = bar_cb;
 	linfo.priv = NULL;
@@ -294,14 +303,8 @@ static int msgr_test_conn_timeout(void)
 
 	EXPECT_ZERO(sem_init(&g_msgr_test_baz_sem, 0, 0));
 
-	baz1_msgr = msgr_init(err, err_len, 10, 10,
-				1, g_fast_log_mgr, "baz1_msgr");
-	if (err[0])
-		goto handle_error;
-	baz2_msgr = msgr_init(err, err_len, 10, 10,
-				1, g_fast_log_mgr, "baz2_msgr");
-	if (err[0])
-		goto handle_error;
+	baz1_msgr = msgr_init_helper(10, 10, 1, "baz1_msgr");
+	baz2_msgr = msgr_init_helper(10, 10, 1, "baz2_msgr");
 	memset(&linfo, 0, sizeof(linfo));
 	linfo.cb = baz_cb;
 	linfo.priv = NULL;
@@ -340,14 +343,8 @@ static int msgr_test_conn_shutdown(void)
 
 	EXPECT_ZERO(sem_init(&g_msgr_test_baz_sem, 0, 0));
 
-	baz1_msgr = msgr_init(err, err_len, 10, 10,
-				360, g_fast_log_mgr, "baz1_msgr");
-	if (err[0])
-		goto handle_error;
-	baz2_msgr = msgr_init(err, err_len, 10, 10,
-				360, g_fast_log_mgr, "baz2_msgr");
-	if (err[0])
-		goto handle_error;
+	baz1_msgr = msgr_init_helper(10, 10, 360, "baz1_msgr");
+	baz2_msgr = msgr_init_helper(10, 10, 360, "baz2_msgr");
 	memset(&linfo, 0, sizeof(linfo));
 	linfo.cb = baz_cb;
 	linfo.priv = NULL;

@@ -128,6 +128,22 @@ static int recv_pool_test_recv(int nthreads, int niter)
 	struct recv_pool *rpool;
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
+	struct msgr_conf foo_msgr_conf = {
+		.max_conn = 10,
+		.max_tran = 10,
+		.tcp_teardown_timeo = 10,
+		.name = "foo_msgr",
+		.fl_mgr = NULL,
+	};
+	struct msgr_conf bar_msgr_conf = {
+		.max_conn = 10,
+		.max_tran = 10,
+		.tcp_teardown_timeo = 10,
+		.name = "bar_msgr",
+		.fl_mgr = NULL,
+	};
+	foo_msgr_conf.fl_mgr = g_fast_log_mgr;
+	bar_msgr_conf.fl_mgr = g_fast_log_mgr;
 
 	EXPECT_ZERO(sem_init(&g_handler_run_sem, 0, 0));
 	EXPECT_ZERO(pthread_cond_init(&g_full_set_cond, NULL));
@@ -135,11 +151,9 @@ static int recv_pool_test_recv(int nthreads, int niter)
 	g_current_iter_lowest = 0;
 	rpool = recv_pool_init("my_tpool");
 	EXPECT_NOT_ERRPTR(rpool);
-	foo_msgr = msgr_init(err, err_len, 10, 10,
-			360, g_fast_log_mgr, "foo_msgr");
+	foo_msgr = msgr_init(err, err_len, &foo_msgr_conf);
 	EXPECT_ZERO(err[0]);
-	bar_msgr = msgr_init(err, err_len, 10, 10,
-			360, g_fast_log_mgr, "bar_msgr");
+	bar_msgr = msgr_init(err, err_len, &bar_msgr_conf);
 	EXPECT_ZERO(err[0]);
 	recv_pool_msgr_listen(rpool, bar_msgr,
 			MSGR_UNIT_PORT, err, sizeof(err));

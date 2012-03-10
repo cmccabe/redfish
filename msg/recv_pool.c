@@ -46,7 +46,7 @@ struct recv_pool {
 	/** recv_pool has been cancelled */
 	int cancel;
 	/** Name of receive pool */
-	const char *name;
+	char *name;
 	/** Number of threads */
 	int num_threads;
 	/** Array of pointers to threads */
@@ -63,13 +63,17 @@ struct recv_pool *recv_pool_init(const char *name)
 		ret = -ENOMEM;
 		goto error;
 	}
-	rpool->name = name;
+	rpool->name = strdup(name);
+	if (!rpool->name) {
+		ret = -ENOMEM;
+		goto error_free_rp;
+	}
 	rpool->num_threads = 0;
 	rpool->threads = 0;
 	STAILQ_INIT(&rpool->pending_head);
 	ret = pthread_mutex_init(&rpool->lock, NULL);
 	if (ret)
-		goto error_free_rp;
+		goto error_free_rp_name;
 	ret = pthread_cond_init_mt(&rpool->cond);
 	if (ret)
 		goto error_destroy_lock;
@@ -77,6 +81,8 @@ struct recv_pool *recv_pool_init(const char *name)
 
 error_destroy_lock:
 	pthread_mutex_destroy(&rpool->lock);
+error_free_rp_name:
+	free(rpool->name);
 error_free_rp:
 	free(rpool);
 error:
@@ -210,5 +216,6 @@ void recv_pool_free(struct recv_pool *rp)
 	pthread_cond_destroy(&rp->cond);
 	pthread_mutex_destroy(&rp->lock);
 	free(rp->threads);
+	free(rp->name);
 	free(rp);
 }

@@ -37,6 +37,22 @@
 
 #define MSGR_UNIT_PORT 9096
 
+struct msgr_conf g_std_foo_msgr_conf = {
+	.max_conn = 10,
+	.max_tran = 10,
+	.tcp_teardown_timeo = 360,
+	.name = "foo_msgr",
+	.fl_mgr = NULL
+};
+
+struct msgr_conf g_std_bar_msgr_conf = {
+	.max_conn = 10,
+	.max_tran = 10,
+	.tcp_teardown_timeo = 360,
+	.name = "bar_msgr",
+	.fl_mgr = NULL
+};
+
 enum {
 	MMM_TEST30 = 9030,
 	MMM_TEST31,
@@ -134,11 +150,11 @@ static int bsend_test_setup(struct fast_log_buf *fb, struct msgr **foo_msgr,
 	size_t err_len = sizeof(err);
 	struct listen_info linfo;
 
-	*foo_msgr = msgr_init(err, err_len, 10, 10,
-			360, g_fast_log_mgr, "foo_msgr");
+	g_std_foo_msgr_conf.fl_mgr = g_fast_log_mgr;
+	*foo_msgr = msgr_init(err, err_len, &g_std_foo_msgr_conf);
 	EXPECT_ZERO(err[0]);
-	*bar_msgr = msgr_init(err, err_len, 10, 10,
-			360, g_fast_log_mgr, "bar_msgr");
+	g_std_bar_msgr_conf.fl_mgr = g_fast_log_mgr;
+	*bar_msgr = msgr_init(err, err_len, &g_std_bar_msgr_conf);
 	EXPECT_ZERO(err[0]);
 	memset(&linfo, 0, sizeof(linfo));
 	linfo.cb = resp ? bsend_test_cb : bsend_test_cb_noresp;

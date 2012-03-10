@@ -41,7 +41,7 @@ struct recv_pool_thread {
 
 /** Create an RPC receive thread pool
  *
- * @param name		Name of the receive pool.  This will be shallow-copied.
+ * @param name		Name of the receive pool.  This will be deep-copied.
  *
  * @return		Pointer to a valid recv_pool, or an error pointer
  */
