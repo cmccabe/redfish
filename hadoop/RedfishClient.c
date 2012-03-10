@@ -512,6 +512,7 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishUtimes(
 	struct redfish_client *cli;
 	char cpath[RF_PATH_MAX], err[512] = { 0 };
 	size_t err_len = sizeof(err);
+	uint64_t rf_mtime, rf_atime;
 
 	cli = redfish_get_m_cli(jenv, jobj);
 	if (!cli) {
@@ -520,7 +521,9 @@ Java_org_apache_hadoop_fs_redfish_RedfishClient_redfishUtimes(
 	}
 	if (jstr_to_cstr(jenv, jpath, cpath, sizeof(cpath)))
 		goto done;
-	ret = redfish_utimes(cli, cpath, mtime, atime);
+	rf_mtime = (mtime < 0) ? RF_INVAL_TIME : (uint64_t)mtime;
+	rf_atime = (atime < 0) ? RF_INVAL_TIME : (uint64_t)atime;
+	ret = redfish_utimes(cli, cpath, rf_mtime, rf_atime);
 	if (ret) {
 		strerror_r(FORCE_POSITIVE(ret), err, err_len);
 		goto done;
