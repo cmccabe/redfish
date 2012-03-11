@@ -350,7 +350,7 @@ static void mds_net_root_delegation_setup(void)
 			abort();
 		primary = 0;
 		mi->addr = di->ip;
-		mi->port = di->port;
+		mi->port = di->port[RF_ENTITY_TY_MDS];
 	}
 	ret = dslots_add(g_dslots, &dg, 1);
 	if (ret) {

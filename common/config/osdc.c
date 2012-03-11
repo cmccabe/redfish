@@ -21,13 +21,19 @@
 #include "jorm/jorm_generate_body.h"
 #undef JORM_CUR_FILE
 
-#define DEFAULT_OSD_PORT 9000
+#define OSDC_DEFAULT_MDS_PORT 7100
+#define OSDC_DEFAULT_OSD_PORT 7101
+#define OSDC_DEFAULT_CLI_PORT 7102
 #define DEFAULT_OSD_RACK 0
 
 void harmonize_osdc(struct osdc *conf, char *err, size_t err_len)
 {
-	if (conf->port == JORM_INVAL_INT)
-		conf->port = DEFAULT_OSD_PORT;
+	if (conf->mds_port == JORM_INVAL_INT)
+		conf->mds_port = OSDC_DEFAULT_MDS_PORT;
+	if (conf->osd_port == JORM_INVAL_INT)
+		conf->osd_port = OSDC_DEFAULT_OSD_PORT;
+	if (conf->cli_port == JORM_INVAL_INT)
+		conf->cli_port = OSDC_DEFAULT_CLI_PORT;
 	if (conf->rack == JORM_INVAL_INT)
 		conf->rack = DEFAULT_OSD_RACK;
 	if (conf->host == JORM_INVAL_STR) {

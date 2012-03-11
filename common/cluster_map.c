@@ -15,6 +15,7 @@
  */
 
 #include "common/cluster_map.h"
+#include "common/entity_type.h"
 #include "common/config/unitaryc.h"
 #include "util/compiler.h"
 #include "util/net.h"
@@ -40,16 +41,16 @@
 /********************************* types *****************************/
 PACKED(struct packed_addr {
 	uint32_t ip;
-	uint16_t port;
+	uint16_t port[RF_ENTITY_TY_NUM];
 	uint16_t in;
 });
 
 PACKED(struct packed_cmap {
 	uint64_t epoch;
-	uint32_t num_osd;
 	uint32_t num_mds;
-	/* next: osd address array */
+	uint32_t num_osd;
 	/* next: mds address array */
+	/* next: osd address array */
 });
 
 /********************************* functions *****************************/
@@ -57,10 +58,10 @@ struct cmap *cmap_from_conf(const struct unitaryc *conf,
 			char *err, size_t err_len)
 {
 	struct cmap *cmap = NULL;
-	struct daemon_info *oinfo = NULL, *minfo = NULL;
-	int i, num_osd = 0, num_mds = 0;
-	struct osdc **osd;
+	struct daemon_info *minfo = NULL, *oinfo = NULL;
+	int i, num_mds = 0, num_osd = 0;
 	struct mdsc **mds;
+	struct osdc **osd;
 
 	for (osd = conf->osd; *osd; ++osd) {
 		num_osd++;
@@ -71,17 +72,6 @@ struct cmap *cmap_from_conf(const struct unitaryc *conf,
 	cmap = calloc(1, sizeof(struct cmap));
 	if (!cmap)
 		goto oom_error;
-	oinfo = calloc(num_osd, sizeof(struct daemon_info));
-	if (!oinfo)
-		goto oom_error;
-	for (i = 0; i < num_osd; ++i) {
-		oinfo[i].ip = get_first_ipv4_addr(conf->osd[i]->host,
-						err, err_len);
-		if (err[0])
-			goto error;
-		oinfo[i].port = conf->osd[i]->port;
-		oinfo[i].in = 1;
-	}
 	minfo = calloc(num_mds, sizeof(struct daemon_info));
 	if (!minfo)
 		goto oom_error;
@@ -90,14 +80,29 @@ struct cmap *cmap_from_conf(const struct unitaryc *conf,
 						err, err_len);
 		if (err[0])
 			goto error;
-		minfo[i].port = conf->mds[i]->mds_port;
+		minfo[i].port[RF_ENTITY_TY_MDS] = conf->mds[i]->mds_port;
+		minfo[i].port[RF_ENTITY_TY_OSD] = conf->mds[i]->osd_port;
+		minfo[i].port[RF_ENTITY_TY_CLI] = conf->mds[i]->cli_port;
 		minfo[i].in = 1;
 	}
+	oinfo = calloc(num_osd, sizeof(struct daemon_info));
+	if (!oinfo)
+		goto oom_error;
+	for (i = 0; i < num_osd; ++i) {
+		oinfo[i].ip = get_first_ipv4_addr(conf->osd[i]->host,
+						err, err_len);
+		if (err[0])
+			goto error;
+		oinfo[i].port[RF_ENTITY_TY_MDS] = conf->osd[i]->mds_port;
+		oinfo[i].port[RF_ENTITY_TY_OSD] = conf->osd[i]->osd_port;
+		oinfo[i].port[RF_ENTITY_TY_CLI] = conf->osd[i]->cli_port;
+		oinfo[i].in = 1;
+	}
 	cmap->epoch = 1;
-	cmap->num_osd = num_osd;
-	cmap->oinfo = oinfo;
 	cmap->num_mds = num_mds;
 	cmap->minfo = minfo;
+	cmap->num_osd = num_osd;
+	cmap->oinfo = oinfo;
 	return cmap;
 
 oom_error:
@@ -115,8 +120,9 @@ static void daemon_info_to_str(const struct daemon_info *info,
 	char ip_str[INET_ADDRSTRLEN];
 
 	ipv4_to_str(info->ip, ip_str, sizeof(ip_str));
-	fwdprintf(buf, off, buf_len, "\"%s:%d:%s\"", ip_str,
-		info->port, (info->in ? "IN" : "OUT"));
+	fwdprintf(buf, off, buf_len, "\"%s/%d,%d,%d/%s\"", ip_str,
+		info->port[RF_ENTITY_TY_MDS], info->port[RF_ENTITY_TY_OSD],
+		info->port[RF_ENTITY_TY_CLI], (info->in ? "IN" : "OUT"));
 }
 
 int cmap_to_str(const struct cmap *cmap, char *buf, size_t buf_len)
@@ -150,7 +156,7 @@ struct cmap *cmap_from_buffer(const char *buf, size_t buf_len,
 {
 	struct cmap *cmap = NULL;
 	struct daemon_info *oinfo = NULL, *minfo = NULL;
-	int i, num_osd = 0, num_mds = 0;
+	int i, j, num_mds = 0, num_osd = 0;
 	struct packed_cmap *hdr;
 	struct packed_addr *pa;
 
@@ -164,10 +170,10 @@ struct cmap *cmap_from_buffer(const char *buf, size_t buf_len,
 		goto oom_error;
 	hdr = (struct packed_cmap*)buf;
 	cmap->epoch = unpack_from_be64(&hdr->epoch);
-	num_osd = unpack_from_be32(&hdr->num_osd);
 	num_mds = unpack_from_be32(&hdr->num_mds);
-	cmap->num_osd = num_osd;
+	num_osd = unpack_from_be32(&hdr->num_osd);
 	cmap->num_mds = num_mds;
+	cmap->num_osd = num_osd;
 	oinfo = calloc(num_osd, sizeof(struct daemon_info));
 	if (!oinfo)
 		goto oom_error;
@@ -176,20 +182,6 @@ struct cmap *cmap_from_buffer(const char *buf, size_t buf_len,
 		goto oom_error;
 	buf_len -= sizeof(struct packed_cmap);
 	buf += sizeof(struct packed_cmap);
-	for (i = 0; i < num_osd; ++i) {
-		if (buf_len < sizeof(struct packed_addr)) {
-			snprintf(err, err_len, "The buffer was too short "
-				 "to contain all the OSD information.");
-			goto error;
-		}
-		pa = (struct packed_addr*)buf;
-		oinfo[i].ip = unpack_from_be32(&pa->ip);
-		oinfo[i].port = unpack_from_be16(&pa->port);
-		oinfo[i].in = unpack_from_be16(&pa->in);
-		oinfo[i].recv_time = 0;
-		buf_len -= sizeof(struct packed_addr);
-		buf += sizeof(struct packed_addr);
-	}
 	for (i = 0; i < num_mds; ++i) {
 		if (buf_len < sizeof(struct packed_addr)) {
 			snprintf(err, err_len, "The buffer was too short "
@@ -198,9 +190,25 @@ struct cmap *cmap_from_buffer(const char *buf, size_t buf_len,
 		}
 		pa = (struct packed_addr*)buf;
 		minfo[i].ip = unpack_from_be32(&pa->ip);
-		minfo[i].port = unpack_from_be16(&pa->port);
+		for (j = 0; j < RF_ENTITY_TY_NUM; ++j) {
+			minfo[i].port[j] = unpack_from_be16(&pa->port[j]);
+		}
 		minfo[i].in = unpack_from_be16(&pa->in);
-		minfo[i].recv_time = 0;
+		buf_len -= sizeof(struct packed_addr);
+		buf += sizeof(struct packed_addr);
+	}
+	for (i = 0; i < num_osd; ++i) {
+		if (buf_len < sizeof(struct packed_addr)) {
+			snprintf(err, err_len, "The buffer was too short "
+				 "to contain all the OSD information.");
+			goto error;
+		}
+		pa = (struct packed_addr*)buf;
+		oinfo[i].ip = unpack_from_be32(&pa->ip);
+		for (j = 0; j < RF_ENTITY_TY_NUM; ++j) {
+			oinfo[i].port[j] = unpack_from_be16(&pa->port[j]);
+		}
+		oinfo[i].in = unpack_from_be16(&pa->in);
 		buf_len -= sizeof(struct packed_addr);
 		buf += sizeof(struct packed_addr);
 	}
@@ -220,14 +228,14 @@ error:
 char *cmap_to_buffer(const struct cmap *cmap, size_t *buf_len)
 {
 	char *buf, *b;
-	int i;
+	int i, j;
 	size_t len;
 	struct packed_cmap *hdr;
 	struct packed_addr *pa;
 
 	len = sizeof(struct packed_cmap) +
-		(cmap->num_osd * sizeof(struct packed_addr)) + 
-		(cmap->num_mds * sizeof(struct packed_addr));
+		(cmap->num_mds * sizeof(struct packed_addr)) +
+		(cmap->num_osd * sizeof(struct packed_addr));
 	buf = calloc(1, len);
 	if (!buf)
 		return NULL;
@@ -235,21 +243,25 @@ char *cmap_to_buffer(const struct cmap *cmap, size_t *buf_len)
 	b = buf;
 	hdr = (struct packed_cmap*)buf;
 	pack_to_be64(&hdr->epoch, cmap->epoch);
-	pack_to_be32(&hdr->num_osd, cmap->num_osd);
 	pack_to_be32(&hdr->num_mds, cmap->num_mds);
+	pack_to_be32(&hdr->num_osd, cmap->num_osd);
 	b += sizeof(struct packed_cmap);
-	for (i = 0; i < cmap->num_osd; ++i) {
-		pa = (struct packed_addr*)b;
-		pack_to_be32(&pa->ip, cmap->oinfo[i].ip);
-		pack_to_be16(&pa->port, cmap->oinfo[i].port);
-		pack_to_be16(&pa->in, cmap->oinfo[i].in);
-		b += sizeof(struct packed_addr);
-	}
 	for (i = 0; i < cmap->num_mds; ++i) {
 		pa = (struct packed_addr*)b;
 		pack_to_be32(&pa->ip, cmap->minfo[i].ip);
-		pack_to_be16(&pa->port, cmap->minfo[i].port);
+		for (j = 0; j < RF_ENTITY_TY_NUM; ++j) {
+			pack_to_be16(&pa->port[j], cmap->minfo[i].port[j]);
+		}
 		pack_to_be16(&pa->in, cmap->minfo[i].in);
+		b += sizeof(struct packed_addr);
+	}
+	for (i = 0; i < cmap->num_osd; ++i) {
+		pa = (struct packed_addr*)b;
+		pack_to_be32(&pa->ip, cmap->oinfo[i].ip);
+		for (j = 0; j < RF_ENTITY_TY_NUM; ++j) {
+			pack_to_be16(&pa->port[j], cmap->oinfo[i].port[j]);
+		}
+		pack_to_be16(&pa->in, cmap->oinfo[i].in);
 		b += sizeof(struct packed_addr);
 	}
 	return buf;

@@ -16,7 +16,9 @@
 
 JORM_CONTAINER_BEGIN(osdc)
 	JORM_EMBEDDED(lc, logc)
-	JORM_INT(port)
 	JORM_INT(rack)
 	JORM_STR(host)
+	JORM_INT(mds_port)
+	JORM_INT(osd_port)
+	JORM_INT(cli_port)
 JORM_CONTAINER_END

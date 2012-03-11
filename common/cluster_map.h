@@ -17,6 +17,8 @@
 #ifndef REDFISH_UTIL_CLUSTER_MAP_DOT_H
 #define REDFISH_UTIL_CLUSTER_MAP_DOT_H
 
+#include "common/entity_type.h"
+
 #include <stdint.h> /* for uint32_t, etc. */
 #include <time.h> /* for time_t */
 #include <unistd.h> /* for size_t */
@@ -32,25 +34,23 @@ struct unitaryc;
 struct daemon_info {
 	/** IPv4 address */
 	uint32_t ip;
-	/** IPv4 port */
-	uint16_t port;
+	/** IPv4 ports */
+	uint16_t port[RF_ENTITY_TY_NUM];
 	/** In or out? */
 	uint16_t in;
-	/** Last time we received a message from this mds (not serialized) */
-	time_t recv_time;
 };
 
 struct cmap {
 	/** Cluster map epoch */
 	uint64_t epoch;
-	/** Number of OSDs */
-	int num_osd;
-	/** array of OSD info, indexed by ID */
-	struct daemon_info *oinfo;
 	/** Number of MDSes */
 	int num_mds;
 	/** array of OSD info, indexed by ID */
 	struct daemon_info *minfo;
+	/** Number of OSDs */
+	int num_osd;
+	/** array of OSD info, indexed by ID */
+	struct daemon_info *oinfo;
 };
 
 /** Create a new cluster map from the configuration file

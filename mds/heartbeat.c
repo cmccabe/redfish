@@ -111,7 +111,7 @@ int mds_send_hb_thread(struct redfish_thread *rt)
 			}
 			pack_to_be16(&m->mid, g_mid);
 			bsend_add(ctx, g_mds_msgr, 0, (struct msg*)m,
-				di->ip, di->port, 2);
+				di->ip, di->port[RF_ENTITY_TY_MDS], 2);
 		}
 		pthread_mutex_unlock(&g_cmap_lock);
 

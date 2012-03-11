@@ -22,9 +22,9 @@
 #include "jorm/jorm_generate_body.h"
 #undef JORM_CUR_FILE
 
-#define MDSC_DEFAULT_CLI_PORT 8000
-#define MDSC_DEFAULT_MDS_PORT 8001
-#define MDSC_DEFAULT_OSD_PORT 8002
+#define MDSC_DEFAULT_MDS_PORT 7000
+#define MDSC_DEFAULT_OSD_PORT 7001
+#define MDSC_DEFAULT_CLI_PORT 7002
 
 void harmonize_mdsc(struct mdsc *conf, char *err, size_t err_len)
 {

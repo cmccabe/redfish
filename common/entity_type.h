@@ -14,15 +14,21 @@
  * limitations under the License.
  */
 
-#ifndef REDFISH_CORE_DAEMON_TYPE_H
-#define REDFISH_CORE_DAEMON_TYPE_H
+#ifndef REDFISH_COMMON_ENTITY_TYPE_DOT_H
+#define REDFISH_COMMON_ENTITY_TYPE_DOT_H
 
-enum fish_daemon_ty
-{
-	REDFISH_DAEMON_TYPE_OSD = 0,
-	REDFISH_DAEMON_TYPE_MDS = 1,
-	REDFISH_DAEMON_TYPE_MON = 2,
-	REDFISH_DAEMON_TYPE_NUM = 3,
+/** Represents a Redfish entity */
+enum fish_entity_ty {
+	/** MDS type */
+	RF_ENTITY_TY_MDS = 0,
+	/** OSD type */
+	RF_ENTITY_TY_OSD = 1,
+	/** Number of Redfish daemon types */
+	RF_ENTITY_NUM_DAEMON_TY = 2,
+	/** client type */
+	RF_ENTITY_TY_CLI = 2,
+	/** Number of entity types */
+	RF_ENTITY_TY_NUM = 3,
 };
 
 #endif
