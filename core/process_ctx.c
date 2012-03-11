@@ -114,7 +114,9 @@ int process_ctx_init(const char *argv0, int daemonize, struct logc *lc)
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 
-	harmonize_logc(lc, err, err_len, 1);
+	/* If the log configuration has already been harmonzied, doing it again
+	 * will not change anything. */ 
+	harmonize_logc(lc, err, err_len);
 	if (err[0]) {
 		glitch_log("log config error: %s\n", err);
 		return 1;

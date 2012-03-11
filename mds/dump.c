@@ -99,7 +99,7 @@ int run(const char *mstor_path, FILE *ofp)
 		ret = -ENOMEM;
 		goto done;
 	}
-	conf->mstor_cache_size = 1024;
+	conf->mstor_cache_mb = 1024;
 	conf->mstor_create = 0;
 	udata = udata_create_default(); // TODO: load this from the mstor
 					// itself

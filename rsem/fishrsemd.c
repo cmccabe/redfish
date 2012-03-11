@@ -114,7 +114,7 @@ int main(int argc, char **argv)
 		ret = EXIT_FAILURE;
 		goto done;
 	}
-	harmonize_logc(conf->lc, err, sizeof(err), 1);
+	harmonize_logc(conf->lc, err, sizeof(err));
 	if (err[0]) {
 		glitch_log("logc error: %s\n", err);
 		ret = EXIT_FAILURE;

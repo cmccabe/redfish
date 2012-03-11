@@ -156,7 +156,7 @@ static struct mstor *mstoru_init_unit(const char *tdir, const char *name,
 		return ERR_PTR(ENOMEM);
 	}
 	conf->mstor_io_threads = MSTORU_NUM_IO_THREADS;
-	conf->mstor_cache_size = cache_size;
+	conf->mstor_cache_mb = cache_size;
 	mstor = mstor_init(g_fast_log_mgr, conf, udata);
 	JORM_FREE_mstorc(conf);
 	return mstor;

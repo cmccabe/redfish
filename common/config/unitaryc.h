@@ -41,6 +41,15 @@
 extern struct unitaryc *parse_unitary_conf_file(const char *fname,
 					char *err, size_t err_len);
 
+/** Harmonize the unitary configuration
+ *
+ * @param conf		The configuration
+ * @param err		(out param) The error buffer
+ * @param err_len	Length of the error buffer
+ */
+extern void harmonize_unitary_conf(struct unitaryc *conf, char *err,
+					size_t err_len);
+
 /** Free unitary configuration data.
  *
  * @param conf		The unitary configuration data

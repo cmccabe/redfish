@@ -23,7 +23,8 @@
 #include "jorm/jorm_generate_body.h"
 #undef JORM_CUR_FILE
 
-struct unitaryc* parse_unitary_conf_file(const char *fname, char *err, size_t err_len)
+struct unitaryc* parse_unitary_conf_file(const char *fname,
+		char *err, size_t err_len)
 {
 	char err2[512] = { 0 };
 	size_t err2_len = sizeof(err2);
@@ -56,6 +57,28 @@ struct unitaryc* parse_unitary_conf_file(const char *fname, char *err, size_t er
 error:
 	JORM_FREE_unitaryc(conf);
 	return NULL;
+}
+
+void harmonize_unitary_conf(struct unitaryc *conf, char *err, size_t err_len)
+{
+	int idx;
+	struct mdsc **m;
+	struct osdc **o;
+
+	for (idx = 0, o = conf->osd; *o; ++o, ++idx) {
+		harmonize_osdc(*o, err, err_len);
+		if (err[0]) {
+			snappend(err, err_len, "(OSD %d)", idx);
+			return;
+		}
+	}
+	for (idx = 0, m = conf->mds; *m; ++m, ++idx) {
+		harmonize_mdsc(*m, err, err_len);
+		if (err[0]) {
+			snappend(err, err_len, "(MDS %d)", idx);
+			return;
+		}
+	}
 }
 
 void free_unitary_conf_file(struct unitaryc *conf)

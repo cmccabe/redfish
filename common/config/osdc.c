@@ -20,3 +20,18 @@
 #define JORM_CUR_FILE "common/config/osdc.jorm"
 #include "jorm/jorm_generate_body.h"
 #undef JORM_CUR_FILE
+
+#define DEFAULT_OSD_PORT 9000
+#define DEFAULT_OSD_RACK 0
+
+void harmonize_osdc(struct osdc *conf, char *err, size_t err_len)
+{
+	if (conf->port == JORM_INVAL_INT)
+		conf->port = DEFAULT_OSD_PORT;
+	if (conf->rack == JORM_INVAL_INT)
+		conf->rack = DEFAULT_OSD_RACK;
+	if (conf->host == JORM_INVAL_STR) {
+		snprintf(err, err_len, "You must give a hostname");
+		return;
+	}
+}

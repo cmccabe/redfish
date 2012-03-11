@@ -25,4 +25,12 @@
 #include "common/config/mstorc.jorm"
 #endif
 
+/** Harmonize the mstor configuration
+ *
+ * @param conf		The mstor configuration
+ * @param err		(out param) The error buffer
+ * @param err_len	Length of the error buffer
+ */
+extern void harmonize_mstorc(struct mstorc *conf, char *err, size_t err_len);
+
 #endif

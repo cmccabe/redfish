@@ -58,8 +58,7 @@ static void resolve_log_name(const char *conf_name, const char *default_name,
 	}
 }
 
-void harmonize_logc(struct logc *lc,
-		char *err, size_t err_len, int want_mkdir)
+void harmonize_logc(struct logc *lc, char *err, size_t err_len)
 {
 	if (lc->use_syslog == JORM_INVAL_BOOL)
 		lc->use_syslog = 0;
@@ -79,14 +78,12 @@ void harmonize_logc(struct logc *lc,
 			 lc->base_dir, err, err_len);
 	if (err[0])
 		return;
-	if (want_mkdir) {
-		if (lc->base_dir) {
-			int ret = do_mkdir_p(lc->base_dir, 0755);
-			if (ret) {
-				snprintf(err, err_len, "do_mkdir(%s) "
-					 "returned %d\n", lc->base_dir, ret);
-				return;
-			}
+	if (lc->base_dir) {
+		int ret = do_mkdir_p(lc->base_dir, 0755);
+		if (ret) {
+			snprintf(err, err_len, "do_mkdir(%s) "
+				 "returned %d\n", lc->base_dir, ret);
+			return;
 		}
 	}
 }

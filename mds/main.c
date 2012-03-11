@@ -134,6 +134,11 @@ int main(int argc, char **argv)
 		glitch_log("no MDS found in config file with id %d\n", mid);
 		return EXIT_FAILURE;
 	}
+	harmonize_unitary_conf(conf, err, err_len);
+	if (err[0]) {
+		glitch_log("config file error: %s\n", err);
+		return EXIT_FAILURE;
+	}
 	if (process_ctx_init(argv[0], daemonize, mconf->lc))
 		return EXIT_FAILURE;
 	atexit(delete_pid_file);

@@ -25,4 +25,12 @@
 #include "common/config/mdsc.jorm"
 #endif
 
+/** Harmonize the MDS configuration
+ *
+ * @param conf		The MDS configuration
+ * @param err		(out param) The error buffer
+ * @param err_len	Length of the error buffer
+ */
+extern void harmonize_mdsc(struct mdsc *conf, char *err, size_t err_len);
+
 #endif

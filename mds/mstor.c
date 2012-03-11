@@ -621,17 +621,6 @@ static int mstor_mode_check(const struct mnode *node,
 	return mstor_perm_check(node, mreq, mode, want);
 }
 
-static int get_valid_repl(int conf_repl, int def_repl)
-{
-	if (conf_repl == JORM_INVAL_INT)
-		return def_repl;
-	if (conf_repl < 1)
-		return def_repl;
-	if (conf_repl > RF_MAX_OID)
-		return RF_MAX_OID;
-	return conf_repl;
-}
-
 static int mstor_leveldb_init(struct mstor *mstor,
 			const struct mstorc *conf)
 {
@@ -642,6 +631,7 @@ static int mstor_leveldb_init(struct mstor *mstor,
 	leveldb_readoptions_t *lreadopt = NULL;
 	leveldb_writeoptions_t *lwropt = NULL;
 	leveldb_cache_t *lcache = NULL;
+	size_t cache_size;
 
 	lopt = leveldb_options_create();
 	if (!lopt) {
@@ -650,7 +640,9 @@ static int mstor_leveldb_init(struct mstor *mstor,
 	}
 	leveldb_options_set_create_if_missing(lopt, (conf->mstor_create != 0));
 	leveldb_options_set_compression(lopt, leveldb_no_compression);
-	lcache = leveldb_cache_create_lru(conf->mstor_cache_size);
+	cache_size = conf->mstor_cache_mb;
+	cache_size *= 1024 * 1024;
+	lcache = leveldb_cache_create_lru(cache_size);
 	leveldb_options_set_cache(lopt, lcache);
 	ldb = leveldb_open(lopt, conf->mstor_path, &err);
 	leveldb_options_destroy(lopt);
@@ -674,14 +666,9 @@ static int mstor_leveldb_init(struct mstor *mstor,
 	mstor->lreadopt = lreadopt;
 	mstor->lwropt = lwropt;
 	mstor->lcache = lcache;
-	if (conf->min_zombie_time == JORM_INVAL_INT)
-		mstor->min_zombie_time = MSTOR_DEFAULT_SEQUESTER_TIME;
-	else
-		mstor->min_zombie_time = conf->min_zombie_time;
-	mstor->min_repl = get_valid_repl(mstor->min_repl,
-					MSTOR_DEFAULT_MIN_REPL);
-	mstor->man_repl = get_valid_repl(mstor->man_repl,
-					MSTOR_DEFAULT_MAN_REPL);
+	mstor->min_zombie_time = conf->min_zombie_time;
+	mstor->min_repl = conf->min_repl;
+	mstor->man_repl = conf->man_repl;
 	return 0;
 
 error:
@@ -702,11 +689,7 @@ struct mstor* mstor_init(POSSIBLY_UNUSED(struct fast_log_mgr *mgr),
 {
 	int ret;
 	struct mstor *mstor;
-	int num_threads;
 
-	num_threads = conf->mstor_io_threads;
-	if (num_threads == JORM_INVAL_INT)
-		abort();
 	mstor = calloc(1, sizeof(struct mstor));
 	if (!mstor) {
 		ret = ENOMEM;
@@ -716,7 +699,7 @@ struct mstor* mstor_init(POSSIBLY_UNUSED(struct fast_log_mgr *mgr),
 	ret = pthread_mutex_init(&mstor->next_nid_lock, NULL);
 	if (ret)
 		goto error_free_mstor;
-	mstor->tk = srange_tracker_init(num_threads);
+	mstor->tk = srange_tracker_init(conf->mstor_io_threads);
 	if (IS_ERR(mstor->tk))
 		goto error_destroy_next_nid_lock;
 	ret = pthread_mutex_init(&mstor->next_cid_lock, NULL);
