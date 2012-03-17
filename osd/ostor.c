@@ -44,7 +44,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#define OSTOR_LRU_PERIOD 60
+#define OSTOR_LRU_LONG_PERIOD_SEC 60
+
+#define OSTOR_LRU_SHORT_PERIOD_NSEC 1000
+
 #define OSTOR_TEST_DIR "test.tmp"
 
 struct ochunk {
@@ -184,7 +187,7 @@ static int ochunk_open(struct ostor *ostor, struct ochunk *ch, int create)
 	printf("now path = %s, cid = 0x%"PRIx64"\n", path, ch->cid);
 	open_flags = create ? O_CREAT : 0;
 	open_flags |= O_APPEND | O_RDWR | O_CLOEXEC | O_NOATIME;
-	RETRY_ON_EINTR(ch->fd, open(path, open_flags, 0550));
+	RETRY_ON_EINTR(ch->fd, open(path, open_flags, 0660));
 	if (ch->fd >= 0)
 		return 0;
 	ret = errno;
@@ -200,7 +203,7 @@ static int ochunk_open(struct ostor *ostor, struct ochunk *ch, int create)
 			dpath, ret, terror(ret));
 		return ret;
 	}
-	RETRY_ON_EINTR(ch->fd, open(path, open_flags, 0550));
+	RETRY_ON_EINTR(ch->fd, open(path, open_flags, 0660));
 	if (ch->fd >= 0)
 		return 0;
 	ret = -errno;
@@ -526,6 +529,7 @@ static struct ochunk *ostor_get_ochunk(struct ostor *ostor, uint64_t cid,
 		}
 		fprintf(stderr, "ostor->num_open=%d, ostor->max_open=%d\n",
 		       ostor->num_open, ostor->max_open);
+		ostor->need_lru++;
 		pthread_cond_signal(&ostor->lru_cond);
 		pthread_cond_wait(&ostor->alloc_cond, &ostor->lock);
 	}
@@ -564,10 +568,10 @@ static struct ochunk *ostor_find_dispoable_chunk(struct ostor *ostor,
 
 static int ostor_lru_thread(struct redfish_thread *rt)
 {
+	int res;
 	struct timespec ts;
 	struct ostor *ostor = rt->priv;
 	struct ochunk *ch;
-	time_t cur_time;
 
 	pthread_mutex_lock(&ostor->lock);
 	while (1) {
@@ -575,15 +579,22 @@ static int ostor_lru_thread(struct redfish_thread *rt)
 			pthread_mutex_unlock(&ostor->lock);
 			return 0;
 		}
-		cur_time = mt_time();
-		ch = ostor_find_dispoable_chunk(ostor, cur_time);
+		res = clock_gettime(CLOCK_MONOTONIC, &ts);
+		if (res)
+			abort();
+		ch = ostor_find_dispoable_chunk(ostor, ts.tv_sec);
 		if (!ch) {
-			ts.tv_sec = cur_time + OSTOR_LRU_PERIOD;
-			ts.tv_nsec = 0;
+			if (ostor->need_lru == 0)
+				timespec_add_sec(&ts, OSTOR_LRU_LONG_PERIOD_SEC);
+			else
+				timespec_add_nsec(&ts, OSTOR_LRU_SHORT_PERIOD_NSEC);
+			fprintf(stderr, "ostor_lru_thread: going to sleep. "
+				"need_lru = %d\n", ostor->need_lru);
 			pthread_cond_timedwait(&ostor->lru_cond,
 					&ostor->lock, &ts);
 			continue;
 		}
+		ch->refcnt = -1;
 		RB_REMOVE(ochunks_by_atime, &ostor->atime_head, ch);
 		ochunk_evict(ostor, ch);
 	}

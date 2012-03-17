@@ -57,7 +57,7 @@ static int ostoru_test_open_close(const char *ostor_path)
 	return 0;
 }
 
-static int ostoru_test1(const char *ostor_path)
+static int ostoru_simple_test(const char *ostor_path, int max_open)
 {
 	struct ostorc *oconf;
 	struct ostor *ostor;
@@ -66,17 +66,14 @@ static int ostoru_test1(const char *ostor_path)
 
 	oconf = JORM_INIT_ostorc();
 	EXPECT_NOT_ERRPTR(oconf);
-	oconf->ostor_max_open = 10;
+	oconf->ostor_max_open = max_open;
 	oconf->ostor_timeo = 10;
 	oconf->ostor_path = strdup(ostor_path);
 	EXPECT_NOT_EQ(oconf->ostor_path, NULL);
 	ostor = ostor_init(oconf);
 	EXPECT_NOT_ERRPTR(ostor);
-	amt = ostor_write(ostor, 123, TEST_DATA1, strlen(TEST_DATA1));
-	printf("amt = %d\n", amt);
-	EXPECT_ZERO(amt);
-	amt = ostor_write(ostor, 456, TEST_DATA2, strlen(TEST_DATA2));
-	EXPECT_ZERO(amt);
+	EXPECT_ZERO(ostor_write(ostor, 123, TEST_DATA1, strlen(TEST_DATA1)));
+	EXPECT_ZERO(ostor_write(ostor, 456, TEST_DATA2, strlen(TEST_DATA2)));
 	EXPECT_ZERO(ostor_write(ostor, 789, TEST_DATA3, strlen(TEST_DATA3)));
 	memset(buf, 0, sizeof(buf));
 	amt = ostor_read(ostor, 123, 0, buf, sizeof(buf));
@@ -87,10 +84,12 @@ static int ostoru_test1(const char *ostor_path)
 	EXPECT_ZERO(memcmp(buf, TEST_DATA2 + 1, strlen(TEST_DATA2) - 1));
 	amt = ostor_read(ostor, 333, 0, buf, sizeof(buf));
 	EXPECT_EQ(amt, -ENOENT);
-	amt = ostor_unlink(ostor, 123);
-	EXPECT_ZERO(amt);
+	EXPECT_ZERO(ostor_unlink(ostor, 123));
+	EXPECT_EQ(ostor_unlink(ostor, 123), -ENOENT);
 	amt = ostor_read(ostor, 123, 0, buf, sizeof(buf));
 	EXPECT_EQ(amt, -ENOENT);
+	amt = ostor_read(ostor, 789, 0, buf, sizeof(buf));
+	EXPECT_EQ(amt, 0);
 	ostor_shutdown(ostor);
 	ostor_free(ostor);
 	JORM_FREE_ostorc(oconf);
@@ -99,7 +98,7 @@ static int ostoru_test1(const char *ostor_path)
 
 int main(POSSIBLY_UNUSED(int argc), char **argv)
 {
-	char tdir[PATH_MAX], tdir2[PATH_MAX];
+	char tdir[PATH_MAX];
 
 	EXPECT_ZERO(utility_ctx_init(argv[0])); /* for g_fast_log_mgr */
 
@@ -107,9 +106,13 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 	EXPECT_ZERO(register_tempdir_for_cleanup(tdir));
 	EXPECT_ZERO(ostoru_test_open_close(tdir));
 
-	EXPECT_ZERO(get_tempdir(tdir2, sizeof(tdir2), 0755));
-	EXPECT_ZERO(register_tempdir_for_cleanup(tdir2));
-	EXPECT_ZERO(ostoru_test1(tdir2));
+	EXPECT_ZERO(get_tempdir(tdir, sizeof(tdir), 0755));
+	EXPECT_ZERO(register_tempdir_for_cleanup(tdir));
+	EXPECT_ZERO(ostoru_simple_test(tdir, 100));
+
+	EXPECT_ZERO(get_tempdir(tdir, sizeof(tdir), 0755));
+	EXPECT_ZERO(register_tempdir_for_cleanup(tdir));
+	EXPECT_ZERO(ostoru_simple_test(tdir, 1));
 
 	process_ctx_shutdown();
 
