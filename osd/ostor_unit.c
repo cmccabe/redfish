@@ -21,6 +21,7 @@
 #include "util/string.h"
 #include "util/tempfile.h"
 #include "util/test.h"
+#include "util/thread.h"
 
 #include <errno.h>
 #include <inttypes.h>
@@ -96,6 +97,82 @@ static int ostoru_simple_test(const char *ostor_path, int max_open)
 	return 0;
 }
 
+static sem_t ostoru_threaded_test_sem1;
+static sem_t ostoru_threaded_test_sem2;
+
+static int ostoru_thread1(struct redfish_thread *rt)
+{
+	char buf[1024];
+	struct ostor *ostor = rt->priv;
+
+	EXPECT_ZERO(ostor_write(ostor, 123, TEST_DATA1, strlen(TEST_DATA1)));
+	sem_post(&ostoru_threaded_test_sem2);
+	sem_wait(&ostoru_threaded_test_sem1);
+	EXPECT_EQ(ostor_read(ostor, 123, 0, buf, sizeof(buf)), -ENOENT);
+	EXPECT_EQ(ostor_unlink(ostor, 123), -ENOENT);
+	EXPECT_ZERO(ostor_write(ostor, 456, TEST_DATA2, strlen(TEST_DATA2)));
+	sem_post(&ostoru_threaded_test_sem2);
+	sem_wait(&ostoru_threaded_test_sem1);
+	ostor_shutdown(ostor);
+	sem_post(&ostoru_threaded_test_sem2);
+	return 0;
+}
+
+static int ostoru_thread2(struct redfish_thread *rt)
+{
+	char buf[1024];
+	struct ostor *ostor = rt->priv;
+
+	sem_wait(&ostoru_threaded_test_sem2);
+	EXPECT_EQ(ostor_read(ostor, 123, 0, buf, sizeof(buf)),
+		strlen(TEST_DATA1));
+	EXPECT_ZERO(memcmp(buf, TEST_DATA1, strlen(TEST_DATA1)));
+	EXPECT_EQ(ostor_read(ostor, 123, 0, buf, 1), 1);
+	EXPECT_ZERO(memcmp(buf, TEST_DATA1, 1));
+	EXPECT_ZERO(ostor_unlink(ostor, 123));
+	sem_post(&ostoru_threaded_test_sem1);
+	sem_wait(&ostoru_threaded_test_sem2);
+	EXPECT_ZERO(ostor_write(ostor, 456, TEST_DATA2, strlen(TEST_DATA2)));
+	EXPECT_EQ(ostor_read(ostor, 456, 0, buf, sizeof(buf)),
+		2 * strlen(TEST_DATA2));
+	EXPECT_ZERO(memcmp(buf, TEST_DATA2, strlen(TEST_DATA2)));
+	EXPECT_ZERO(memcmp(buf + strlen(TEST_DATA2), TEST_DATA2,
+		strlen(TEST_DATA2)));
+	sem_post(&ostoru_threaded_test_sem1);
+	sem_wait(&ostoru_threaded_test_sem2);
+	EXPECT_EQ(ostor_read(ostor, 456, 0, buf, sizeof(buf)), -ESHUTDOWN);
+	return 0;
+}
+
+static int ostoru_threaded_test(const char *ostor_path, int max_open)
+{
+	struct ostorc *oconf;
+	struct ostor *ostor;
+	struct redfish_thread thread1, thread2;
+
+	sem_init(&ostoru_threaded_test_sem1, 0, 0);
+	sem_init(&ostoru_threaded_test_sem2, 0, 0);
+	oconf = JORM_INIT_ostorc();
+	EXPECT_NOT_ERRPTR(oconf);
+	oconf->ostor_max_open = max_open;
+	oconf->ostor_timeo = 10;
+	oconf->ostor_path = strdup(ostor_path);
+	EXPECT_NOT_EQ(oconf->ostor_path, NULL);
+	ostor = ostor_init(oconf);
+	EXPECT_NOT_ERRPTR(ostor);
+	EXPECT_ZERO(redfish_thread_create(g_fast_log_mgr, &thread1,
+			ostoru_thread1, ostor));
+	EXPECT_ZERO(redfish_thread_create(g_fast_log_mgr, &thread2,
+			ostoru_thread2, ostor));
+	EXPECT_ZERO(redfish_thread_join(&thread1));
+	EXPECT_ZERO(redfish_thread_join(&thread2));
+	EXPECT_ZERO(sem_destroy(&ostoru_threaded_test_sem1));
+	EXPECT_ZERO(sem_destroy(&ostoru_threaded_test_sem2));
+	ostor_free(ostor);
+	JORM_FREE_ostorc(oconf);
+	return 0;
+}
+
 int main(POSSIBLY_UNUSED(int argc), char **argv)
 {
 	char tdir[PATH_MAX];
@@ -113,6 +190,10 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 	EXPECT_ZERO(get_tempdir(tdir, sizeof(tdir), 0755));
 	EXPECT_ZERO(register_tempdir_for_cleanup(tdir));
 	EXPECT_ZERO(ostoru_simple_test(tdir, 1));
+
+	EXPECT_ZERO(get_tempdir(tdir, sizeof(tdir), 0755));
+	EXPECT_ZERO(register_tempdir_for_cleanup(tdir));
+	EXPECT_ZERO(ostoru_threaded_test(tdir, 10));
 
 	process_ctx_shutdown();
 
