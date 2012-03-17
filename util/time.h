@@ -44,4 +44,18 @@ extern void mt_sleep_until(time_t until);
  */
 extern void mt_msleep(int milli);
 
+/** Add a few seconds to a struct timespec
+ *
+ * @param ts		The timespec
+ * @param sec		The number of seconds to add
+ */
+extern void timespec_add_sec(struct timespec *ts, time_t sec);
+
+/** Add a few nanoseconds to a struct timespec
+ *
+ * @param ts		The timespec
+ * @param ns		The number of nanoseconds to add
+ */
+extern void timespec_add_nsec(struct timespec *ts, int nsec);
+
 #endif

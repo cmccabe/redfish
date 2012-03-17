@@ -20,6 +20,8 @@
 #include <string.h>
 #include <time.h>
 
+#define NSEC_PER_SEC 1000000000
+
 time_t mt_time(void)
 {
 	int res;
@@ -73,5 +75,19 @@ void mt_msleep(int milli)
 		 * of time. */
 		ts.tv_sec = rts.tv_sec;
 		ts.tv_nsec = rts.tv_nsec;
+	}
+}
+
+void timespec_add_sec(struct timespec *ts, time_t sec)
+{
+	ts->tv_sec += sec;
+}
+
+void timespec_add_nsec(struct timespec *ts, int nsec)
+{
+	ts->tv_nsec += nsec;
+	if (ts->tv_nsec >= NSEC_PER_SEC) {
+		ts->tv_nsec -= NSEC_PER_SEC;
+		ts->tv_sec++;
 	}
 }

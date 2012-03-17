@@ -21,10 +21,28 @@
 #include <stdint.h>
 #include <stdio.h>
 
+static int test_timespec_utils(void)
+{
+	struct timespec ts;
+	ts.tv_sec = 0;
+	ts.tv_nsec = 0;
+	timespec_add_sec(&ts, 1);
+	EXPECT_EQ(ts.tv_sec, 1);
+	EXPECT_EQ(ts.tv_nsec, 0);
+	timespec_add_nsec(&ts, 1000);
+	EXPECT_EQ(ts.tv_sec, 1);
+	EXPECT_EQ(ts.tv_nsec, 1000);
+	timespec_add_nsec(&ts, 999999000);
+	EXPECT_EQ(ts.tv_sec, 2);
+	EXPECT_EQ(ts.tv_nsec, 0);
+	return 0;
+}
+
 int main(void)
 {
 	time_t cur, next, after;
 
+	EXPECT_ZERO(test_timespec_utils());
 	cur = mt_time();
 	next = cur + 1;
 	mt_sleep_until(next);
