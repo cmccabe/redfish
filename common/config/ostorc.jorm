@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the Redfish authors
+ * Copyright 2012 the Redfish authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,8 @@
  * limitations under the License.
  */
 
-JORM_CONTAINER_BEGIN(osdc)
-	JORM_EMBEDDED(lc, logc)
-	JORM_EMBEDDED(oc, ostorc)
-	JORM_INT(rack)
-	JORM_STR(host)
-	JORM_INT(mds_port)
-	JORM_INT(osd_port)
-	JORM_INT(cli_port)
+JORM_CONTAINER_BEGIN(ostorc)
+	JORM_STR(ostor_path)
+	JORM_INT(ostor_max_open)
+	JORM_INT(ostor_timeo)
 JORM_CONTAINER_END

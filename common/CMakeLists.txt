@@ -7,6 +7,7 @@ add_library(common
     config/mdsc.c
     config/mstorc.c
     config/osdc.c
+    config/ostorc.c
     config/unitaryc.c
 )
 target_link_libraries(common jorm util pthread)

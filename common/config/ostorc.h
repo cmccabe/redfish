@@ -14,29 +14,23 @@
  * limitations under the License.
  */
 
-#ifndef REDFISH_COMMON_ENTITY_TYPE_DOT_H
-#define REDFISH_COMMON_ENTITY_TYPE_DOT_H
+#ifndef REDFISH_COMMON_CONFIG_OSTORC_DOT_H
+#define REDFISH_COMMON_CONFIG_OSTORC_DOT_H
 
-/** Represents a Redfish entity */
-enum fish_entity_ty {
-	/** MDS type */
-	RF_ENTITY_TY_MDS = 0,
-	/** OSD type */
-	RF_ENTITY_TY_OSD = 1,
-	/** Number of Redfish daemon types */
-	RF_ENTITY_NUM_DAEMON_TY = 2,
-	/** client type */
-	RF_ENTITY_TY_CLI = 2,
-	/** Number of entity types */
-	RF_ENTITY_TY_NUM = 3,
-};
+#define JORM_CUR_FILE "common/config/ostorc.jorm"
+#include "jorm/jorm_generate_include.h"
+#undef JORM_CUR_FILE
 
-/** Convert a Redfish entity type to a string 
+#if 0 /* Give the dependency scanner a clue */
+#include "common/config/ostorc.jorm"
+#endif
+
+/** Harmonize the ostor configuration
  *
- * @param ty		The type
- *
- * @return		A statically allocated string
+ * @param conf		The mstor configuration
+ * @param err		(out param) The error buffer
+ * @param err_len	Length of the error buffer
  */
-extern const char *fish_entity_ty_to_str(enum fish_entity_ty ty);
+extern void harmonize_ostorc(struct ostorc *conf, char *err, size_t err_len);
 
 #endif

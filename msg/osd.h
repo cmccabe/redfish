@@ -24,16 +24,16 @@
 #define MMM_HFLUSH_FLAG_SYNC 0x1
 
 enum {
-	/** Client request to fetch a chunk from the OSD */
-	MMM_FETCH_CHUNK_REQ = 4000,
+	/** Request to read from the OSD */
+	MMM_OSD_READ_REQ = 4000,
 	/** Client request to write a chunk to the OSD */
 	MMM_HFLUSH_REQ,
 };
 
 PACKED(
-struct mmm_fetch_chunk_req {
-	uint64_t chunk_id;
-	uint32_t start;
+struct mmm_osd_read_req {
+	uint64_t cid;
+	uint64_t start;
 	uint32_t len;
 });
 PACKED(

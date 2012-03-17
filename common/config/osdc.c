@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-#include "common//config/logc.h"
-#include "common//config/osdc.h"
+#include "common/config/logc.h"
+#include "common/config/osdc.h"
+#include "common/config/ostorc.h"
 
 #define JORM_CUR_FILE "common/config/osdc.jorm"
 #include "jorm/jorm_generate_body.h"
@@ -40,4 +41,7 @@ void harmonize_osdc(struct osdc *conf, char *err, size_t err_len)
 		snprintf(err, err_len, "You must give a hostname");
 		return;
 	}
+	harmonize_ostorc(conf->oc, err, err_len);
+	if (err[0])
+		return;
 }

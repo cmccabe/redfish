@@ -14,29 +14,18 @@
  * limitations under the License.
  */
 
-#ifndef REDFISH_COMMON_ENTITY_TYPE_DOT_H
-#define REDFISH_COMMON_ENTITY_TYPE_DOT_H
+#include "common/entity_type.h"
 
-/** Represents a Redfish entity */
-enum fish_entity_ty {
-	/** MDS type */
-	RF_ENTITY_TY_MDS = 0,
-	/** OSD type */
-	RF_ENTITY_TY_OSD = 1,
-	/** Number of Redfish daemon types */
-	RF_ENTITY_NUM_DAEMON_TY = 2,
-	/** client type */
-	RF_ENTITY_TY_CLI = 2,
-	/** Number of entity types */
-	RF_ENTITY_TY_NUM = 3,
-};
-
-/** Convert a Redfish entity type to a string 
- *
- * @param ty		The type
- *
- * @return		A statically allocated string
- */
-extern const char *fish_entity_ty_to_str(enum fish_entity_ty ty);
-
-#endif
+const char *fish_entity_ty_to_str(enum fish_entity_ty ty)
+{
+	swtich (ty) {
+	case RF_ENTITY_TY_MDS:
+		return "RF_ENTITY_TY_MDS";
+	case RF_ENTITY_TY_OSD:
+		return "RF_ENTITY_TY_OSD";
+	case RF_ENTITY_TY_CLI:
+		return "RF_ENTITY_TY_CLI";
+	default:
+		return "(unknown)";
+	}
+}
