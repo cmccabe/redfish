@@ -29,6 +29,16 @@ void harmonize_ostorc(struct ostorc *conf, char *err, size_t err_len)
 		snprintf(err, err_len, "you must give a path to the ostor");
 		return;
 	}
+	if (conf->ostor_max_open < 0) {
+		snprintf(err, err_len, "ostor->max_open cannot be less "
+			"than 0");
+		return;
+	}
+	if (conf->ostor_timeo < 0) {
+		snprintf(err, err_len, "ostor->ostor_timeo cannot be less "
+			"than 0");
+		return;
+	}
 	if (conf->ostor_max_open == JORM_INVAL_INT)
 		conf->ostor_max_open = sysconf(_SC_OPEN_MAX);
 	if (conf->ostor_timeo == JORM_INVAL_INT)

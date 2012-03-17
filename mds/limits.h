@@ -63,6 +63,9 @@
 /** Invalid node ID */
 #define RF_INVAL_NID 0xffffffffffffffffULL
 
+/** Invalid chunk ID */
+#define RF_INVAL_CID 0xffffffffffffffffULL
+
 /** Invalid filesystem ID */
 #define RF_INVAL_FSID 0
 
@@ -71,5 +74,7 @@
 
 /** Invalid delegation ID */
 #define RF_INVAL_DGID 0xffffffffffffffffULL
+
+#define MSTOR_ROOT_NID_INIT_MODE 0755
 
 #endif
