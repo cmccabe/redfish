@@ -266,6 +266,7 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 	EXPECT_ZERO(mt_set_alarm(t, "bsend_unit timed out", &timer));
 	EXPECT_ZERO(get_localhost_ipv4(&g_localhost));
 	fb = fast_log_create(g_fast_log_mgr, "main");
+	EXPECT_NOT_ERRPTR(fb);
 	bsend_test_init_shutdown(fb);
 	EXPECT_ZERO(bsend_test_send(fb, 1, 1, 1));
 	EXPECT_ZERO(bsend_test_send(fb, 5, 1, 1));
