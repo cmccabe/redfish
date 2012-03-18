@@ -93,6 +93,15 @@ static void recv_pool_cb(POSSIBLY_UNUSED(struct mconn *conn), struct mtran *tr)
 {
 	struct recv_pool *rpool = tr->priv;
 
+	if (IS_ERR(tr->m)) {
+		/* The incoming message could not be completely received for
+		 * some reason.  Nothing we can do here. */
+		return;
+	}
+	/* We don't need to keep the receive pool pointer in tr->priv any more.
+	 * Instead, store a pointer to the messenger that sent this message, in
+	 * case we want to send a reply later.  */
+	tr->priv = mconn_get_msgr(conn);
 	pthread_mutex_lock(&rpool->lock);
 	if (rpool->cancel) {
 		pthread_mutex_unlock(&rpool->lock);

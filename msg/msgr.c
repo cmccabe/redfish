@@ -329,6 +329,11 @@ int mconn_cancel(struct msgr *msgr, uint32_t addr, uint16_t port)
 	return 0;
 }
 
+struct msgr *mconn_get_msgr(struct mconn *conn)
+{
+	return conn->msgr;
+}
+
 static void mtran_deliver_netfail(struct mtran *tr, int err)
 {
 	if (tr->state == MTRAN_STATE_SENDING)

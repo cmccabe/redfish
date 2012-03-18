@@ -29,7 +29,7 @@ enum {
 	/** Request to read from the OSD */
 	MMM_OSD_READ_REQ = 4000,
 	/** Client request to write a chunk to the OSD */
-	MMM_HFLUSH_REQ,
+	MMM_OSD_HFLUSH_REQ,
 };
 
 PACKED(
@@ -39,14 +39,12 @@ struct mmm_osd_read_req {
 	uint32_t len;
 });
 PACKED(
-struct mmm_hflush_req {
+struct mmm_osd_hflush_req {
 	struct msg base;
 	uint64_t cid;
-	uint32_t off;
-	uint32_t len;
 	uint8_t flags;
 	char data[0];
-	/* flushed data */
+	/* data */
 });
 
 #endif

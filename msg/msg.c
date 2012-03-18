@@ -16,6 +16,7 @@
 
 #include "msg/generic.h"
 #include "msg/msg.h"
+#include "util/error.h"
 #include "util/packed.h"
 #include "util/macro.h"
 #include "util/net.h"
@@ -49,6 +50,18 @@ void *calloc_msg(uint32_t ty, uint32_t len)
 	pack_to_be16(&m->ty, ty);
 	pack_to_8(&m->refcnt, 1);
 	return m;
+}
+
+struct mmm_resp *resp_alloc(int error)
+{
+	struct mmm_resp *resp;
+
+	error = FORCE_POSITIVE(error);
+	resp = calloc_msg(MMM_RESP, sizeof(struct mmm_resp));
+	if (!resp)
+		return NULL;
+	pack_to_be32(&resp->error, error);
+	return resp;
 }
 
 void *msg_shrink(void *v, uint32_t len)
