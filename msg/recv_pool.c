@@ -89,13 +89,14 @@ error:
 	return ERR_PTR(ret);
 }
 
-static void recv_pool_cb(POSSIBLY_UNUSED(struct mconn *conn), struct mtran *tr)
+static void recv_pool_cb(struct mconn *conn, struct mtran *tr)
 {
 	struct recv_pool *rpool = tr->priv;
 
 	if (IS_ERR(tr->m)) {
 		/* The incoming message could not be completely received for
 		 * some reason.  Nothing we can do here. */
+		mtran_free(tr);
 		return;
 	}
 	/* We don't need to keep the receive pool pointer in tr->priv any more.
@@ -105,6 +106,7 @@ static void recv_pool_cb(POSSIBLY_UNUSED(struct mconn *conn), struct mtran *tr)
 	pthread_mutex_lock(&rpool->lock);
 	if (rpool->cancel) {
 		pthread_mutex_unlock(&rpool->lock);
+		mtran_free(tr);
 		return;
 	}
 	STAILQ_INSERT_TAIL(&rpool->pending_head, tr, u.pending_entry);
