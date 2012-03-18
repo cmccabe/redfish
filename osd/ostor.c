@@ -21,6 +21,7 @@
 #include "core/process_ctx.h"
 #include "jorm/jorm_const.h"
 #include "mds/limits.h"
+#include "osd/fast_log.h"
 #include "osd/ostor.h"
 #include "util/compiler.h"
 #include "util/error.h"
@@ -68,8 +69,8 @@ static int compare_ochunk_by_cid(struct ochunk *ch_a,
 		struct ochunk *ch_b) PURE;
 static int compare_ochunk_by_atime(struct ochunk *ch_a,
 		struct ochunk *ch_b) PURE;
-static struct ochunk *ostor_get_ochunk(struct ostor *ostor, uint64_t cid,
-		int create);
+static struct ochunk *ostor_get_ochunk(struct ostor *ostor,
+		struct fast_log_buf *fb, uint64_t cid, int create);
 static int ostor_lru_thread(struct redfish_thread *rt);
 
 RB_HEAD(ochunks_by_cid, ochunk);
@@ -184,7 +185,6 @@ static int ochunk_open(struct ostor *ostor, struct ochunk *ch, int create)
 	char path[PATH_MAX], dpath[PATH_MAX];
 
 	ochunk_get_path(ostor, path, sizeof(path), ch->cid);
-	printf("now path = %s, cid = 0x%"PRIx64"\n", path, ch->cid);
 	open_flags = create ? O_CREAT : 0;
 	open_flags |= O_APPEND | O_RDWR | O_CLOEXEC | O_NOATIME;
 	RETRY_ON_EINTR(ch->fd, open(path, open_flags, 0660));
@@ -194,21 +194,15 @@ static int ochunk_open(struct ostor *ostor, struct ochunk *ch, int create)
 	if ((ret != ENOENT) || (!create)) {
 		return ret;
 	}
-	printf("error in open(%s): error %d\n", path, -errno);
 	ochunk_get_dpath(ostor, dpath, sizeof(dpath), ch->cid);
-	printf("trying mkdir(%s)\n", dpath); 
 	if (mkdir(dpath, 0770) < 0) {
 		ret = -errno;
-		printf("failed to mkdir(%s): error %d (%s)\n",
-			dpath, ret, terror(ret));
 		return ret;
 	}
 	RETRY_ON_EINTR(ch->fd, open(path, open_flags, 0660));
 	if (ch->fd >= 0)
 		return 0;
 	ret = -errno;
-	printf("failed to open(%s): error %d (%s)\n",
-		path, ret, terror(ret));
 	return ret;
 }
 
@@ -234,18 +228,20 @@ static void ochunk_release(struct ostor *ostor, struct ochunk *ch)
  * @param ostor		The ostor
  * @param cid		The chunk ID
  */
-static void ochunk_evict(struct ostor *ostor, struct ochunk *ch)
+static void ochunk_evict(struct ostor *ostor, struct fast_log_buf *fb,
+		struct ochunk *ch)
 {
-	int res;
+	int res = 0, fd = ch->fd;
+	uint64_t cid = ch->cid;
 
 	if (ch->refcnt != -1)
 		abort();
-	if (ch->fd > 0) {
+	if (fd > 0) {
 		pthread_mutex_unlock(&ostor->lock);
-		RETRY_ON_EINTR(res, close(ch->fd));
+		RETRY_ON_EINTR(res, close(fd));
 		if (res) {
 			glitch_log("ostor error: failed to close fd %d: error "
-				"%d (%s)\n", ch->fd, res, terror(res));
+				"%d (%s)\n", fd, res, terror(res));
 		}
 		ch->fd = -1;
 		pthread_mutex_lock(&ostor->lock);
@@ -256,6 +252,7 @@ static void ochunk_evict(struct ostor *ostor, struct ochunk *ch)
 		ostor->need_lru--;
 	ostor->num_open--;
 	pthread_cond_signal(&ostor->alloc_cond);
+	fast_log_ostor(fb, FLOS_OCHUNK_EVICT, cid, 0, res, fd);
 }
 
 static int compare_ochunk_by_cid(struct ochunk *ch_a, struct ochunk *ch_b)
@@ -382,72 +379,88 @@ void ostor_free(struct ostor *ostor)
 	free(ostor);
 }
 
-int ostor_write(struct ostor *ostor, uint64_t cid,
+int ostor_write(struct ostor *ostor, struct fast_log_buf *fb, uint64_t cid,
 		const char *data, uint32_t dlen)
 {
 	int ret;
 	struct ochunk *ch;
 
-	if (cid == RF_INVAL_CID)
-		return -EINVAL;
-	pthread_mutex_lock(&ostor->lock);
-	ch = ostor_get_ochunk(ostor, cid, 1);
-	if (!IS_ERR(ch)) {
-		RB_REMOVE(ochunks_by_atime, &ostor->atime_head, ch);
-		ch->refcnt++;
+	if (cid == RF_INVAL_CID) {
+		ret = -EINVAL;
+		goto done;
 	}
+	pthread_mutex_lock(&ostor->lock);
+	ch = ostor_get_ochunk(ostor, fb, cid, 1);
+	if (IS_ERR(ch)) {
+		pthread_mutex_unlock(&ostor->lock);
+		ret = FORCE_NEGATIVE(PTR_ERR(ch));
+		goto done;
+	}
+	RB_REMOVE(ochunks_by_atime, &ostor->atime_head, ch);
+	ch->refcnt++;
 	pthread_mutex_unlock(&ostor->lock);
-	if (IS_ERR(ch))
-		return FORCE_NEGATIVE(PTR_ERR(ch));
 	ret = safe_write(ch->fd, data, dlen);
 	ochunk_release(ostor, ch);
+done:
+	fast_log_ostor(fb, FLOS_OCHUNK_WRITE, cid, 0, ret, dlen);
 	return ret;
 }
 
-int32_t ostor_read(struct ostor *ostor, uint64_t cid,
+int32_t ostor_read(struct ostor *ostor, struct fast_log_buf *fb, uint64_t cid,
 		uint64_t off, char *data, uint32_t dlen)
 {
 	int ret;
 	struct ochunk *ch;
 
-	if (cid == RF_INVAL_CID)
-		return -EINVAL;
-	pthread_mutex_lock(&ostor->lock);
-	ch = ostor_get_ochunk(ostor, cid, 0);
-	if (!IS_ERR(ch)) {
-		RB_REMOVE(ochunks_by_atime, &ostor->atime_head, ch);
-		ch->refcnt++;
+	if (cid == RF_INVAL_CID) {
+		ret = -EINVAL;
+		goto done;
 	}
+	pthread_mutex_lock(&ostor->lock);
+	ch = ostor_get_ochunk(ostor, fb, cid, 0);
+	if (IS_ERR(ch)) {
+		pthread_mutex_unlock(&ostor->lock);
+		ret = FORCE_NEGATIVE(PTR_ERR(ch));
+		goto done;
+	}
+	RB_REMOVE(ochunks_by_atime, &ostor->atime_head, ch);
+	ch->refcnt++;
 	pthread_mutex_unlock(&ostor->lock);
-	fprintf(stderr, "ostor_read(cid=0x%"PRIx64").  ch=%p\n", cid, ch);
-	if (IS_ERR(ch))
-		return FORCE_NEGATIVE(PTR_ERR(ch));
 	ret = safe_pread(ch->fd, data, dlen, off);
 	ochunk_release(ostor, ch);
+done:
+	if (ret < 0)
+		fast_log_ostor(fb, FLOS_OCHUNK_READ, cid, off, ret, dlen);
+	else
+		fast_log_ostor(fb, FLOS_OCHUNK_READ, cid, off, 0, ret);
 	return ret;
 }
 
-int ostor_unlink(struct ostor *ostor, uint64_t cid)
+int ostor_unlink(struct ostor *ostor, struct fast_log_buf *fb, uint64_t cid)
 {
-	int res;
+	int ret, res;
 	struct ochunk *ch;
 	char path[PATH_MAX];
 
-	if (cid == RF_INVAL_CID)
-		return -EINVAL;
+	if (cid == RF_INVAL_CID) {
+		ret = -EINVAL;
+		goto done;
+	}
 	/* Wait for the reference count to go to 0 before unlinking and freeing
 	 * the chunk.  The lock/unlock calls invoke memory barriers, making the
 	 * other threads' changes to ch->refcnt visible to us. */
 	while (1) {
 		pthread_mutex_lock(&ostor->lock);
-		ch = ostor_get_ochunk(ostor, cid, 0);
+		ch = ostor_get_ochunk(ostor, fb, cid, 0);
 		if (IS_ERR(ch)) {
 			pthread_mutex_unlock(&ostor->lock);
-			return FORCE_NEGATIVE(PTR_ERR(ch));
+			ret = FORCE_NEGATIVE(PTR_ERR(ch));
+			goto done;
 		}
 		if (ch->refcnt == -1) {
 			pthread_mutex_unlock(&ostor->lock);
-			return -ENOENT;
+			ret = -ENOENT;
+			goto done;
 		}
 		if (ch->refcnt == 0)
 			break;
@@ -466,14 +479,18 @@ int ostor_unlink(struct ostor *ostor, uint64_t cid)
 	pthread_mutex_lock(&ostor->lock);
 	/* Now that the backing file has been deleted, we can evict the chunk
 	 * from memory.  We couldn't do this earlier because then someone else
-	 * might re-create the chunk and race with our unlink() operation. */
-	ochunk_evict(ostor, ch);
+	 * might re-create the chunk.  His open() would then race with our
+	 * unlink() operation. */
+	ochunk_evict(ostor, fb, ch);
 	pthread_mutex_unlock(&ostor->lock);
-	return 0;
+	ret = 0;
+done:
+	fast_log_ostor(fb, FLOS_OCHUNK_UNLINK, cid, 0, ret, 0);
+	return ret;
 }
 
-static struct ochunk *ostor_get_ochunk(struct ostor *ostor, uint64_t cid,
-		int create)
+static struct ochunk *ostor_get_ochunk(struct ostor *ostor,
+		struct fast_log_buf *fb, uint64_t cid, int create)
 {
 	int ret;
 	time_t cur_time;
@@ -489,7 +506,6 @@ static struct ochunk *ostor_get_ochunk(struct ostor *ostor, uint64_t cid,
 		}
 		ch = RB_FIND(ochunks_by_cid, &ostor->cid_head, &exemplar);
 		if (ch) {
-			fprintf(stderr, "found chunk!\n");
 			if (ch->refcnt != -1) {
 				/* The chunk exists in memory and is ready to use */
 				break;
@@ -507,6 +523,8 @@ static struct ochunk *ostor_get_ochunk(struct ostor *ostor, uint64_t cid,
 			 * sucks, but we should not hit this case very
 			 * often. */
 			pthread_mutex_unlock(&ostor->lock);
+			fast_log_ostor(fb, FLOS_OCHUNK_WAIT, cid,
+				0, -EBUSY, 0);
 			mt_msleep(1);
 			pthread_mutex_lock(&ostor->lock);
 			continue;
@@ -517,9 +535,11 @@ static struct ochunk *ostor_get_ochunk(struct ostor *ostor, uint64_t cid,
 				break;
 			pthread_mutex_unlock(&ostor->lock);
 			ret = ochunk_open(ostor, ch, create);
+			fast_log_ostor(fb, FLOS_OCHUNK_ALLOC, cid,
+				0, ret, ch->fd);
 			pthread_mutex_lock(&ostor->lock);
 			if (ret) {
-				ochunk_evict(ostor, ch);
+				ochunk_evict(ostor, fb, ch);
 				ch = ERR_PTR(ret);
 				break;
 			}
@@ -527,18 +547,11 @@ static struct ochunk *ostor_get_ochunk(struct ostor *ostor, uint64_t cid,
 			ch->refcnt = 0;
 			break;
 		}
-		fprintf(stderr, "ostor->num_open=%d, ostor->max_open=%d\n",
-		       ostor->num_open, ostor->max_open);
+		fast_log_ostor(fb, FLOS_OCHUNK_WAIT, cid, 0, -EMFILE,
+			ostor->num_open);
 		ostor->need_lru++;
 		pthread_cond_signal(&ostor->lru_cond);
 		pthread_cond_wait(&ostor->alloc_cond, &ostor->lock);
-	}
-	if (IS_ERR(ch)) {
-		fprintf(stderr, "error %d\n", PTR_ERR(ch));
-	}
-	else {
-		fprintf(stderr, "ch->fd = %d, ch->atime = %lld, ch->cid = %lld\n",
-			ch->fd, (long long)ch->atime, (long long)ch->cid);
 	}
 	return ch;
 }
@@ -588,14 +601,16 @@ static int ostor_lru_thread(struct redfish_thread *rt)
 				timespec_add_sec(&ts, OSTOR_LRU_LONG_PERIOD_SEC);
 			else
 				timespec_add_nsec(&ts, OSTOR_LRU_SHORT_PERIOD_NSEC);
-			fprintf(stderr, "ostor_lru_thread: going to sleep. "
-				"need_lru = %d\n", ostor->need_lru);
+			fast_log_ostor(rt->fb, FLOS_LRU_SLEEP, 0, 0,
+				0, ostor->need_lru);
 			pthread_cond_timedwait(&ostor->lru_cond,
 					&ostor->lock, &ts);
+			fast_log_ostor(rt->fb, FLOS_LRU_WAKE, 0, 0,
+				0, ostor->need_lru);
 			continue;
 		}
 		ch->refcnt = -1;
 		RB_REMOVE(ochunks_by_atime, &ostor->atime_head, ch);
-		ochunk_evict(ostor, ch);
+		ochunk_evict(ostor, rt->fb, ch);
 	}
 }

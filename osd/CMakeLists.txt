@@ -20,6 +20,6 @@
 #
 #INSTALL(TARGETS fishosd DESTINATION bin)
 
-add_executable(ostor_unit ostor_unit.c ostor.c)
+add_executable(ostor_unit fast_log.c ostor_unit.c ostor.c)
 target_link_libraries(ostor_unit core utest)
 add_utest(ostor_unit)

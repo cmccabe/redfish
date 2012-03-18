@@ -72,6 +72,10 @@ int token_to_fast_log_bitfield(const char *str, BITFIELD_DECL(bits, FAST_LOG_TYP
 		BITFIELD_SET(bits, FAST_LOG_BSEND_ERROR);
 		return 0;
 	}
+	else if (strcmp(str, "OSTOR") == 0) {
+		BITFIELD_SET(bits, FAST_LOG_OSTOR);
+		return 0;
+	}
 	/* composites */
 	else if (strcmp(str, "MSGR") == 0) {
 		BITFIELD_SET(bits, FAST_LOG_MSGR_DEBUG);
@@ -103,6 +107,7 @@ STUB_FN(fast_log_msgr_info_dump);
 STUB_FN(fast_log_msgr_error_dump);
 STUB_FN(fast_log_bsend_debug_dump);
 STUB_FN(fast_log_bsend_error_dump);
+STUB_FN(fast_log_ostor_dump);
 
 const fast_log_dumper_fn_t g_fast_log_dumpers[] = {
 	[FAST_LOG_MSGR_DEBUG] = fast_log_msgr_debug_dump,
@@ -110,4 +115,5 @@ const fast_log_dumper_fn_t g_fast_log_dumpers[] = {
 	[FAST_LOG_MSGR_ERROR] = fast_log_msgr_error_dump,
 	[FAST_LOG_BSEND_DEBUG] = fast_log_bsend_debug_dump,
 	[FAST_LOG_BSEND_ERROR] = fast_log_bsend_error_dump,
+	[FAST_LOG_OSTOR] = fast_log_ostor_dump,
 };

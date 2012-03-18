@@ -19,6 +19,7 @@
 
 #include <stdint.h> /* for uint64_t, etc. */
 
+struct fast_log_buf;
 struct ostor;
 struct ostorc;
 
@@ -51,18 +52,20 @@ extern void ostor_free(struct ostor *ostor);
 /** Write to a chunk
  *
  * @param ostor		The ostor
+ * @param fb		The fast log buffer
  * @param cid		The chunk ID
  * @param data		The data to write
  * @param dlen		Length of the data to write
  *
  * @return		0 on success; error code otherwise
  */
-extern int ostor_write(struct ostor *ostor, uint64_t cid,
-		const char *data, uint32_t dlen);
+extern int ostor_write(struct ostor *ostor, struct fast_log_buf *fb,
+		uint64_t cid, const char *data, uint32_t dlen);
 
 /** Read from a chunk
  *
  * @param ostor		The ostor
+ * @param fb		The fast log buffer
  * @param cid		The chunk ID
  * @param off		The offset to read from
  * @param data		(out param) The buffer to read into.  Must be at least
@@ -72,8 +75,8 @@ extern int ostor_write(struct ostor *ostor, uint64_t cid,
  * @return		the number of bytes read on success; a negative error
  *			code otherwise
  */
-extern int32_t ostor_read(struct ostor *ostor, uint64_t cid,
-			uint64_t off, char *data, uint32_t dlen);
+extern int32_t ostor_read(struct ostor *ostor, struct fast_log_buf *fb,
+		uint64_t cid, uint64_t off, char *data, uint32_t dlen);
 
 /** Unlink a chunk
  *
@@ -81,10 +84,12 @@ extern int32_t ostor_read(struct ostor *ostor, uint64_t cid,
  * If the chunk is written to afterwards, it will appear to start out empty.
  *
  * @param ostor		The ostor
+ * @param fb		The fast log buffer
  * @param cid		The chunk ID
  *
  * @return		0 on success; error code otherwise
  */
-extern int ostor_unlink(struct ostor *ostor, uint64_t cid);
+extern int ostor_unlink(struct ostor *ostor, struct fast_log_buf *fb,
+		uint64_t cid);
 
 #endif

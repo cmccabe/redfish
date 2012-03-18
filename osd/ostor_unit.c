@@ -14,14 +14,17 @@
  * limitations under the License.
  */
 
+#include "core/alarm.h"
 #include "common/config/ostorc.h"
 #include "core/process_ctx.h"
 #include "osd/ostor.h"
 #include "util/error.h"
+#include "util/fast_log.h"
 #include "util/string.h"
 #include "util/tempfile.h"
 #include "util/test.h"
 #include "util/thread.h"
+#include "util/time.h"
 
 #include <errno.h>
 #include <inttypes.h>
@@ -58,7 +61,8 @@ static int ostoru_test_open_close(const char *ostor_path)
 	return 0;
 }
 
-static int ostoru_simple_test(const char *ostor_path, int max_open)
+static int ostoru_simple_test(const char *ostor_path, struct fast_log_buf *fb,
+		int max_open)
 {
 	struct ostorc *oconf;
 	struct ostor *ostor;
@@ -73,23 +77,26 @@ static int ostoru_simple_test(const char *ostor_path, int max_open)
 	EXPECT_NOT_EQ(oconf->ostor_path, NULL);
 	ostor = ostor_init(oconf);
 	EXPECT_NOT_ERRPTR(ostor);
-	EXPECT_ZERO(ostor_write(ostor, 123, TEST_DATA1, strlen(TEST_DATA1)));
-	EXPECT_ZERO(ostor_write(ostor, 456, TEST_DATA2, strlen(TEST_DATA2)));
-	EXPECT_ZERO(ostor_write(ostor, 789, TEST_DATA3, strlen(TEST_DATA3)));
+	EXPECT_ZERO(ostor_write(ostor, fb, 123, TEST_DATA1,
+			strlen(TEST_DATA1)));
+	EXPECT_ZERO(ostor_write(ostor, fb, 456, TEST_DATA2,
+			strlen(TEST_DATA2)));
+	EXPECT_ZERO(ostor_write(ostor, fb, 789, TEST_DATA3,
+			strlen(TEST_DATA3)));
 	memset(buf, 0, sizeof(buf));
-	amt = ostor_read(ostor, 123, 0, buf, sizeof(buf));
+	amt = ostor_read(ostor, fb, 123, 0, buf, sizeof(buf));
 	EXPECT_EQ(amt, strlen(TEST_DATA1));
 	EXPECT_ZERO(memcmp(buf, TEST_DATA1, strlen(TEST_DATA1)));
-	amt = ostor_read(ostor, 456, 1, buf, sizeof(buf));
+	amt = ostor_read(ostor, fb, 456, 1, buf, sizeof(buf));
 	EXPECT_EQ(amt, strlen(TEST_DATA2) - 1);
 	EXPECT_ZERO(memcmp(buf, TEST_DATA2 + 1, strlen(TEST_DATA2) - 1));
-	amt = ostor_read(ostor, 333, 0, buf, sizeof(buf));
+	amt = ostor_read(ostor, fb, 333, 0, buf, sizeof(buf));
 	EXPECT_EQ(amt, -ENOENT);
-	EXPECT_ZERO(ostor_unlink(ostor, 123));
-	EXPECT_EQ(ostor_unlink(ostor, 123), -ENOENT);
-	amt = ostor_read(ostor, 123, 0, buf, sizeof(buf));
+	EXPECT_ZERO(ostor_unlink(ostor, fb, 123));
+	EXPECT_EQ(ostor_unlink(ostor, fb, 123), -ENOENT);
+	amt = ostor_read(ostor, fb, 123, 0, buf, sizeof(buf));
 	EXPECT_EQ(amt, -ENOENT);
-	amt = ostor_read(ostor, 789, 0, buf, sizeof(buf));
+	amt = ostor_read(ostor, fb, 789, 0, buf, sizeof(buf));
 	EXPECT_EQ(amt, 0);
 	ostor_shutdown(ostor);
 	ostor_free(ostor);
@@ -105,12 +112,15 @@ static int ostoru_thread1(struct redfish_thread *rt)
 	char buf[1024];
 	struct ostor *ostor = rt->priv;
 
-	EXPECT_ZERO(ostor_write(ostor, 123, TEST_DATA1, strlen(TEST_DATA1)));
+	EXPECT_ZERO(ostor_write(ostor, rt->fb, 123, TEST_DATA1,
+		strlen(TEST_DATA1)));
 	sem_post(&ostoru_threaded_test_sem2);
 	sem_wait(&ostoru_threaded_test_sem1);
-	EXPECT_EQ(ostor_read(ostor, 123, 0, buf, sizeof(buf)), -ENOENT);
-	EXPECT_EQ(ostor_unlink(ostor, 123), -ENOENT);
-	EXPECT_ZERO(ostor_write(ostor, 456, TEST_DATA2, strlen(TEST_DATA2)));
+	EXPECT_EQ(ostor_read(ostor, rt->fb, 123, 0, buf, sizeof(buf)),
+		-ENOENT);
+	EXPECT_EQ(ostor_unlink(ostor, rt->fb, 123), -ENOENT);
+	EXPECT_ZERO(ostor_write(ostor, rt->fb, 456, TEST_DATA2,
+		strlen(TEST_DATA2)));
 	sem_post(&ostoru_threaded_test_sem2);
 	sem_wait(&ostoru_threaded_test_sem1);
 	ostor_shutdown(ostor);
@@ -124,23 +134,25 @@ static int ostoru_thread2(struct redfish_thread *rt)
 	struct ostor *ostor = rt->priv;
 
 	sem_wait(&ostoru_threaded_test_sem2);
-	EXPECT_EQ(ostor_read(ostor, 123, 0, buf, sizeof(buf)),
+	EXPECT_EQ(ostor_read(ostor, rt->fb, 123, 0, buf, sizeof(buf)),
 		strlen(TEST_DATA1));
 	EXPECT_ZERO(memcmp(buf, TEST_DATA1, strlen(TEST_DATA1)));
-	EXPECT_EQ(ostor_read(ostor, 123, 0, buf, 1), 1);
+	EXPECT_EQ(ostor_read(ostor, rt->fb, 123, 0, buf, 1), 1);
 	EXPECT_ZERO(memcmp(buf, TEST_DATA1, 1));
-	EXPECT_ZERO(ostor_unlink(ostor, 123));
+	EXPECT_ZERO(ostor_unlink(ostor, rt->fb, 123));
 	sem_post(&ostoru_threaded_test_sem1);
 	sem_wait(&ostoru_threaded_test_sem2);
-	EXPECT_ZERO(ostor_write(ostor, 456, TEST_DATA2, strlen(TEST_DATA2)));
-	EXPECT_EQ(ostor_read(ostor, 456, 0, buf, sizeof(buf)),
+	EXPECT_ZERO(ostor_write(ostor, rt->fb, 456, TEST_DATA2,
+		strlen(TEST_DATA2)));
+	EXPECT_EQ(ostor_read(ostor, rt->fb, 456, 0, buf, sizeof(buf)),
 		2 * strlen(TEST_DATA2));
 	EXPECT_ZERO(memcmp(buf, TEST_DATA2, strlen(TEST_DATA2)));
 	EXPECT_ZERO(memcmp(buf + strlen(TEST_DATA2), TEST_DATA2,
 		strlen(TEST_DATA2)));
 	sem_post(&ostoru_threaded_test_sem1);
 	sem_wait(&ostoru_threaded_test_sem2);
-	EXPECT_EQ(ostor_read(ostor, 456, 0, buf, sizeof(buf)), -ESHUTDOWN);
+	EXPECT_EQ(ostor_read(ostor, rt->fb, 456, 0, buf, sizeof(buf)),
+		-ESHUTDOWN);
 	return 0;
 }
 
@@ -176,8 +188,15 @@ static int ostoru_threaded_test(const char *ostor_path, int max_open)
 int main(POSSIBLY_UNUSED(int argc), char **argv)
 {
 	char tdir[PATH_MAX];
+	struct fast_log_buf *fb;
+	timer_t timer;
+	time_t t;
 
 	EXPECT_ZERO(utility_ctx_init(argv[0])); /* for g_fast_log_mgr */
+	t = mt_time() + 600;
+	EXPECT_ZERO(mt_set_alarm(t, "ostor_unit timed out", &timer));
+	fb = fast_log_create(g_fast_log_mgr, "main");
+	EXPECT_NOT_ERRPTR(fb);
 
 	EXPECT_ZERO(get_tempdir(tdir, sizeof(tdir), 0755));
 	EXPECT_ZERO(register_tempdir_for_cleanup(tdir));
@@ -185,16 +204,18 @@ int main(POSSIBLY_UNUSED(int argc), char **argv)
 
 	EXPECT_ZERO(get_tempdir(tdir, sizeof(tdir), 0755));
 	EXPECT_ZERO(register_tempdir_for_cleanup(tdir));
-	EXPECT_ZERO(ostoru_simple_test(tdir, 100));
+	EXPECT_ZERO(ostoru_simple_test(tdir, fb, 100));
 
 	EXPECT_ZERO(get_tempdir(tdir, sizeof(tdir), 0755));
 	EXPECT_ZERO(register_tempdir_for_cleanup(tdir));
-	EXPECT_ZERO(ostoru_simple_test(tdir, 1));
+	EXPECT_ZERO(ostoru_simple_test(tdir, fb, 1));
 
 	EXPECT_ZERO(get_tempdir(tdir, sizeof(tdir), 0755));
 	EXPECT_ZERO(register_tempdir_for_cleanup(tdir));
 	EXPECT_ZERO(ostoru_threaded_test(tdir, 10));
 
+	EXPECT_ZERO(mt_deactivate_alarm(timer));
+	fast_log_free(fb);
 	process_ctx_shutdown();
 
 	return EXIT_SUCCESS;
