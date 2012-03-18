@@ -30,6 +30,12 @@ struct ostorc;
  * open() and a close() for each operation.
  */
 
+/** Create the object store
+ *
+ * @param oconf		The ostor configuration
+ *
+ * @return		An error pointer on error; the ostor otherwise
+ */
 extern struct ostor *ostor_init(const struct ostorc *oconf);
 
 /** Shut down the object store.
