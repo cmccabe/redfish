@@ -27,12 +27,20 @@
 enum {
 	/** Acknowledge request */
 	MMM_RESP = 1000,
+	MMM_OSD_READ_RESP,
 };
 
 PACKED(
 struct mmm_resp {
 	struct msg base;
 	uint32_t error;
+});
+
+PACKED(
+struct mmm_osd_read_resp {
+	struct msg base;
+	char data[0];
+	/* osd data */
 });
 
 /** Stat information for a file or directory */

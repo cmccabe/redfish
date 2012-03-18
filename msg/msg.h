@@ -162,6 +162,20 @@ extern void mtran_ep_to_str(const struct mtran *tr, char *buf, size_t buf_len);
  */
 extern void *calloc_msg(uint32_t ty, uint32_t len);
 
+/** Shrink a message.
+ *
+ * This is used to shrink a message.  If possible, it will reduce the amount of
+ * memory used by the message.  No matter what, it will update the message
+ * length field.
+ *
+ * @param v		The message
+ * @param len		New, shorter, length for the message
+ *
+ * @return		The message.  This cannot be NULL-- it will always be a
+ *			valid pointer.
+ */
+extern void *msg_shrink(void *v, uint32_t len);
+
 /** Increment a message's reference count.
  *
  * @param msg		The message

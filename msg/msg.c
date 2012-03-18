@@ -51,6 +51,20 @@ void *calloc_msg(uint32_t ty, uint32_t len)
 	return m;
 }
 
+void *msg_shrink(void *v, uint32_t len)
+{
+	uint32_t cur_len;
+	struct msg *m = v;
+	void *r;
+	
+	cur_len = unpack_from_be32(&m->len);
+	if (cur_len < len)
+		abort();
+	pack_to_be32(&m->len, len);
+	r = realloc(m, len);
+	return r ? r : v;
+}
+
 void msg_addref(struct msg *msg)
 {
 	int refcnt;

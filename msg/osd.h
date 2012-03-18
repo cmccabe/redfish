@@ -23,6 +23,8 @@
 
 #define MMM_HFLUSH_FLAG_SYNC 0x1
 
+#define MMM_OSD_MAX_IO_SIZE 0x7fffffff
+
 enum {
 	/** Request to read from the OSD */
 	MMM_OSD_READ_REQ = 4000,
