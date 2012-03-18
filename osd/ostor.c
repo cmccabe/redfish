@@ -380,11 +380,15 @@ void ostor_free(struct ostor *ostor)
 }
 
 int ostor_write(struct ostor *ostor, struct fast_log_buf *fb, uint64_t cid,
-		const char *data, uint32_t dlen)
+		const char *data, int32_t dlen)
 {
 	int ret;
 	struct ochunk *ch;
 
+	if (dlen < 0) {
+		ret = -EINVAL;
+		goto done;
+	}
 	if (cid == RF_INVAL_CID) {
 		ret = -EINVAL;
 		goto done;
@@ -407,11 +411,15 @@ done:
 }
 
 int32_t ostor_read(struct ostor *ostor, struct fast_log_buf *fb, uint64_t cid,
-		uint64_t off, char *data, uint32_t dlen)
+		uint64_t off, char *data, int32_t dlen)
 {
 	int ret;
 	struct ochunk *ch;
 
+	if (dlen < 0) {
+		ret = -EINVAL;
+		goto done;
+	}
 	if (cid == RF_INVAL_CID) {
 		ret = -EINVAL;
 		goto done;

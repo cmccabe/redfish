@@ -60,7 +60,7 @@ extern void ostor_free(struct ostor *ostor);
  * @return		0 on success; error code otherwise
  */
 extern int ostor_write(struct ostor *ostor, struct fast_log_buf *fb,
-		uint64_t cid, const char *data, uint32_t dlen);
+		uint64_t cid, const char *data, int32_t dlen);
 
 /** Read from a chunk
  *
@@ -76,7 +76,7 @@ extern int ostor_write(struct ostor *ostor, struct fast_log_buf *fb,
  *			code otherwise
  */
 extern int32_t ostor_read(struct ostor *ostor, struct fast_log_buf *fb,
-		uint64_t cid, uint64_t off, char *data, uint32_t dlen);
+		uint64_t cid, uint64_t off, char *data, int32_t dlen);
 
 /** Unlink a chunk
  *
