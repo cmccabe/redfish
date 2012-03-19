@@ -262,16 +262,6 @@ void osd_net_init(struct unitaryc *conf, uint16_t oid,
 			abort();
 		}
 	}
-	for (i = 0; i < RF_ENTITY_TY_NUM; ++i) {
-		msgr_start(g_msgr[i], err, err_len);
-		if (err[0]) {
-			glitch_log("osd_net_init: failed to start %s "
-				"messenger: error %s\n",
-				fish_entity_ty_to_str(i), err);
-			abort();
-		}
-	}
-
 	recv_pool_msgr_listen(g_mds_rpool, g_msgr[RF_ENTITY_TY_MDS],
 		osdc->mds_port, err, err_len);
 	if (err[0]) {
@@ -292,6 +282,15 @@ void osd_net_init(struct unitaryc *conf, uint16_t oid,
 		glitch_log("osd_net_init: failed to listen on port %d: "
 			"error %s\n", osdc->cli_port, err);
 		abort();
+	}
+	for (i = 0; i < RF_ENTITY_TY_NUM; ++i) {
+		msgr_start(g_msgr[i], err, err_len);
+		if (err[0]) {
+			glitch_log("osd_net_init: failed to start %s "
+				"messenger: error %s\n",
+				fish_entity_ty_to_str(i), err);
+			abort();
+		}
 	}
 }
 
