@@ -72,7 +72,7 @@ static void parse_argv(int argc, char **argv, int *daemonize,
 			*daemonize = 0;
 			break;
 		case 'k':
-			str_to_int(optarg, 10, oid, err, err_len);
+			*oid = str_to_int(optarg, err, err_len);
 			if (err[0]) {
 				glitch_log("Error parsing OSD ID: %s\n", err);
 				usage(EXIT_FAILURE);

@@ -115,31 +115,35 @@ int fxsets(int fd, const char *xname, const char *s)
 	return 0;
 }
 
-int xgeti(const char *epath, const char *xname, int base, int *x)
+int xgeti(const char *epath, const char *xname, int *x)
 {
 	ssize_t res;
+	int ret;
 	char err[1] = { 0 }, buf[INT_BUF_SZ];
 	res = getxattr(epath, xname, buf, sizeof(buf) - 1);
 	if (res < 0)
 		return -errno;
 	buf[res] = '\0';
-	str_to_int(buf, base, x, err, sizeof(err));
+	ret = str_to_int(buf, err, sizeof(err));
 	if (err[0])
 		return -EINVAL;
+	*x = ret;
 	return 0;
 }
 
-int fxgeti(int fd, const char *xname, int base, int *x)
+int fxgeti(int fd, const char *xname, int *x)
 {
 	ssize_t res;
+	int ret;
 	char err[1] = { 0 }, buf[INT_BUF_SZ];
 	res = fgetxattr(fd, xname, buf, sizeof(buf) - 1);
 	if (res < 0)
 		return -errno;
 	buf[res] = '\0';
-	str_to_int(buf, base, x, err, sizeof(err));
+	ret = str_to_int(buf, err, sizeof(err));
 	if (err[0])
 		return -EINVAL;
+	*x = ret;
 	return 0;
 }
 
@@ -148,13 +152,13 @@ static int xset_fill_buf(int base, int i, char *buf, size_t buf_len)
 	char fmt[16];
 	switch (base) {
 	case 8:
-		snprintf(fmt, sizeof(fmt), "%%o");
+		snprintf(fmt, sizeof(fmt), "0%%o");
 		break;
 	case 10:
 		snprintf(fmt, sizeof(fmt), "%%d");
 		break;
 	case 16:
-		snprintf(fmt, sizeof(fmt), "%%x");
+		snprintf(fmt, sizeof(fmt), "0x%%x");
 		break;
 	default:
 		return -ENOTSUP;

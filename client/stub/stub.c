@@ -241,7 +241,7 @@ static int validate_perm(const struct redfish_client *cli, const char *fname,
 	/** The superuser can skip permission checks */
 	if (!strcmp(cli->user, RF_SUPERUSER_NAME))
 		return 0;
-	if (xgeti(fname, XATTR_FISH_MODE, 8, &mode)) {
+	if (xgeti(fname, XATTR_FISH_MODE, &mode)) {
 		return -EIO;
 	}
 	/* everyone */

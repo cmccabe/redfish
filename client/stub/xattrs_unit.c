@@ -81,19 +81,19 @@ int main(void)
 
 	/* set base-8 xattr int */
 	EXPECT_ZERO(xseti(tfile, TEST_KEY2, TEST_BASE2, TEST_VAL2));
-	EXPECT_ZERO(xgeti(tfile, TEST_KEY2, TEST_BASE2, &i));
+	EXPECT_ZERO(xgeti(tfile, TEST_KEY2, &i));
 	EXPECT_EQ(i, TEST_VAL2);
 
 	/* set base-10 xattr int */
 	EXPECT_ZERO(xseti(tfile, TEST_KEY3, TEST_BASE3, TEST_VAL3));
-	EXPECT_ZERO(xgeti(tfile, TEST_KEY3, TEST_BASE3, &i));
+	EXPECT_ZERO(xgeti(tfile, TEST_KEY3, &i));
 	EXPECT_EQ(i, TEST_VAL3);
 
 	/* set base-16 xattr int */
 	fd = open(tfile, O_RDONLY);
 	EXPECT_GT(fd, 0);
 	EXPECT_ZERO(fxseti(fd, TEST_KEY4, TEST_BASE4, TEST_VAL4));
-	EXPECT_ZERO(fxgeti(fd, TEST_KEY4, TEST_BASE4, &i));
+	EXPECT_ZERO(fxgeti(fd, TEST_KEY4, &i));
 	EXPECT_EQ(i, TEST_VAL4);
 
 	/* set another xattr string */

@@ -65,7 +65,6 @@ static void fishmkfs_parse_argv(int argc, char **argv, const char **cpath,
 	int i;
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
-	long long ll;
 	char c;
 
 	*cpath = getenv("REDFISH_CONF");
@@ -78,19 +77,18 @@ static void fishmkfs_parse_argv(int argc, char **argv, const char **cpath,
 			*cpath = optarg;
 			break;
 		case 'F':
-			str_to_long_long(optarg, 16, &ll, err, err_len);
+			*fsid = str_to_u64(optarg, err, err_len);
 			if (err[0]) {
 				fprintf(stderr, "Failed to parse the argument "
 					"to -i: %s\n", err);
 				exit(EXIT_FAILURE);
 			}
-			*fsid = (uint64_t)ll;
 			break;
 		case 'h':
 			fishmkfs_usage(EXIT_SUCCESS);
 			break;
 		case 'm':
-			str_to_int(optarg, 10, &i, err, err_len);
+			i = str_to_int(optarg, err, err_len);
 			if (err[0]) {
 				fprintf(stderr, "Failed to parse the argument "
 					"to -m: %s\n", err);
@@ -101,7 +99,7 @@ static void fishmkfs_parse_argv(int argc, char **argv, const char **cpath,
 					"be between 0 and %d\n", RF_MAX_MDS);
 				exit(EXIT_FAILURE);
 			}
-			*mid = (uint16_t)i;
+			*mid = i;
 			break;
 		default:
 			fishmkfs_usage(EXIT_FAILURE);

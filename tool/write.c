@@ -51,7 +51,7 @@ int fishtool_write(struct fishtool_params *params)
 	local = params->lowercase_args[ALPHA_IDX('i')];
 	mode_str = params->lowercase_args[ALPHA_IDX('p')];
 	if (mode_str) {
-		str_to_int(mode_str, 8, &mode, err, err_len);
+		mode = str_to_oct(mode_str, err, err_len);
 		if (err[0]) {
 			fprintf(stderr, "fishtool_write: error parsing -p: "
 				"%s\n", err);

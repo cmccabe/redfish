@@ -26,60 +26,97 @@
 
 int test_str_to_int(void)
 {
-	long long ll;
-	int i;
-	char err[512] = { 0 };
+	char err[512];
 
 	err[0] = '\0';
-	str_to_int("123", 10, &i, err, sizeof(err));
+	EXPECT_EQ(123, str_to_int("123", err, sizeof(err)));
 	EXPECT_ZERO(err[0]);
-	EXPECT_EQ(i, 123);
 
 	err[0] = '\0';
-	str_to_int("0", 10, &i, err, sizeof(err));
+	EXPECT_EQ(-123, str_to_int("-123", err, sizeof(err)));
 	EXPECT_ZERO(err[0]);
-	EXPECT_EQ(i, 0);
 
 	err[0] = '\0';
-	str_to_int("", 10, &i, err, sizeof(err));
+	EXPECT_EQ(123, str_to_int("123    ", err, sizeof(err)));
+	EXPECT_ZERO(err[0]);
+
+	err[0] = '\0';
+	EXPECT_EQ(123, str_to_int("    123", err, sizeof(err)));
+	EXPECT_ZERO(err[0]);
+
+	err[0] = '\0';
+	EXPECT_EQ(123, str_to_int("    123    ", err, sizeof(err)));
+	EXPECT_ZERO(err[0]);
+
+	err[0] = '\0';
+	EXPECT_EQ(-123, str_to_int("    -123    ", err, sizeof(err)));
+	EXPECT_ZERO(err[0]);
+
+	err[0] = '\0';
+	EXPECT_EQ(0, str_to_int("0", err, sizeof(err)));
+	EXPECT_ZERO(err[0]);
+
+	err[0] = '\0';
+	str_to_int("", err, sizeof(err));
 	EXPECT_NONZERO(err[0]);
 
 	err[0] = '\0';
-	str_to_int("10b", 10, &i, err, sizeof(err));
+	str_to_int("10b", err, sizeof(err));
 	EXPECT_NONZERO(err[0]);
 
 	err[0] = '\0';
-	str_to_int("f", 16, &i, err, sizeof(err));
-	EXPECT_ZERO(err[0]);
-	EXPECT_EQ(i, 15);
-
-	err[0] = '\0';
-	str_to_int("8589934592", 10, &i, err, sizeof(err));
+	str_to_int("f", err, sizeof(err));
 	EXPECT_NONZERO(err[0]);
 
 	err[0] = '\0';
-	str_to_int("2147483647", 10, &i, err, sizeof(err));
-	EXPECT_ZERO(err[0]);
-	EXPECT_EQ(i, 2147483647);
-
-	err[0] = '\0';
-	str_to_int("blah", 10, &i, err, sizeof(err));
+	str_to_int("8589934592", err, sizeof(err));
 	EXPECT_NONZERO(err[0]);
 
 	err[0] = '\0';
-	str_to_long_long("281474976710656", 10, &ll, err, sizeof(err));
+	EXPECT_EQ(2147483647, str_to_int("2147483647", err, sizeof(err)));
 	EXPECT_ZERO(err[0]);
-	EXPECT_EQ(ll, 281474976710656LL);
 
 	err[0] = '\0';
-	str_to_long_long("0x1000000000000", 16, &ll, err, sizeof(err));
+	EXPECT_EQ(281474976710656LL,
+		str_to_u64("281474976710656", err, sizeof(err)));
 	EXPECT_ZERO(err[0]);
-	EXPECT_EQ(ll, 281474976710656LL);
 
 	err[0] = '\0';
-	str_to_int("0755", 8, &i, err, sizeof(err));
+	EXPECT_EQ(0x1000000000000LLU,
+		str_to_u64("0x1000000000000", err, sizeof(err)));
 	EXPECT_ZERO(err[0]);
-	EXPECT_EQ(i, 493);
+
+	err[0] = '\0';
+	str_to_u64("-123", err, sizeof(err));
+	EXPECT_NONZERO(err[0]);
+
+	err[0] = '\0';
+	str_to_u64("-0x123", err, sizeof(err));
+	EXPECT_NONZERO(err[0]);
+
+	err[0] = '\0';
+	EXPECT_EQ(-0x123, str_to_s64("-0x123", err, sizeof(err)));
+	EXPECT_ZERO(err[0]);
+
+	err[0] = '\0';
+	EXPECT_EQ(0755, str_to_oct("0755", err, sizeof(err)));
+	EXPECT_ZERO(err[0]);
+
+	err[0] = '\0';
+	EXPECT_EQ(0755, str_to_oct("755", err, sizeof(err)));
+	EXPECT_ZERO(err[0]);
+
+	err[0] = '\0';
+	EXPECT_EQ(0755, str_to_oct("   755", err, sizeof(err)));
+	EXPECT_ZERO(err[0]);
+
+	err[0] = '\0';
+	str_to_oct("955", err, sizeof(err));
+	EXPECT_NONZERO(err[0]);
+
+	err[0] = '\0';
+	str_to_oct("   955", err, sizeof(err));
+	EXPECT_NONZERO(err[0]);
 
 	return 0;
 }

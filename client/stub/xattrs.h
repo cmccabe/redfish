@@ -75,44 +75,42 @@ extern int xsets(const char *epath, const char *xname, const char *s);
  */
 extern int fxsets(int fd, const char *xname, const char *s);
 
-/** Get an xattr as an int
+/** Get an xattr as an octal int
  *
  * @param epath		file path
  * @param xname		xattr name
- * @param base		numerical base to use (usually 10)
  * @param x		(out param) will be filled with the int on success.
  *
  * @return		0 on success; error code otherwise.
  */
-extern int xgeti(const char *epath, const char *xname, int base, int *x);
+extern int xgeti(const char *epath, const char *xname, int *x);
 
-/** Get an xattr as an int
+/** Get an xattr as an octal int
  *
  * @param fd		file descriptor
  * @param xname		xattr name
- * @param base		numerical base to use (usually 10)
  * @param x		(out param) will be filled with the int on success.
  *
  * @return		0 on success; error code otherwise.
  */
-extern int fxgeti(int fd, const char *xname, int base, int *x);
+extern int fxgeti(int fd, const char *xname, int *x);
 
-/** Set an xattr as an int
+/** Set an xattr as an octal int
  *
  * @param epath		file path
  * @param xname		xattr name
- * @param base		numerical base to use (usually 10)
+ * @param base		numerical base to use
  * @param x		the int
  *
  * @return		0 on success; error code otherwise.
  */
 extern int xseti(const char *epath, const char *xname, int base, int i);
 
-/** Set an xattr as an int
+/** Set an xattr as an octal int
  *
  * @param fd		file descriptor
  * @param xname		xattr name
- * @param base		numerical base to use (usually 10)
+ * @param base		numerical base to use
  * @param x		the int
  *
  * @return		0 on success; error code otherwise.

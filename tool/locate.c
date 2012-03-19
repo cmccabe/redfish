@@ -75,27 +75,23 @@ int fishtool_locate(struct fishtool_params *params)
 	}
 	start_str = params->lowercase_args[ALPHA_IDX('s')];
 	if (start_str) {
-		long long int z;
-		str_to_long_long(start_str, 8, &z, err, err_len);
+		start = str_to_u64(start_str, err, err_len);
 		if (err[0]) {
 			fprintf(stderr, "fishtool_locate: error parsing -s: "
 				"%s\n", err);
 			ret = -EINVAL;
 			goto done;
 		}
-		start = z;
 	}
 	len_str = params->lowercase_args[ALPHA_IDX('l')];
 	if (len_str) {
-		long long int z;
-		str_to_long_long(len_str, 8, &z, err, err_len);
+		len = str_to_u64(len_str, err, err_len);
 		if (err[0]) {
 			fprintf(stderr, "fishtool_locate: error parsing -l: "
 				"%s\n", err);
 			ret = -EINVAL;
 			goto done;
 		}
-		len = z;
 	}
 	cli = redfish_connect(params->cpath, params->user_name,
 		redfish_log_to_stderr, NULL, err, err_len);

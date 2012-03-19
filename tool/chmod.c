@@ -54,7 +54,7 @@ int fishtool_chmod(struct fishtool_params *params)
 		ret = -EINVAL;
 		goto done;
 	}
-	str_to_int(mode_str, 8, &mode, err, err_len);
+	mode = str_to_oct(mode_str, err, err_len);
 	if (err[0]) {
 		fprintf(stderr, "fishtool_write: error parsing -p: "
 			"%s\n", err);
