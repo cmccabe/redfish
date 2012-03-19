@@ -101,25 +101,13 @@ static void parse_argv(int argc, char **argv, int *daemonize,
 	}
 }
 
-static struct mdsc *get_mds_conf(struct unitaryc *conf, int mid)
-{
-	int i;
-	struct mdsc **m;
-
-	m = conf->mds;
-	for (i = 0; (i < mid) && (*m); ++i, m++) {
-		;
-	}
-	return *m;
-}
-
 int main(int argc, char **argv)
 {
 	struct fast_log_buf *fb = NULL;
 	int ret, mid = -1, daemonize = 1;
 	const char *cfname = NULL;
 	struct unitaryc *conf;
-	struct mdsc *mconf;
+	struct mdsc *mdsc;
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 
@@ -129,17 +117,17 @@ int main(int argc, char **argv)
 		glitch_log("%s\n", err);
 		return EXIT_FAILURE;
 	}
-	mconf = get_mds_conf(conf, mid);
-	if (!mconf) {
-		glitch_log("no MDS found in config file with id %d\n", mid);
-		return EXIT_FAILURE;
-	}
 	harmonize_unitary_conf(conf, err, err_len);
 	if (err[0]) {
 		glitch_log("config file error: %s\n", err);
 		return EXIT_FAILURE;
 	}
-	if (process_ctx_init(argv[0], daemonize, mconf->lc))
+	mdsc = unitaryc_lookup_mdsc(conf, mid);
+	if (!mdsc) {
+		glitch_log("no MDS found in config file with id %d\n", mid);
+		return EXIT_FAILURE;
+	}
+	if (process_ctx_init(argv[0], daemonize, mdsc->lc))
 		return EXIT_FAILURE;
 	atexit(delete_pid_file);
 	fb = fast_log_create(g_fast_log_mgr, "mds_main");
@@ -147,7 +135,7 @@ int main(int argc, char **argv)
 		ret = PTR_ERR(fb);
 		goto done;
 	}
-	mds_net_init(fb, conf, mconf, mid);
+	mds_net_init(fb, conf, mdsc, mid);
 	ret = mds_main_loop();
 done:
 	if (!IS_ERR(fb))

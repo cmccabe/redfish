@@ -100,18 +100,6 @@ static void parse_argv(int argc, char **argv, int *daemonize,
 	}
 }
 
-static struct osdc *get_osd_conf(struct unitaryc *conf, int oid)
-{
-	int i;
-	struct osdc **o;
-
-	o = conf->osd;
-	for (i = 0; (i < oid) && (*o); ++i, o++) {
-		;
-	}
-	return *o;
-}
-
 int main(int argc, char **argv)
 {
 	char err[512] = { 0 };
@@ -119,7 +107,7 @@ int main(int argc, char **argv)
 	int ret, oid = -1, daemonize = 1;
 	const char *cfname = NULL;
 	struct unitaryc *conf;
-	struct osdc *oconf;
+	struct osdc *osdc;
 
 	parse_argv(argc, argv, &daemonize, &oid, &cfname);
 	conf = parse_unitary_conf_file(cfname, err, err_len);
@@ -128,14 +116,19 @@ int main(int argc, char **argv)
 		ret = EXIT_FAILURE;
 		goto done;
 	}
-	oconf = get_osd_conf(conf, oid);
-	if (!oconf) {
+	harmonize_unitary_conf(conf, err, err_len);
+	if (err[0]) {
+		glitch_log("config file error: %s\n", err);
+		return EXIT_FAILURE;
+	}
+	osdc = unitaryc_lookup_osdc(conf, oid);
+	if (!osdc) {
 		glitch_log("Failed to find OSD %d in the configuration file\n",
 			oid);
 		ret = EXIT_FAILURE;
 		goto done;
 	}
-	if (process_ctx_init(argv[0], daemonize, oconf->lc)) {
+	if (process_ctx_init(argv[0], daemonize, osdc->lc)) {
 		ret = EXIT_FAILURE;
 		goto done;
 	}

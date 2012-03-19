@@ -41,6 +41,12 @@ void harmonize_osdc(struct osdc *conf, char *err, size_t err_len)
 		snprintf(err, err_len, "You must give a hostname");
 		return;
 	}
+	/* For convenience, if the ostor_path is not set, but the base_dir path
+	 * is, assume that the ostor path is inside the base_dir. */
+	if (conf->lc && conf->lc->base_dir &&
+			conf->oc && (!conf->oc->ostor_path)) {
+		conf->oc->ostor_path = strdupcat(conf->lc->base_dir, "/ostor");
+	}
 	harmonize_ostorc(conf->oc, err, err_len);
 	if (err[0])
 		return;

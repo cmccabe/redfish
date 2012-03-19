@@ -85,3 +85,37 @@ void free_unitary_conf_file(struct unitaryc *conf)
 {
 	JORM_FREE_unitaryc(conf);
 }
+
+struct mdsc *unitaryc_lookup_mdsc(struct unitaryc *conf, int mid)
+{
+	int i = 0;
+	struct mdsc *mdsc, **m;
+	
+	m = conf->mds;
+	while (1) {
+		mdsc = *m;
+		if (!mdsc)
+			return NULL;
+		if (i == mid)
+			return mdsc;
+		++i;
+		++m;
+	}
+}
+
+struct osdc *unitaryc_lookup_osdc(struct unitaryc *conf, int oid)
+{
+	int i = 0;
+	struct osdc *osdc, **o;
+	
+	o = conf->osd;
+	while (1) {
+		osdc = *o;
+		if (!osdc)
+			return NULL;
+		if (i == oid)
+			return osdc;
+		++i;
+		++o;
+	}
+}

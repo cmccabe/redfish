@@ -185,7 +185,7 @@ static int osd_net_handle_tr(struct recv_pool_thread *rt, struct mtran *tr)
 void osd_net_init(struct unitaryc *conf, uint16_t oid,
 		char *err, size_t err_len)
 {
-	const struct osdc *oconf = conf->osd[oid];
+	const struct osdc *osdc = unitaryc_lookup_osdc(conf, oid);
 	struct msgr_conf mconf[RF_ENTITY_TY_NUM] = {
 		{
 			.max_conn = 65535,
@@ -218,7 +218,7 @@ void osd_net_init(struct unitaryc *conf, uint16_t oid,
 			"from configuration: error %s\n", err);
 		abort();
 	}
-	g_ostor = ostor_init(oconf->oc);
+	g_ostor = ostor_init(osdc->oc);
 	if (IS_ERR(g_ostor)) {
 		glitch_log("osd_net_init: failed to create the object store: "
 			"error %d.\n", PTR_ERR(g_ostor));
@@ -273,24 +273,24 @@ void osd_net_init(struct unitaryc *conf, uint16_t oid,
 	}
 
 	recv_pool_msgr_listen(g_mds_rpool, g_msgr[RF_ENTITY_TY_MDS],
-		oconf->mds_port, err, err_len);
+		osdc->mds_port, err, err_len);
 	if (err[0]) {
 		glitch_log("osd_net_init: failed to listen on port %d: "
-			"error %s\n", oconf->mds_port, err);
+			"error %s\n", osdc->mds_port, err);
 		abort();
 	}
 	recv_pool_msgr_listen(g_io_rpool, g_msgr[RF_ENTITY_TY_OSD],
-		oconf->osd_port, err, err_len);
+		osdc->osd_port, err, err_len);
 	if (err[0]) {
 		glitch_log("osd_net_init: failed to listen on port %d: "
-			"error %s\n", oconf->osd_port, err);
+			"error %s\n", osdc->osd_port, err);
 		abort();
 	}
 	recv_pool_msgr_listen(g_io_rpool, g_msgr[RF_ENTITY_TY_CLI],
-		oconf->cli_port, err, err_len);
+		osdc->cli_port, err, err_len);
 	if (err[0]) {
 		glitch_log("osd_net_init: failed to listen on port %d: "
-			"error %s\n", oconf->cli_port, err);
+			"error %s\n", osdc->cli_port, err);
 		abort();
 	}
 }

@@ -28,19 +28,14 @@
 
 void harmonize_mdsc(struct mdsc *conf, char *err, size_t err_len)
 {
-	char path[PATH_MAX];
-
 	harmonize_logc(conf->lc, err, err_len);
 	if (err[0])
 		return;
-	/* If the user hasn't specified an mstor path, but base_dir is set,
-	 * assume that the mstor is in there.  This is convenient for tests. */
-	if ((conf->mc->mstor_path == JORM_INVAL_STR) &&
-			(conf->lc->base_dir != JORM_INVAL_STR)) {
-		if (!zsnprintf(path, sizeof(path), "%s/cur.mstor",
-				conf->lc->base_dir)) {
-			conf->mc->mstor_path = strdup(path);
-		}
+	/* For convenience, if the mstor is not set, but the base_dir path
+	 * is, assume that the mstor path is inside the base_dir. */
+	if (conf->lc && conf->lc->base_dir &&
+			conf->mc && (!conf->mc->mstor_path)) {
+		conf->mc->mstor_path = strdupcat(conf->lc->base_dir, "/mstor");
 	}
 	harmonize_mstorc(conf->mc, err, err_len);
 	if (err[0])

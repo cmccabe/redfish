@@ -56,4 +56,22 @@ extern void harmonize_unitary_conf(struct unitaryc *conf, char *err,
  */
 extern void free_unitary_conf_file(struct unitaryc *conf);
 
+/** Look up a given MDS configuration
+ *
+ * @param conf		The unitary configuration data
+ * @param mid		The mid to look up
+ *
+ * @return 		NULL if there was no such mid; the conf otherwise
+ */
+extern struct mdsc *unitaryc_lookup_mdsc(struct unitaryc *conf, int mid);
+
+/** Look up a given OSD configuration
+ *
+ * @param conf		The unitary configuration data
+ * @param oid		The oid to look up
+ *
+ * @return 		NULL if there was no such oid; the conf otherwise
+ */
+extern struct osdc *unitaryc_lookup_osdc(struct unitaryc *conf, int oid);
+
 #endif
