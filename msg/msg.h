@@ -162,6 +162,14 @@ extern void mtran_ep_to_str(const struct mtran *tr, char *buf, size_t buf_len);
  */
 extern void *calloc_msg(uint32_t ty, uint32_t len);
 
+/** Allocate a new response message.
+ *
+ * @param error		error code to embed in the message
+ *
+ * @return		The new response message, or NULL on OOM
+ */
+extern struct mmm_resp *resp_alloc(int error);
+
 /** Shrink a message.
  *
  * This is used to shrink a message.  If possible, it will reduce the amount of

@@ -20,7 +20,6 @@
 #include "core/glitch_log.h"
 #include "core/pid_file.h"
 #include "core/process_ctx.h"
-#include "core/signal.h"
 #include "jorm/json.h"
 #include "osd/net.h"
 #include "util/compiler.h"
@@ -141,7 +140,14 @@ int main(int argc, char **argv)
 		goto done;
 	}
 	atexit(delete_pid_file);
-	ret = osd_main_loop(oconf);
+
+	osd_net_init(conf, oid, err, err_len);
+	if (err[0]) {
+		glitch_log("osd_net_init error: %s\n", err);
+		ret = EXIT_FAILURE;
+		goto done;
+	}
+	ret = osd_net_main_loop();
 done:
 	process_ctx_shutdown();
 	free_unitary_conf_file(conf);

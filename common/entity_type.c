@@ -18,7 +18,7 @@
 
 const char *fish_entity_ty_to_str(enum fish_entity_ty ty)
 {
-	swtich (ty) {
+	switch (ty) {
 	case RF_ENTITY_TY_MDS:
 		return "RF_ENTITY_TY_MDS";
 	case RF_ENTITY_TY_OSD:

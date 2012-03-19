@@ -3,6 +3,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 
 add_library(common
     cluster_map.c
+    entity_type.c
     config/logc.c
     config/mdsc.c
     config/mstorc.c

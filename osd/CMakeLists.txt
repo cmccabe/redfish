@@ -1,25 +1,23 @@
-#add_library(io
-#    io.c
-#)
-#target_link_libraries(io util)
-#
-#add_executable(fishosd
-#    main.c
-#    net.c
-#)
-#target_link_libraries(fishosd
-#    ${LIBEV_LIBRARIES}
-#    core
-#    io
-#    jorm
-#)
-#
-#add_executable(io_unit io_unit.c)
-#target_link_libraries(io_unit io utest)
-#add_utest(io_unit)
-#
-#INSTALL(TARGETS fishosd DESTINATION bin)
+add_executable(fishosd
+    fast_log.c
+    main.c
+    net.c
+    ostor.c
+)
+target_link_libraries(fishosd
+    ${LIBEV_LIBRARIES}
+    common 
+    core
+    jorm
+    msgr
+)
 
-add_executable(ostor_unit fast_log.c ostor_unit.c ostor.c)
+INSTALL(TARGETS fishosd DESTINATION bin)
+
+add_executable(ostor_unit
+    fast_log.c
+    ostor.c
+    ostor_unit.c
+)
 target_link_libraries(ostor_unit core utest)
 add_utest(ostor_unit)
