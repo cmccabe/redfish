@@ -187,6 +187,17 @@ static int test_fwdprintf(void)
 	return 0;
 }
 
+static int test_strdupcat(const char *a, const char *b, const char *expected)
+{
+	char *str;
+	
+	str = strdupcat(a, b);
+	EXPECT_NOT_EQ(str, NULL);
+	EXPECT_ZERO(strcmp(str, expected));
+	free(str);
+	return 0;
+}
+
 int main(void)
 {
 	EXPECT_ZERO(has_suffix_succeeded("abcd", "bcd"));
@@ -207,6 +218,10 @@ int main(void)
 	EXPECT_ZERO(test_zsnprintf(128, "foobar", 1));
 	EXPECT_ZERO(test_zsnprintf(3, "ab", 1));
 	EXPECT_ZERO(test_zsnprintf(3, "abc", 0));
+
+	EXPECT_ZERO(test_strdupcat("ab", "c", "abc"));
+	EXPECT_ZERO(test_strdupcat("", "c", "c"));
+	EXPECT_ZERO(test_strdupcat("", "", ""));
 
 	EXPECT_ZERO(test_hex_dump());
 

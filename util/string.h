@@ -30,7 +30,7 @@
  *
  * @return		1 if str has the given suffix, 0 otherwise.
  */
-int has_suffix(const char *str, const char *suffix);
+extern int has_suffix(const char *str, const char *suffix);
 
 /** Like snprintf, but appends to a string that already exists.
  *
@@ -39,7 +39,7 @@ int has_suffix(const char *str, const char *suffix);
  * @param fmt		Printf-style format string
  * @param ...		Printf-style arguments
  */
-void snappend(char *str, size_t str_len, const char *fmt, ...)
+extern void snappend(char *str, size_t str_len, const char *fmt, ...)
 	PRINTF_FORMAT(3, 4);
 
 /** Like snprintf, but returns a nonzero value if there is not enough space.
@@ -55,7 +55,7 @@ void snappend(char *str, size_t str_len, const char *fmt, ...)
  *
  * @returns		0 on success; error code if there is not enough space.
  */
-int zsnprintf(char *out, size_t out_len, const char *fmt, ...)
+extern int zsnprintf(char *out, size_t out_len, const char *fmt, ...)
 	PRINTF_FORMAT(3, 4);
 
 /** Concatenate an array of strings into a single string.
@@ -66,7 +66,7 @@ int zsnprintf(char *out, size_t out_len, const char *fmt, ...)
  *			strings in lines concatenated together, with newlines
  *			after each one.
  */
-char *linearray_to_str(const char **lines);
+extern char *linearray_to_str(const char **lines);
 
 /** Write a linearray to a file
  *
@@ -76,7 +76,7 @@ char *linearray_to_str(const char **lines);
  * @param err		error output
  * @param err_len	length of error buffer
  */
-void write_linearray_to_file(const char *file_name, const char **lines,
+extern void write_linearray_to_file(const char *file_name, const char **lines,
 				char *err, size_t err_len);
 
 /** Print a series of lines to FILE* fp
@@ -84,7 +84,7 @@ void write_linearray_to_file(const char *file_name, const char **lines,
  * @param fp		The FILE* to print to
  * @param lines		A NULL-terminated array of lines to print
  */
-void print_lines(FILE *fp, const char **lines);
+extern void print_lines(FILE *fp, const char **lines);
 
 /** Hash a string
  *
@@ -92,7 +92,7 @@ void print_lines(FILE *fp, const char **lines);
  *
  * @return		the string hash
  */
-uint32_t ohash_str(const char *str);
+extern uint32_t ohash_str(const char *str);
 
 /** Convert a byte buffer into a C string.
  *
@@ -103,7 +103,8 @@ uint32_t ohash_str(const char *str);
  * @param str		the output string
  * @param str_len	length of the output string
  */
-void hex_dump(const char *buf, size_t buf_len, char *str, size_t str_len);
+extern void hex_dump(const char *buf, size_t buf_len, char *str,
+		size_t str_len);
 
 /** Write a formatted string to the next available position in a
  * fixed-length buffer
@@ -114,7 +115,17 @@ void hex_dump(const char *buf, size_t buf_len, char *str, size_t str_len);
  * @param fmt		a printf-style format string
  * @param ...		format arguments
  */
-void fwdprintf(char *buf, size_t *off, size_t buf_len, const char *fmt, ...)
-	PRINTF_FORMAT(4, 5);
+extern void fwdprintf(char *buf, size_t *off, size_t buf_len,
+		const char *fmt, ...) PRINTF_FORMAT(4, 5);
+
+/** Dynamically allocate a string which is the concatenation of two other
+ * strings.
+ *
+ * @param a		First string
+ * @param b		Second string
+ *
+ * @return		the new malloc'ed string, or NULL on OOM
+ */
+extern char* strdupcat(const char *a, const char *b);
 
 #endif

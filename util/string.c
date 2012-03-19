@@ -197,3 +197,15 @@ void fwdprintf(char *buf, size_t *off, size_t buf_len, const char *fmt, ...)
 		*off = o + res;
 }
 
+char* strdupcat(const char *a, const char *b)
+{
+	char *str;
+	size_t la = strlen(a);
+	size_t lb = strlen(b);
+
+	str = malloc(la + lb + 1);
+	if (!str)
+		return NULL;
+	sprintf(str, "%s%s", a, b);
+	return str;
+}
