@@ -21,9 +21,6 @@
 
 #include "util/compiler.h"
 
-/** Default MDS port */
-#define REDFISH_DEFAULT_MDS_PORT 9000
-
 /** Redfish replication count
  * TODO: make this adjustable
  */
