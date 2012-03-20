@@ -1,6 +1,7 @@
 add_executable(fishtool
     chmod.c
     chown.c
+    common.c
     locate.c
     mkdirs.c
     ping.c
@@ -10,4 +11,9 @@ add_executable(fishtool
     unlink.c
     write.c
 )
-target_link_libraries(fishtool ${REDFISH_CLIENT_LIB} core)
+target_link_libraries(fishtool
+    ${REDFISH_CLIENT_LIB}
+    common
+    core
+    msgr
+)
