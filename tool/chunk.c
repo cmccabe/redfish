@@ -342,7 +342,7 @@ int fishtool_chunk_read(struct fishtool_params *params)
 	}
 	local = params->lowercase_args[ALPHA_IDX('o')];
 	if (local) {
-		cct->fd = open(local, O_WRONLY | O_TRUNC);
+		cct->fd = open(local, O_WRONLY | O_TRUNC | O_CREAT, 0644);
 		if (cct->fd < 0) {
 			ret = -errno;
 			fprintf(stderr, "error opening "

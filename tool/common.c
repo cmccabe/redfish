@@ -90,8 +90,16 @@ struct tool_rrctx *tool_rrctx_alloc(const char *cpath)
 		ret = PTR_ERR(rrc->msgr);
 		goto err_free_ctx;
 	}
+	msgr_start(rrc->msgr, err, err_len);
+	if (err[0]) {
+		glitch_log("Error starting messenger: %s\n", err);
+		ret = -EIO;
+		goto err_free_msgr;
+	}
 	return rrc;
 
+err_free_msgr:
+	msgr_free(rrc->msgr);
 err_free_ctx:
 	bsend_free(rrc->ctx);
 err_free_cmap:
@@ -108,6 +116,7 @@ err:
 
 void tool_rrctx_free(struct tool_rrctx *rrc)
 {
+	msgr_shutdown(rrc->msgr);
 	msgr_free(rrc->msgr);
 	bsend_free(rrc->ctx);
 	free_unitary_conf_file(rrc->conf);
