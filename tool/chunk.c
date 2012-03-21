@@ -60,7 +60,6 @@ static struct chunk_op_ctx *chunk_op_ctx_alloc(struct fishtool_params *params)
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 	struct chunk_op_ctx *cct;
-	struct tool_rrctx *rrc = NULL;
 	const char *cid_str, *oid_str;
 	int ret, oid;
 
@@ -92,9 +91,9 @@ static struct chunk_op_ctx *chunk_op_ctx_alloc(struct fishtool_params *params)
 		glitch_log("error parsing OSD ID: %s", err);
 		goto error_free_cct;
 	}
-	rrc = tool_rrctx_alloc(params->cpath);
-	if (IS_ERR(rrc)) {
-		ret = PTR_ERR(rrc);
+	cct->rrc = tool_rrctx_alloc(params->cpath);
+	if (IS_ERR(cct->rrc)) {
+		ret = PTR_ERR(cct->rrc);
 		glitch_log("fishtool_chunk_write: error allocating "
 			"rrctx: error %d (%s)\n", ret, terror(ret));
 		goto error_free_cct;

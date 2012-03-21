@@ -40,7 +40,7 @@
 struct tool_rrctx *tool_rrctx_alloc(const char *cpath)
 {
 	int ret;
-	char err[512];
+	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
 	const struct msgr_conf mconf = {
 		.max_conn = 1024,
