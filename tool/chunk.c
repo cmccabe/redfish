@@ -61,7 +61,7 @@ static struct chunk_op_ctx *chunk_op_ctx_alloc(struct fishtool_params *params)
 	size_t err_len = sizeof(err);
 	struct chunk_op_ctx *cct;
 	const char *cid_str, *oid_str;
-	int ret, oid;
+	int ret;
 
 	cct = calloc(1, sizeof(struct chunk_op_ctx));
 	if (!cct) {
@@ -86,7 +86,7 @@ static struct chunk_op_ctx *chunk_op_ctx_alloc(struct fishtool_params *params)
 			"to.  -h for help.\n");
 		goto error_free_cct;
 	}
-	oid = str_to_int(oid_str, err, err_len);
+	cct->oid = str_to_int(oid_str, err, err_len);
 	if (err[0]) {
 		glitch_log("error parsing OSD ID: %s", err);
 		goto error_free_cct;
@@ -98,10 +98,10 @@ static struct chunk_op_ctx *chunk_op_ctx_alloc(struct fishtool_params *params)
 			"rrctx: error %d (%s)\n", ret, terror(ret));
 		goto error_free_cct;
 	}
-	cct->osdc = unitaryc_lookup_osdc(cct->rrc->conf, oid);
+	cct->osdc = unitaryc_lookup_osdc(cct->rrc->conf, cct->oid);
 	if (IS_ERR(cct->osdc)) {
 		glitch_log("Error: no such OSD as %d found in the "
-			"config.", oid);
+			"config.", cct->oid);
 		goto error_free_rrc;
 	}
 	return cct;
