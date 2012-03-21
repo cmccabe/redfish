@@ -12,7 +12,6 @@ import tempfile
 
 of_util.check_python_version()
 parser = OptionParser()
-parser.add_option("-b", "--redfish-build-directory", dest="bld_dir")
 (opts, args, node_list) = of_util.parse_deploy_opts(parser)
 if opts.bld_dir == None:
     sys.stderr.write("you must give a Redfish build directory\n")

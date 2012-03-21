@@ -4,8 +4,10 @@
 export SSH_CONTROL_PATH="~/.ssh" 
 # What Redfish configuration do we want to use?
 export REDFISH_CONF="/media/fish/redfish/conf/twofer.conf"
+# What build directory do we want to use?
+export REDFISH_BUILD_DIR="/home/cmccabe/tmp/redfish"
 # Install daemons
-./install.py -b /home/cmccabe/tmp/redfish
+./install.py
 # Run daemons
 ./run.py
 # Check daemon status

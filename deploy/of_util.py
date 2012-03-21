@@ -22,12 +22,15 @@ def check_python_version():
 
 def parse_deploy_opts(parser):
     parser.add_option("-c", "--cluster-config", dest="cluster_conf")
+    parser.add_option("-b", "--build-directory", dest="bld_dir")
     (opts, args) = parser.parse_args()
     if opts.cluster_conf == None:
         opts.cluster_conf = os.getenv("REDFISH_CONF")
         if opts.cluster_conf == None:
             sys.stderr.write("you must give a Redfish cluster configuration file\n")
             sys.exit(1)
+    if opts.bld_dir == None:
+        opts.bld_dir = os.getenv("REDFISH_BUILD_DIR")
     jo = of_daemon.load_conf_file(opts.cluster_conf)
     node_list = of_node.node_list_from_conf_object(jo)
     opts.conf_json = jo
