@@ -86,8 +86,8 @@ static int handle_mmm_get_osd_read_req(struct recv_pool_thread *rt,
 		ret = -EINVAL;
 		goto error_resp;
 	}
-	rr = calloc_msg(MMM_OSD_READ_REQ,
-		sizeof(struct mmm_osd_read_req) + dlen);
+	rr = calloc_msg(MMM_OSD_READ_RESP,
+		sizeof(struct mmm_osd_read_resp) + dlen);
 	if (!rr) {
 		ret = -ENOMEM;
 		goto error_resp;
