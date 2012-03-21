@@ -215,18 +215,19 @@ extern int get_localhost_ipv4(uint32_t *lh);
 /** Check if a message has a given type and minimum length
  *
  * @param m		The message
- * @param ty		The type to check for
+ * @param expected_ty	The type to check for
  * @param min_size	The minimum size to check for
  *
  * @return		0 on success; error code otherwise
  */
-extern int msg_validate(const struct msg *m, uint16_t ty, int min_size);
+extern int msg_validate(const struct msg *m, uint16_t expected_ty,
+		int min_size);
 
 /** A typecast that returns NULL if the message is not long enough
  *
  * This only validates that we can access the fixed-offset fields, of course.
  */
-#define MSG_DYNAMIC_CAST(m, ty, min_size) \
-	(msg_validate(m, ty, min_size) ? NULL : ((struct ty*)m))
+#define MSG_DYNAMIC_CAST(m, ty_code, ty) \
+	(msg_validate(m, ty_code, sizeof(struct ty)) ? NULL : ((struct ty*)m))
 
 #endif

@@ -14,8 +14,13 @@
  * limitations under the License.
  */
 
+#include "common/cluster_map.h"
+#include "common/config/unitaryc.h"
+#include "core/glitch_log.h"
 #include "core/process_ctx.h"
+#include "mds/limits.h"
 #include "msg/bsend.h"
+#include "msg/msgr.h"
 #include "tool/common.h"
 #include "util/error.h"
 #include "util/fast_log.h"
@@ -32,33 +37,81 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-struct tool_rrctx *tool_rrctx_alloc(void)
+struct tool_rrctx *tool_rrctx_alloc(const char *cpath)
 {
-	struct tool_rrctx *rrc, *res;
+	int ret;
+	char err[512];
+	size_t err_len = sizeof(err);
+	const struct msgr_conf mconf = {
+		.max_conn = 1024,
+		.max_tran = 1024,
+		.tcp_teardown_timeo = 10,
+		.name = "tool_rrctx_msgr",
+		.fl_mgr = g_fast_log_mgr,
+	};
+	struct tool_rrctx *rrc;
 
-	rrc = calloc(1, sizeof(struct tool_rrctx));
-	if (!rrc)
-		return ERR_PTR(ENOMEM);
+	rrc = calloc(RF_MAX_MDS, sizeof(struct tool_rrctx));
+	if (!rrc) {
+		ret = ENOMEM;
+		goto err;
+	}
 	rrc->fb = fast_log_create(g_fast_log_mgr, "tool_rrctx");
 	if (IS_ERR(rrc->fb)) {
-		res = (struct tool_rrctx*)rrc->fb;
-		free(rrc);
-		return res;
+		glitch_log("Error parsing config file: %s\n", err);
+		ret = PTR_ERR(rrc->fb);
+		goto err_free_rrc;
+	}
+	rrc->conf = parse_unitary_conf_file(cpath, err, err_len);
+	if (err[0]) {
+		glitch_log("Error parsing config file: %s\n", err);
+		ret = -EINVAL;
+		goto err_free_fb;
+	}
+	harmonize_unitary_conf(rrc->conf, err, err_len);
+	if (err[0]) {
+		glitch_log("Error harmonizing config file: %s", err);
+		ret = -EINVAL;
+		goto err_free_conf;
+	}
+	rrc->cmap = cmap_from_conf(rrc->conf, err, err_len);
+	if (err[0]) {
+		glitch_log("Error creating cluster map: %s", err);
+		ret = -EIO;
+		goto err_free_conf;
 	}
 	rrc->ctx = bsend_init(rrc->fb, 1);
 	if (IS_ERR(rrc->ctx)) {
-		res = (struct tool_rrctx*)rrc->ctx;
-		fast_log_free(rrc->fb);
-		free(rrc);
-		return res;
+		ret = PTR_ERR(rrc->ctx);
+		goto err_free_cmap;
+	}
+	rrc->msgr = msgr_init(err, err_len, &mconf);
+	if (IS_ERR(rrc->msgr)) {
+		ret = PTR_ERR(rrc->msgr);
+		goto err_free_ctx;
 	}
 	return rrc;
 
+err_free_ctx:
+	bsend_free(rrc->ctx);
+err_free_cmap:
+	cmap_free(rrc->cmap);
+err_free_conf:
+	free_unitary_conf_file(rrc->conf);
+err_free_fb:
+	fast_log_free(rrc->fb);
+err_free_rrc:
+	free(rrc);
+err:
+	return ERR_PTR(FORCE_POSITIVE(ret));
 }
 
 void tool_rrctx_free(struct tool_rrctx *rrc)
 {
-	fast_log_free(rrc->fb);
+	msgr_free(rrc->msgr);
 	bsend_free(rrc->ctx);
+	free_unitary_conf_file(rrc->conf);
+	cmap_free(rrc->cmap);
+	fast_log_free(rrc->fb);
 	free(rrc);
 }

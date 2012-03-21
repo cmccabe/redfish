@@ -37,6 +37,8 @@ struct fishtool_act g_fishtool_read;
 struct fishtool_act g_fishtool_rename;
 struct fishtool_act g_fishtool_unlink;
 struct fishtool_act g_fishtool_write;
+struct fishtool_act g_fishtool_chunk_write;
+struct fishtool_act g_fishtool_chunk_read;
 
 const struct fishtool_act *g_fishtool_acts[] = {
 	&g_fishtool_chmod,
@@ -48,6 +50,8 @@ const struct fishtool_act *g_fishtool_acts[] = {
 	&g_fishtool_rename,
 	&g_fishtool_unlink,
 	&g_fishtool_write,
+	&g_fishtool_chunk_write,
+	&g_fishtool_chunk_read,
 	NULL,
 };
 
@@ -61,18 +65,15 @@ static void fishtool_top_level_usage(int exitstatus)
 "information about Redfish.",
 "",
 "Standard environment variables:",
-"REDFISH_MLOCS: You can set this to a comma-separated list of metadata sever ",
-"               locations. Metadata sever locations are given as ",
-"               <hostname>:<port>. You can also specify metadata sever ",
-"               locations with -m.",
+"REDFISH_CONF:  Path to the Redfish configuration file",
 "REDFISH_USER:  You can set this to a Redfish username, which will be used as ",
 "               the default Redfish username.",
 "",
 "Standard command-line options:",
+"-c <conf>",
+"    Path to Redfish configuration file",
 "-h",
 "    Show this help message",
-"-m <hostname>:<port>",
-"    Add metadata server location.",
 "-u <username>",
 "    Set the Redfish username to connect as.",
 "",
@@ -135,6 +136,7 @@ static struct fishtool_params* fishtool_parse_argv(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 	params->cpath = getenv("REDFISH_CONF");
+	params->user_name = getenv("REDFISH_USER");
 	params->act = get_fishtool_act(argv[1]);
 	if (params->act) {
 		snappend(getopt_str, sizeof(getopt_str), "%s",

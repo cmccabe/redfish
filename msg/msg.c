@@ -146,3 +146,17 @@ int get_localhost_ipv4(uint32_t *lh)
 	*lh = ntohl(res);
 	return 0;
 }
+
+int msg_validate(const struct msg *m, uint16_t expected_ty, int min_size)
+{
+	uint16_t ty;
+	uint32_t len;
+
+	ty = unpack_from_be16(&m->ty);
+	if (ty != expected_ty)
+		return -EINVAL;
+	len = unpack_from_be32(&m->len);
+	if (len < (uint32_t)min_size)
+		return -EINVAL;
+	return 0;
+}

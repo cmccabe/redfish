@@ -114,4 +114,13 @@ extern int cmap_get_leader_mid(const struct cmap *cmap);
  */
 extern void cmap_free(struct cmap *cmap);
 
+/** Find an osd in the cluster map
+ *
+ * @param cmap		The cluster map
+ * @param oid		The osd to look up
+ *
+ * @return		The daemon info
+ */
+extern struct daemon_info *cmap_get_oinfo(struct cmap *cmap, int oid);
+
 #endif

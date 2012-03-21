@@ -17,18 +17,37 @@
 #ifndef REDFISH_TOOL_COMMON_DOT_H
 #define REDFISH_TOOL_COMMON_DOT_H
 
+struct bsend;
+struct cmap;
+struct fast_log_buf;
+struct msgr;
+struct unitaryc;
+
+/** A raw RPC context.
+ *
+ * This can be used for sending messages directly to daemons, bypassing the
+ * normal client library.
+ */
 struct tool_rrctx {
 	/** Fast log buffer */
 	struct fast_log_buf *fb;
+	/** Unitary configuration */
+	struct unitaryc *conf;
+	/** Cluster map */
+	struct cmap *cmap;
 	/** Blocking RPC context */
 	struct bsend *ctx;
+	/** Messenger */
+	struct msgr *msgr;
 };
 
 /** Allocate a raw rpc context
  *
+ * @param cpath		The configuration file path
+ *
  * @return		The new raw rpc context, or an error pointer
  */
-extern struct tool_rrctx *tool_rrctx_alloc(void);
+extern struct tool_rrctx *tool_rrctx_alloc(const char *cpath);
 
 /** Free a raw rpc context
  *

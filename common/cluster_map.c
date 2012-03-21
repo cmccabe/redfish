@@ -287,3 +287,13 @@ void cmap_free(struct cmap *cmap)
 	free(cmap->minfo);
 	free(cmap);
 }
+
+struct daemon_info *cmap_get_oinfo(struct cmap *cmap, int oid)
+{
+	if (oid < 0)
+		return NULL;
+	if (oid >= cmap->num_osd)
+		return NULL;
+	return &cmap->oinfo[oid];
+}
+

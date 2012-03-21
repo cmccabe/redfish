@@ -18,6 +18,7 @@
 #define REDFISH_MSG_OSD_DOT_H
 
 #include "util/compiler.h"
+#include "msg/msg.h"
 
 #include <stdint.h>
 
@@ -34,6 +35,7 @@ enum {
 
 PACKED(
 struct mmm_osd_read_req {
+	struct msg base;
 	uint64_t cid;
 	uint64_t start;
 	uint32_t len;
