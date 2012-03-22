@@ -50,6 +50,8 @@
 
 #define OSD_REPLY_TIMEO 30
 
+#define OSD_HB_SEND_IVAL 3
+
 /** recv_pool for doing I/O operations for clients and other OSDs */
 static struct recv_pool *g_io_rpool;
 
@@ -67,6 +69,9 @@ static struct ostor *g_ostor;
 
 /** OSD messengers */
 static struct msgr *g_msgr[RF_ENTITY_TY_NUM];
+
+/** Thread which sends heartbeat messages */
+static struct redfish_thread g_osd_send_hb_thread;
 
 static int handle_mmm_get_osd_read_req(struct recv_pool_thread *rt,
 				struct mtran *tr)
@@ -182,6 +187,48 @@ static int osd_net_handle_tr(struct recv_pool_thread *rt, struct mtran *tr)
 	return 0;
 }
 
+static int osd_send_hb_thread(struct redfish_thread *rt)
+{
+	struct mmm_heartbeat *m;
+	struct daemon_info *di;
+	struct bsend *ctx;
+	int i;
+	time_t until;
+
+	ctx = bsend_init(rt->fb, RF_MAX_MDS);
+	if (IS_ERR(ctx)) {
+		glitch_log("osd_send_hb_thread: failed to allocate "
+			"an RPC context for the heartbeat thread: "
+			"error %d\n", PTR_ERR(ctx));
+		abort();
+	}
+	while (1) {
+		until = mt_time() + OSD_HB_SEND_IVAL;
+		for (i = 0; i < g_cmap->num_mds; ++i) {
+			di = &g_cmap->minfo[i];
+			if (!di->in)
+				continue;
+			m = calloc_msg(MMM_HEARTBEAT,
+				sizeof(struct mmm_heartbeat));
+			if (!m) {
+				glitch_log("mds_send_hb_thread: failed to "
+					"allocate memory for heartbeat "
+					"message.\n");
+				abort();
+			}
+			pack_to_8(&m->entity, RF_ENTITY_TY_OSD);
+			pack_to_be32(&m->id, g_oid);
+			bsend_add(ctx, g_msgr[RF_ENTITY_TY_MDS], 0, (struct msg*)m,
+				di->ip, di->port[RF_ENTITY_TY_OSD], 2);
+		}
+		bsend_join(ctx);
+		bsend_reset(ctx);
+		mt_sleep_until(until);
+	}
+	bsend_free(ctx);
+	return 0;
+}
+
 void osd_net_init(struct unitaryc *conf, uint16_t oid,
 		char *err, size_t err_len)
 {
@@ -291,6 +338,13 @@ void osd_net_init(struct unitaryc *conf, uint16_t oid,
 				fish_entity_ty_to_str(i), err);
 			abort();
 		}
+	}
+	ret = redfish_thread_create(g_fast_log_mgr, &g_osd_send_hb_thread,
+			osd_send_hb_thread, NULL);
+	if (ret) {
+		glitch_log("osd_net_init: failed to create "
+			"g_osd_send_hb_thread: error %d\n", ret);
+		abort();
 	}
 }
 

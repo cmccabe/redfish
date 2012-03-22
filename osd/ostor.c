@@ -501,12 +501,10 @@ static struct ochunk *ostor_get_ochunk(struct ostor *ostor,
 		struct fast_log_buf *fb, uint64_t cid, int create)
 {
 	int ret;
-	time_t cur_time;
 	struct ochunk exemplar, *ch;
 
 	memset(&exemplar, 0, sizeof(exemplar));
 	exemplar.cid = cid;
-	cur_time = mt_time();
 	while (1) {
 		if (ostor->shutdown) {
 			ch = ERR_PTR(ESHUTDOWN);

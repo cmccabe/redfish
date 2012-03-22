@@ -28,6 +28,7 @@ enum {
 	/** Acknowledge request */
 	MMM_RESP = 1000,
 	MMM_OSD_READ_RESP,
+	MMM_HEARTBEAT,
 };
 
 PACKED(
@@ -41,6 +42,14 @@ struct mmm_osd_read_resp {
 	struct msg base;
 	char data[0];
 	/* osd data */
+});
+
+PACKED(
+struct mmm_heartbeat {
+	struct msg base;
+	uint8_t pad;
+	uint8_t entity;
+	uint32_t id;
 });
 
 /** Stat information for a file or directory */

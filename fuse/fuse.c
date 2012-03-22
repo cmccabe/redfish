@@ -717,6 +717,11 @@ static struct rf_fuse_fs *rf_fuse_fs_create(const char *cpath,
 	if (!fs)
 		abort();
 	ret = pthread_mutex_init(&fs->next_fid_lock, NULL);
+	if (ret) {
+		fprintf(stderr, "fishfuse: pthread_mutex_init failed with "
+			"error %d", ret);
+		exit(EXIT_FAILURE);
+	}
 	fs->cli = redfish_connect(cpath, user, redfish_log_to_stderr, NULL,
 		err, err_len);
 	if (err[0]) {

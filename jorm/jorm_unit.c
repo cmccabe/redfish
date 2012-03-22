@@ -74,7 +74,7 @@ static int test2(void)
 	const char *str;
 	struct json_object *jo = NULL;
 	struct abbie *my_abbie[TEST2_NUM_ABBIE + 1] = { 0 };
-	struct bob *my_bob;
+	struct bob *my_bob = NULL;
 	for (i = 0; i < TEST2_NUM_ABBIE; ++i) {
 		my_abbie[i] = JORM_INIT_abbie();
 		if (!my_abbie[i]) {

@@ -188,7 +188,7 @@ static int init_rsems(struct rsem_server *rss, struct rsem_server_conf *conf)
 
 static int wake_waiter(struct rsem *rl, struct rsem_waiter *w)
 {
-	int ret, zfd;
+	int ret, zfd = -1;
 	struct json_object *jo;
 	struct rsem_grant grant;
 	struct sockaddr_in addr;
