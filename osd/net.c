@@ -203,6 +203,7 @@ static int osd_send_hb_thread(struct redfish_thread *rt)
 		abort();
 	}
 	while (1) {
+		glitch_log("osd_send_hb_thread: sending...\n");
 		until = mt_time() + OSD_HB_SEND_IVAL;
 		for (i = 0; i < g_cmap->num_mds; ++i) {
 			di = &g_cmap->minfo[i];
