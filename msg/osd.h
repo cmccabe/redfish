@@ -38,6 +38,8 @@ enum {
 	MMM_OSD_CHUNKREP_REQ,
 	/** OSD response to chunk report request */
 	MMM_OSD_CHUNKREP_RESP,
+	/** MDS request to unlink some chunks */
+	MMM_OSD_UNLINK_REQ,
 };
 
 PACKED(
@@ -76,6 +78,11 @@ struct mmm_osd_chunkrep_resp {
 	struct msg base;
 	uint32_t num_cid;
 	struct mmm_chunkrep_resp_chunk ch[0];
+});
+PACKED(
+struct mmm_osd_unlink_req {
+	struct msg base;
+	uint64_t cid;
 });
 
 #endif

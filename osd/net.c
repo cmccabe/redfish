@@ -233,6 +233,23 @@ send_resp:
 	return ret;
 }
 
+static int handle_mmm_osd_unlink_req(struct recv_pool_thread *rt,
+		struct mtran *tr, const struct mmm_osd_unlink_req *m)
+{
+	struct mmm_resp *resp;
+	uint64_t cid;
+	int ret;
+
+	cid = unpack_from_be64(&m->cid);
+	ret = ostor_unlink(g_ostor, rt->base.fb, cid);
+	resp = resp_alloc(ret);
+	if (!resp)
+		glitch_log("handle_mmm_osd_chunkrep_req: OOM");
+	else
+		osd_reply_noresp(rt->ctx, tr, resp);
+	return ret;
+}
+
 /** Handle an incoming message.
  *
  * Notes:
@@ -262,6 +279,10 @@ static int osd_net_handle_tr(struct recv_pool_thread *rt, struct mtran *tr)
 	case MMM_OSD_CHUNKREP_REQ:
 		ret = handle_mmm_osd_chunkrep_req(rt, tr,
 			(const struct mmm_osd_chunkrep_req*)m);
+		break;
+	case MMM_OSD_UNLINK_REQ:
+		ret = handle_mmm_osd_unlink_req(rt, tr,
+			(const struct mmm_osd_unlink_req*)m);
 		break;
 	default:
 		glitch_log("osd_net_handle_mds_tr: unhandled message "
