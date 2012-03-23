@@ -26,11 +26,18 @@
 
 #define MMM_OSD_MAX_IO_SIZE 0x7fffffff
 
+#define MMM_OCF_MISSING 0x1
+#define MMM_OCF_BAD_CSUM 0x2
+
 enum {
 	/** Request to read from the OSD */
 	MMM_OSD_READ_REQ = 4000,
 	/** Client request to write a chunk to the OSD */
 	MMM_OSD_HFLUSH_REQ,
+	/** MDS request to get information about chunks */
+	MMM_OSD_CHUNKREP_REQ,
+	/** OSD response to chunk report request */
+	MMM_OSD_CHUNKREP_RESP,
 };
 
 PACKED(
@@ -47,6 +54,28 @@ struct mmm_osd_hflush_req {
 	uint8_t flags;
 	char data[0];
 	/* data */
+});
+PACKED(
+struct mmm_chunkrep_req_chunk {
+	uint64_t cid;
+	uint32_t csum;
+});
+PACKED(
+struct mmm_osd_chunkrep_req {
+	struct msg base;
+	uint32_t num_cid;
+	struct mmm_chunkrep_req_chunk ch[0];
+});
+PACKED(
+struct mmm_chunkrep_resp_chunk {
+	uint64_t cid;
+	uint8_t flags;
+});
+PACKED(
+struct mmm_osd_chunkrep_resp {
+	struct msg base;
+	uint32_t num_cid;
+	struct mmm_chunkrep_resp_chunk ch[0];
 });
 
 #endif

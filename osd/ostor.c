@@ -497,6 +497,14 @@ done:
 	return ret;
 }
 
+int ostor_verify(struct ostor *ostor, struct fast_log_buf *fb,
+		uint64_t cid)
+{
+	/* TODO: fancier things, like verifying checksums */
+	char data[1] = { 0 };
+	return ostor_read(ostor, fb, cid, 0, data, 0);
+}
+
 static struct ochunk *ostor_get_ochunk(struct ostor *ostor,
 		struct fast_log_buf *fb, uint64_t cid, int create)
 {

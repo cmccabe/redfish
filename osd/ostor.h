@@ -98,4 +98,16 @@ extern int32_t ostor_read(struct ostor *ostor, struct fast_log_buf *fb,
 extern int ostor_unlink(struct ostor *ostor, struct fast_log_buf *fb,
 		uint64_t cid);
 
+/** Validate a chunk
+ *
+ * @param ostor		The ostor
+ * @param fb		The fast log buffer
+ * @param cid		The chunk ID
+ *
+ * @return		0 if the chunk exists; -ENOENT if it does not;
+ *			other error code on I/O error
+ */
+extern int ostor_verify(struct ostor *ostor, struct fast_log_buf *fb,
+		uint64_t cid);
+
 #endif
