@@ -29,7 +29,6 @@
 #include "mds/limits.h"
 #include "mds/net.h"
 #include "msg/bsend.h"
-#include "msg/mds.h"
 #include "msg/msg.h"
 #include "msg/msgr.h"
 #include "msg/recv_pool.h"
@@ -50,135 +49,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define DEFAULT_MDS_TR_THREADS 8
-
-#define DEFAULT_OSD_TR_THREADS 8
-
-#define DEFAULT_CLI_TR_THREADS 8
-
-#define DEFAULT_MDS_MDS_PORT 9000
-#define MDS_MDS_TCP_TIMEOUT 900
-
-#define DEFAULT_MDS_OSD_PORT 9001
-#define MDS_OSD_TCP_TIMEOUT 300
-
-#define DEFAULT_MDS_CLI_PORT 9002
-#define MDS_CLI_TCP_TIMEOUT 300
-
 #define NUM_DSLOTS 32
 
 /** Standard timeout used for delegation operations */
 #define DGOP_STD_TIMEO 60
 
-/** Maximum number of simultaneous transactors to allow. */
-#define RF_MAX_TRAN 16384
-
-/** Maximum number of simultaneous TCP sockets to allow for the OSD messenger. */
-#define RF_MAX_OSD_CONN 65536
-
-/** Maximum number of simultaneous TCP sockets to allow for the client messenger. */
-#define RF_MAX_CLI_CONN 65536
-
-/** recv_pool listening for connections from other MDSes */
-struct recv_pool *g_mds_rpool;
-
-struct msgr_conf g_mds_msgr_conf = {
-	.max_conn = 65535,
-	.max_tran = 65535,
-	.tcp_teardown_timeo = 900,
-	.name = "mds_msgr",
-	.fl_mgr = NULL,
-};
-
-/** recv_pool listening for connections from OSDs */
-struct recv_pool *g_osd_rpool;
-
-struct msgr_conf g_osd_msgr_conf = {
-	.max_conn = 65535,
-	.max_tran = 65535,
-	.tcp_teardown_timeo = 300,
-	.name = "osd_msgr",
-	.fl_mgr = NULL,
-};
-
-/** recv_pool listening for connections from clients */
-struct recv_pool *g_cli_rpool;
-
-struct msgr_conf g_cli_msgr_conf = {
-	.max_conn = 65535,
-	.max_tran = 65535,
-	.tcp_teardown_timeo = 300,
-	.name = "cli_msgr",
-	.fl_mgr = NULL,
-};
+/** recv_pool */
+struct recv_pool *g_rpool[RF_ENTITY_TY_NUM];
 
 /** Thread that sends heartbeats */
 struct redfish_thread g_mds_send_hb_thread;
-
-static void mds_net_msgr_init(struct recv_pool **rpool, struct msgr **msgr,
-	const struct msgr_conf *mconf, recv_pool_handler_fn_t handler,
-	int nthreads, uint16_t port, const char *desc)
-{
-	char err[512] = { 0 };
-	size_t err_len = sizeof(err);
-	char recv_pool_name[128];
-	int i, ret;
-
-	*msgr = msgr_init(err, err_len, mconf);
-	if (err[0]) {
-		glitch_log("mds_net_msgr_init: failed to create messenger: "
-			"error %s\n", err);
-		abort();
-	}
-	snprintf(recv_pool_name, sizeof(recv_pool_name), "%s_pool", desc);
-	*rpool = recv_pool_init(recv_pool_name);
-	if (IS_ERR(*rpool)) {
-		glitch_log("mds_net_msgr_init: failed to create recv_pool: "
-			"error %d\n", PTR_ERR(*rpool));
-		abort();
-	}
-	for (i = 0; i < nthreads; ++i) {
-		ret = recv_pool_thread_create(*rpool, g_fast_log_mgr,
-				handler, NULL);
-		if (ret) {
-			glitch_log("mds_net_msgr_init: recv_pool_thread_create"
-				"failed with error %d\n", ret);
-			abort();
-		}
-	}
-	recv_pool_msgr_listen(*rpool, *msgr, port, err, err_len);
-	if (err[0]) {
-		glitch_log("mds_net_msgr_init: failed to listen on port %d "
-			": error %s\n", port, err);
-		abort();
-	}
-}
-
-static void mds_net_msgrs_start(void)
-{
-	char err[512] = { 0 };
-	size_t err_len = sizeof(err);
-
-	msgr_start(g_osd_msgr, err, err_len);
-	if (err[0]) {
-		glitch_log("mds_net_msgr_init: failed to initialize "
-			   "g_osd_msgr: error %s", err);
-		abort();
-	}
-	msgr_start(g_mds_msgr, err, err_len);
-	if (err[0]) {
-		glitch_log("mds_net_msgr_init: failed to initialize "
-			   "g_mds_msgr: error %s", err);
-		abort();
-	}
-	msgr_start(g_cli_msgr, err, err_len);
-	if (err[0]) {
-		glitch_log("mds_net_msgr_init: failed to initialize "
-			   "g_cli_msgr: error %s", err);
-		abort();
-	}
-	glitch_log("mds_net_init: started all messengers.\n");
-}
 
 static void mds_net_heartbeat_start(void)
 {
@@ -363,8 +243,38 @@ static void mds_net_root_delegation_setup(void)
 void mds_net_init(POSSIBLY_UNUSED(struct fast_log_buf *fb),
 		struct unitaryc *conf, struct mdsc *mconf, uint16_t mid)
 {
+	int i, j, ret;
 	char err[512] = { 0 };
 	size_t err_len = sizeof(err);
+	const char *recv_pool_names[RF_ENTITY_TY_NUM] =
+		{ "mds_rpool", "osd_rpool", "cli_rpool" };
+	const int recv_pool_nthreads[RF_ENTITY_TY_NUM] =
+		{ 16, 16, 8 };
+	const int recv_pool_ports[RF_ENTITY_TY_NUM] =
+		{ mdsc->mds_port, mdsc->osd_port, mdsc->cli_port };
+	struct msgr_conf mconf[RF_ENTITY_TY_NUM] = {
+		{
+			.max_conn = 65535,
+			.max_tran = 65535,
+			.tcp_teardown_timeo = 900,
+			.name = "mds_msgr",
+			.fl_mgr = g_fast_log_mgr,
+		},
+		{
+			.max_conn = 65535,
+			.max_tran = 65535,
+			.tcp_teardown_timeo = 300,
+			.name = "osd_msgr",
+			.fl_mgr = g_fast_log_mgr,
+		},
+		{
+			.max_conn = 65535,
+			.max_tran = 65535,
+			.tcp_teardown_timeo = 300,
+			.name = "cli_msgr",
+			.fl_mgr = g_fast_log_mgr,
+		},
+	};
 
 	g_mid = mid;
 	g_cmap = cmap_from_conf(conf, err, err_len);
@@ -385,23 +295,51 @@ void mds_net_init(POSSIBLY_UNUSED(struct fast_log_buf *fb),
 			"error %d\n", PTR_ERR(g_dslots));
 		abort();
 	}
+	for (i = 0; i < RF_ENTITY_TY_NUM; ++i) {
+		g_msgr[i] = msgr_init(err, err_len, &oconf[i]);
+		if (err[0]) {
+			glitch_log("osd_net_init: failed to create %s "
+				"messenger: error %s\n",
+				entity_ty_to_short_str(i), err);
+		}
+	}
+	for (i = 0; i < RF_ENTITY_TY_NUM; ++i) {
+		g_rpool[i] = recv_pool_init(recv_pool_names[i]);
+		if (IS_ERR(g_rpool[i])) {
+			ret = PTR_ERR(g_rpool[i]);
+			glitch_log("mds_net_msgr_init: failed to create "
+				"%s: error %d (%s)\n", recv_pool_names[i],
+				ret, terror(ret));
+			abort();
+		}
+		for (j = 0; j < recv_pool_nthreads[i]; ++j) {
+			ret = recv_pool_thread_create(*rpool, g_fast_log_mgr,
+					mds_net_handle_mds_tr, NULL);
+			if (ret) {
+				glitch_log("mds_net_msgr_init: "
+					"recv_pool_thread_create failed with "
+					"error %d (%s)\n", ret, terror(ret));
+				abort();
+			}
+		}
+		recv_pool_msgr_listen(g_rpool[i], g_msgr[i],
+			recv_pool_ports[i], err, err_len);
+		if (err[0]) {
+			glitch_log("mds_net_msgr_init: failed to listen on "
+				"port %d : error %s\n", port, err);
+			abort();
+		}
+	}
+	for (i = 0; i < RF_ENTITY_TY_NUM; ++i) {
+		msgr_start(g_mds_msgr, err, err_len);
+		if (err[0]) {
+			glitch_log("mds_net_msgr_init: failed to initialize "
+				"%s messenger: error %s",
+				entity_ty_to_short_str(i), err);
+			abort();
+		}
+	}
 	mds_net_root_delegation_setup();
-	g_mds_msgr_conf.fl_mgr = g_fast_log_mgr;
-	mds_net_msgr_init(&g_mds_rpool, &g_mds_msgr, &g_mds_msgr_conf,
-		mds_net_handle_mds_tr, DEFAULT_MDS_TR_THREADS,
-		((mconf->mds_port == JORM_INVAL_INT) ?
-		 	DEFAULT_MDS_MDS_PORT : mconf->mds_port), "mds");
-	g_osd_msgr_conf.fl_mgr = g_fast_log_mgr;
-	mds_net_msgr_init(&g_osd_rpool, &g_osd_msgr, &g_osd_msgr_conf,
-		mds_net_handle_osd_tr, DEFAULT_OSD_TR_THREADS,
-		((mconf->osd_port == JORM_INVAL_INT) ?
-		 	DEFAULT_MDS_OSD_PORT : mconf->osd_port), "osd");
-	g_cli_msgr_conf.fl_mgr = g_fast_log_mgr;
-	mds_net_msgr_init(&g_cli_rpool, &g_cli_msgr, &g_cli_msgr_conf,
-		mds_net_handle_cli_tr, DEFAULT_CLI_TR_THREADS,
-		((mconf->cli_port == JORM_INVAL_INT) ?
-		 	DEFAULT_MDS_CLI_PORT : mconf->cli_port), "cli");
-	mds_net_msgrs_start();
 	mds_net_heartbeat_start();
 }
 

@@ -66,6 +66,7 @@ enum fast_log_bsend_event {
 	FLBS_JOIN,
 	FLBS_RESET,
 	FLBS_FREE,
+	FLBS_REPLY_FAIL,
 	FLBS_MAX,
 };
 

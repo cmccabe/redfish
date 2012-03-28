@@ -51,65 +51,65 @@ struct rf_stat {
 };
 
 enum fish_msg_ty {
-        /* ============== Common ============== */
-        /** Generic response */
-	MMM_RESP = 1000,
-	/** Heartbeat message */
-	MMM_HEARTBEAT,
-	/** Get current daemon status */
-	MMM_STATUS_REQ,
+	/* ============== Common ============== */
+	/** Generic response */
+	mmm_resp_ty = 1000,
+	/** heartbeat message */
+	mmm_heartbeat_ty,
+	/** get current daemon status */
+	mmm_status_req_ty,
 
-        /* ============== Client Requests ============== */
-	/** Client request to create a new file */
-	MMM_CREATE_FILE_REQ = 2000,
-	/** Client request to open a new file */
-	MMM_OPEN_FILE_REQ,
-	/** Make a directory and all ancestors */
-	MMM_MKDIRS_REQ,
-	/** List all files in a directory */
-	MMM_LISTDIR_REQ,
-	/** Give stat information regarding a path */
-	MMM_PATH_STAT_REQ,
-	/** Give stat information regarding a nid */
-	MMM_NID_STAT_REQ,
-	/** Client Change permissions request */
-	MMM_CHMOD_REQ,
-	/** Client change ownership request */
-	MMM_CHOWN_REQ,
-	/** Client change atime/mtime request */
-	MMM_UTIMES_REQ,
-	/** Client unlink request */
-	MMM_UNLINK_REQ,
-	/** Client rename request */
-	MMM_RENAME_REQ,
+        /* ============== client requests ============== */
+	/** client request to create a new file */
+	mmm_create_file_req_ty = 2000,
+	/** client request to open a new file */
+	mmm_open_file_req_ty,
+	/** make a directory and all ancestors */
+	mmm_mkdirs_req_ty,
+	/** list all files in a directory */
+	mmm_listdir_req_ty,
+	/** give stat information regarding a path */
+	mmm_path_stat_req_ty,
+	/** give stat information regarding a nid */
+	mmm_nid_stat_req_ty,
+	/** client change permissions request */
+	mmm_chmod_req_ty,
+	/** client change ownership request */
+	mmm_chown_req_ty,
+	/** client change atime/mtime request */
+	mmm_utimes_req_ty,
+	/** client unlink request */
+	mmm_unlink_req_ty,
+	/** client rename request */
+	mmm_rename_req_ty,
 
-        /* ============== MDS messages ============== */
-	/** Current MDS status */
-	MMM_MDS_STATUS_RESP = 3000,
-	/** A new chunk ID for the client.  The MDS will send this in
-	 * response to a 'create file' request, and also if the client requests
-	 * a new chunk ID for a file. */
-	MMM_CHUNKALLOC_RESP,
-	/** MDS response to an stat request */
-	MMM_STAT_RESP,
-	/** MDS response to a 'list directory' request */
-	MMM_LISTDIR_RESP,
-	/** OSD response to a request for a chunk */
-	MMM_FETCH_CHUNK_RESP,
+        /* ============== mds messages ============== */
+	/** current mds status */
+	mmm_mds_status_resp_ty = 3000,
+	/** a new chunk id for the client.  the mds will send this in
+	 * response to a 'create file' request_ty, and also if the client requests
+	 * a new chunk id for a file. */
+	mmm_chunkalloc_resp_ty,
+	/** mds response to an stat request */
+	mmm_stat_resp_ty,
+	/** mds response to a 'list directory' request */
+	mmm_listdir_resp_ty,
+	/** osd response to a request for a chunk */
+	mmm_fetch_chunk_resp_ty,
 
-        /* ============== OSD messages ============== */
-	/** Request to read from the OSD */
-	MMM_OSD_READ_REQ = 4000,
-	/** Response to MMM_OSD_READ_REQ */
-	MMM_OSD_READ_RESP,
-	/** Client request to write a chunk to the OSD */
-	MMM_OSD_HFLUSH_REQ,
-	/** MDS request to get information about chunks */
-	MMM_OSD_CHUNKREP_REQ,
-	/** OSD response to chunk report request */
-	MMM_OSD_CHUNKREP_RESP,
-	/** MDS request to unlink a chunk */
-	MMM_OSD_UNLINK_REQ
+        /* ============== osd messages ============== */
+	/** request to read from the osd */
+	mmm_osd_read_req_ty = 4000,
+	/** response to mmm_osd_read_req */
+	mmm_osd_read_resp_ty,
+	/** client request to write a chunk to the osd */
+	mmm_osd_hflush_req_ty,
+	/** mds request to get information about chunks */
+	mmm_osd_chunkrep_req_ty,
+	/** osd response to chunk report request */
+	mmm_osd_chunkrep_resp_ty,
+	/** mds request to unlink a chunk */
+	mmm_osd_unlink_req_ty
 };
 
 /* ============== Common ============== */
@@ -224,12 +224,17 @@ struct mmm_osd_read_req {
 	int len;
 };
 
+struct mmm_osd_read_resp {
+	int flags;
+	/* next: data */
+};
+
 const MMM_OSD_HFLUSH_DATA_MAX = 2147483648;
 
 struct mmm_osd_hflush_req {
 	unsigned hyper cid;
 	int flags;
-	opaque data<MMM_OSD_HFLUSH_DATA_MAX>;
+	/* next: data */
 };
 
 const MMM_OSD_CHUNKREP_MAX_CHUNKS = 131072;
@@ -238,13 +243,8 @@ struct mmm_osd_chunkrep_req {
 	unsigned hyper cid<MMM_OSD_CHUNKREP_MAX_CHUNKS>;
 };
 
-struct mmm_chunkrep_resp_chunk {
-	unsigned hyper cid;
-	int flags;
-};
-
 struct mmm_osd_chunkrep_resp {
-	struct mmm_chunkrep_resp_chunk ch<MMM_OSD_CHUNKREP_MAX_CHUNKS>;
+	int flags;
 };
 
 struct mmm_osd_unlink_req {

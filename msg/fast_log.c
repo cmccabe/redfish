@@ -15,7 +15,6 @@
  */
 
 #include "msg/fast_log.h"
-#include "msg/generic.h"
 #include "msg/msg.h"
 #include "msg/msgr.h"
 #include "util/compiler.h"
@@ -24,6 +23,7 @@
 #include "util/macro.h"
 #include "util/net.h"
 #include "util/string.h"
+#include "util/terror.h"
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -329,6 +329,12 @@ void fast_log_bsend_dump(struct fast_log_bsend_entry *fe, char *buf)
 		break;
 	case FLBS_FREE:
 		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX, "bsend_free\n");
+		break;
+	case FLBS_REPLY_FAIL:
+		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,
+			"bsend_reply: failed to send reply message of type "
+			"%d: got error %d (%s)", fe->event_data, fe->err,
+			terror(fe->err));
 		break;
 	default:
 		snappend(buf, FAST_LOG_PRETTY_PRINTED_MAX,

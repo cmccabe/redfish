@@ -16,7 +16,7 @@
 
 #include "common/entity_type.h"
 
-const char *fish_entity_ty_to_str(enum fish_entity_ty ty)
+const char *entity_ty_to_str(enum fish_entity_ty ty)
 {
 	switch (ty) {
 	case RF_ENTITY_TY_MDS:
@@ -25,6 +25,20 @@ const char *fish_entity_ty_to_str(enum fish_entity_ty ty)
 		return "RF_ENTITY_TY_OSD";
 	case RF_ENTITY_TY_CLI:
 		return "RF_ENTITY_TY_CLI";
+	default:
+		return "(unknown)";
+	}
+}
+
+const char *entity_ty_to_short_str(enum fish_entity_ty ty)
+{
+	switch (ty) {
+	case RF_ENTITY_TY_MDS:
+		return "mds";
+	case RF_ENTITY_TY_OSD:
+		return "osd";
+	case RF_ENTITY_TY_CLI:
+		return "client";
 	default:
 		return "(unknown)";
 	}

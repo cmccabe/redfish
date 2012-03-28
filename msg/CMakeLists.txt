@@ -7,6 +7,7 @@ add_library(msgr
     msg.c
     msgr.c
     recv_pool.c
+    xdr.c
 )
 target_link_libraries(msgr
     common

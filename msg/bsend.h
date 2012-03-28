@@ -129,4 +129,34 @@ extern void bsend_reset(struct bsend *ctx);
  */
 extern void bsend_free(struct bsend *ctx);
 
+/** Send a reply back to the sender
+ *
+ * Log an error message if the message can't be sent
+ * Note: we assume that tr->priv holds the originating messenger
+ *
+ * @param fb		The fast log buffer
+ * @param ctx		The blocking RPC context
+ * @param tr		The transactor
+ * @param m		The reply to send
+ *
+ * @return		0 on success; error code otherwise
+ */
+extern int bsend_reply(struct fast_log_buf *fb, struct bsend *ctx,
+	       struct mtran *tr, struct msg *r);
+
+/** Send an mmm_resp reply back to the sender
+ *
+ * Log an error message if the message can't be sent
+ * Note: we assume that tr->priv holds the originating messenger
+ *
+ * @param fb		The fast log buffer
+ * @param ctx		The blocking RPC context
+ * @param tr		The transactor
+ * @param ret		The error code to put into mmm_resp
+ *
+ * @return		0 on success; error code otherwise
+ */
+extern int bsend_std_reply(struct fast_log_buf *fb, struct bsend *ctx,
+		struct mtran *tr, int32_t ret);
+
 #endif

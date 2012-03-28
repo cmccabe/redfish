@@ -16,6 +16,7 @@
 
 #include "msg/bsend.h"
 #include "msg/fast_log.h"
+#include "msg/fish_internal.h"
 #include "msg/msg.h"
 #include "msg/msgr.h"
 #include "util/compiler.h"
@@ -24,6 +25,8 @@
 #include "util/fast_log.h"
 #include "util/fast_log_types.h"
 #include "util/macro.h"
+#include "util/packed.h"
+#include "util/terror.h"
 #include "util/thread.h"
 
 #include <arpa/inet.h>
@@ -237,4 +240,45 @@ void bsend_free(struct bsend *ctx)
 	pthread_cond_destroy(&ctx->cond);
 	free(ctx->btrs);
 	free(ctx);
+}
+
+int bsend_reply(struct fast_log_buf *fb, struct bsend *ctx, struct mtran *tr,
+		struct msg *r)
+{
+	int ret;
+	uint16_t ty;
+
+	ret = bsend_add_tr_or_free(ctx, tr->priv, 0, r, tr, 0);
+	if (ret)
+		return ret;
+	bsend_join(ctx);
+	tr = bsend_get_mtran(ctx, 0);
+	if (!tr) {
+		ret = 0;
+	}
+	else {
+		ty = unpack_from_be16(&r->ty);
+		ret = PTR_ERR(tr);
+		fast_log_bsend(fb, FAST_LOG_BSEND_ERROR, FLBS_REPLY_FAIL,
+			unpack_from_be16(&tr->port), unpack_from_be32(&tr->ip),
+			0, cram_into_u16(ret), ty);
+	}
+	bsend_reset(ctx);
+	return ret;
+}
+
+int bsend_std_reply(struct fast_log_buf *fb, struct bsend *ctx,
+		struct mtran *tr, int32_t ret)
+{
+	struct msg *r;
+
+	r = resp_alloc(ret);
+	if (!r) {
+		fast_log_bsend(fb, FAST_LOG_BSEND_ERROR, FLBS_REPLY_FAIL,
+			unpack_from_be16(&tr->port), unpack_from_be32(&tr->ip),
+			0, ENOMEM, mmm_resp_ty);
+		mtran_free(tr);
+		return -ENOMEM;
+	}
+	return bsend_reply(fb, ctx, tr, r);
 }

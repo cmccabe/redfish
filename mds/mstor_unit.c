@@ -20,7 +20,6 @@
 #include "mds/mstor.h"
 #include "mds/srange_lock.h"
 #include "mds/user.h"
-#include "msg/generic.h"
 #include "util/compiler.h"
 #include "util/error.h"
 #include "util/packed.h"

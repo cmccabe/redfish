@@ -27,10 +27,11 @@
 #include "mds/limits.h"
 #include "mds/net.h"
 #include "msg/bsend.h"
-#include "msg/mds.h"
+#include "msg/fish_internal.h"
 #include "msg/msg.h"
 #include "msg/msgr.h"
 #include "msg/recv_pool.h"
+#include "msg/xdr.h"
 #include "util/compiler.h"
 #include "util/error.h"
 #include "util/fast_log.h"
@@ -56,11 +57,19 @@ int mds_send_hb_thread(struct redfish_thread *rt)
 	struct mtran *tr;
 	struct bsend *ctx;
 	int succ, i, num_mds, ret, first, use_timer_a, num_sent;
-	struct mmm_mds_heartbeat *m;
+	struct mmm_heartbeat resp;
+	struct msg *r;
 	time_t cur_time, until;
 	timer_t timer_a, timer_b;
 	struct daemon_info *di;
 	char buf[128];
+
+	resp.ty = RF_ENTITY_TY_MDS;
+	resp.id = g_mid;
+	r = MSG_XDR_ALLOC(mmm_resp, &resp);
+	if (IS_ERR(r)) {
+		abort();
+	}
 
 	/* We want a pretty short timeout here.  If we fail to send a heartbeat
 	 * to an MDS, hopefully it will receive the next heartbeat that we send.
@@ -101,20 +110,11 @@ int mds_send_hb_thread(struct redfish_thread *rt)
 			di = &g_cmap->minfo[i];
 			if (!di->in)
 				continue;
-			m = calloc_msg(MMM_MDS_HEARTBEAT,
-				sizeof(struct mmm_mds_heartbeat));
-			if (!m) {
-				glitch_log("mds_send_hb_thread: failed to "
-					"allocate memory for heartbeat "
-					"message.\n");
-				abort();
-			}
-			pack_to_be16(&m->mid, g_mid);
-			bsend_add(ctx, g_mds_msgr, 0, (struct msg*)m,
+			msg_addref(r);
+			bsend_add(ctx, g_msgr[RF_ENTITY_TY_MDS], 0, r,
 				di->ip, di->port[RF_ENTITY_TY_MDS], 2);
 		}
 		pthread_mutex_unlock(&g_cmap_lock);
-
 
 		num_sent = bsend_join(ctx);
 		if (num_sent < 0)
@@ -135,4 +135,7 @@ int mds_send_hb_thread(struct redfish_thread *rt)
 			   "heartbeats out of %d\n", succ, num_sent);
 		bsend_reset(ctx);
 	}
+	msg_release(r);
+	bsend_free(ctx);
+	return 0;
 }

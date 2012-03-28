@@ -19,8 +19,9 @@
 #include "common/config/unitaryc.h"
 #include "core/glitch_log.h"
 #include "msg/bsend.h"
-#include "msg/generic.h"
-#include "msg/osd.h"
+#include "msg/fish_internal.h"
+#include "msg/msg.h"
+#include "msg/xdr.h"
 #include "tool/common.h"
 #include "tool/tool.h"
 #include "util/error.h"
@@ -129,26 +130,25 @@ static void chunk_op_ctx_free(struct chunk_op_ctx *cct)
 static int do_chunk_write(struct chunk_op_ctx *cct, const char *buf,
 		size_t buf_len)
 {
-	struct mmm_osd_hflush_req *m;
-	struct mmm_resp *resp;
-	size_t m_len;
-	int ret;
-	uint32_t off;
+	int32_t ret;
+	struct mmm_osd_hflush_req req;
+	struct msg *m;
 	struct daemon_info *oinfo;
 	struct mtran *tr;
+	char *extra;
 
 	oinfo =  cmap_get_oinfo(cct->rrc->cmap, cct->oid);
 	if (!oinfo)
 		return -EINVAL;
-	m_len = sizeof(struct mmm_osd_hflush_req) + buf_len;
-	m = calloc_msg(MMM_OSD_HFLUSH_REQ, m_len);
-	if (!m)
-		return -ENOMEM;
-	pack_to_be64(&m->cid, cct->cid);
-	pack_to_8(&m->flags, 0);
-	off = offsetof(struct mmm_osd_hflush_req, data);
-	memcpy(((char*)m) + off, buf, buf_len);
-	bsend_add(cct->rrc->ctx, cct->rrc->msgr, BSF_RESP, (struct msg*)m,
+	req.cid = cct->cid;
+	req.flags = 0;
+	m = msg_xdr_extalloc(mmm_osd_hflush_req_ty,
+		(xdrproc_t)xdr_mmm_osd_hflush_req,
+		&req, buf_len, (void**)&extra);
+	if (IS_ERR(m))
+		return FORCE_NEGATIVE(PTR_ERR(m));
+	memcpy(extra, buf, buf_len);
+	bsend_add(cct->rrc->ctx, cct->rrc->msgr, BSF_RESP, m,
 		oinfo->ip, oinfo->port[RF_ENTITY_TY_CLI], TOOL_TIMEO);
 	bsend_join(cct->rrc->ctx);
 	tr = bsend_get_mtran(cct->rrc->ctx, 0);
@@ -156,16 +156,15 @@ static int do_chunk_write(struct chunk_op_ctx *cct, const char *buf,
 		bsend_reset(cct->rrc->ctx);
 		glitch_log("error sending MMM_OSD_HFLUSH_REQ: error %d\n",
 			PTR_ERR(tr->m));
-		return PTR_ERR(tr->m);
+		return FORCE_NEGATIVE(PTR_ERR(tr->m));
 	}
-	resp = MSG_DYNAMIC_CAST(tr->m, MMM_RESP, mmm_resp);
-	if (!resp) {
+	ret = msg_xdr_decode_as_generic(tr->m);
+	if (ret < 0) {
 		glitch_log("invalid reply from server-- can't understand "
 			"response type %d\n", unpack_from_be16(&tr->m->ty));
 		ret = -EIO;
-	}
-	else {
-		ret = unpack_from_be32(&resp->error);
+		bsend_reset(cct->rrc->ctx);
+		return FORCE_NEGATIVE(ret);
 	}
 	bsend_reset(cct->rrc->ctx);
 	return ret;
@@ -247,24 +246,24 @@ struct fishtool_act g_fishtool_chunk_write = {
 static int do_chunk_read(struct chunk_op_ctx *cct, const char *fname,
 		int fd, uint64_t start, uint32_t len)
 {
-	struct mmm_osd_read_req *m;
-	struct mmm_resp *resp;
-	struct mmm_osd_read_resp *rr;
-	uint32_t m_len;
-	int ret;
+	int32_t ret, m_len;
+	struct mmm_osd_read_req req;
+	struct msg *m;
+	struct mmm_osd_read_resp rr;
 	struct daemon_info *oinfo;
 	struct mtran *tr;
+	const char *extra;
 
 	oinfo =  cmap_get_oinfo(cct->rrc->cmap, cct->oid);
 	if (!oinfo)
 		return -EINVAL;
-	m = calloc_msg(MMM_OSD_READ_REQ, sizeof(struct mmm_osd_read_req));
-	if (!m)
-		return -ENOMEM;
-	pack_to_be64(&m->cid, cct->cid);
-	pack_to_be64(&m->start, start);
-	pack_to_be32(&m->len, len);
-	bsend_add(cct->rrc->ctx, cct->rrc->msgr, BSF_RESP, (struct msg*)m,
+	req.cid = cct->cid;
+	req.start = start;
+	req.len = len;
+	m = MSG_XDR_ALLOC(mmm_osd_read_req, &req);
+	if (IS_ERR(m))
+		return PTR_ERR(m);
+	bsend_add(cct->rrc->ctx, cct->rrc->msgr, BSF_RESP, m,
 		oinfo->ip, oinfo->port[RF_ENTITY_TY_CLI], TOOL_TIMEO);
 	bsend_join(cct->rrc->ctx);
 	tr = bsend_get_mtran(cct->rrc->ctx, 0);
@@ -273,22 +272,21 @@ static int do_chunk_read(struct chunk_op_ctx *cct, const char *fname,
 		glitch_log("error sending MMM_OSD_READ_REQ: error %d\n", ret);
 		goto done;
 	}
-	resp = MSG_DYNAMIC_CAST(tr->m, MMM_RESP, mmm_resp);
-	if (resp) {
-		ret = FORCE_NEGATIVE(unpack_from_be32(&resp->error));
+	ret = msg_xdr_decode_as_generic(tr->m);
+	if (ret > 0) {
 		glitch_log("error reply from server: error %d\n", ret);
 		goto done;
 	}
-	rr = MSG_DYNAMIC_CAST(tr->m, MMM_OSD_READ_RESP, mmm_osd_read_resp);
-	if (!rr) {
+	m_len = msg_xdr_extdecode((xdrproc_t)xdr_mmm_osd_read_resp, tr->m,
+		&rr, (const void**)&extra);
+	if (m_len < 0) {
 		ret = -EIO;
 		glitch_log("invalid reply from server-- can't understand "
 			"response type %d\n", unpack_from_be16(&tr->m->ty));
 		goto done;
 	}
-	m_len = unpack_from_be32(&tr->m->len) -
-		sizeof(struct mmm_osd_read_resp);
-	ret = FORCE_NEGATIVE(safe_write(fd, rr->data, m_len));
+	ret = FORCE_NEGATIVE(safe_write(fd, extra, m_len));
+	xdr_free((xdrproc_t)xdr_mmm_osd_read_resp, (void*)&rr);
 	if (ret) {
 		glitch_log("error writing to %s: error %d (%s)\n",
 			fname, ret, terror(ret));
@@ -338,6 +336,7 @@ int fishtool_chunk_read(struct fishtool_params *params)
 		}
 	}
 	else {
+		/* If no length is given, read as much as we can. */
 		len = 0xffffffffffffffffLLU;
 	}
 	local = params->lowercase_args[ALPHA_IDX('o')];

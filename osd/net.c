@@ -22,11 +22,11 @@
 #include "jorm/jorm_const.h"
 #include "mds/limits.h"
 #include "msg/bsend.h"
-#include "msg/mds.h"
+#include "msg/fish_internal.h"
 #include "msg/msg.h"
 #include "msg/msgr.h"
-#include "msg/osd.h"
 #include "msg/recv_pool.h"
+#include "msg/xdr.h"
 #include "osd/net.h"
 #include "osd/ostor.h"
 #include "util/compiler.h"
@@ -39,6 +39,7 @@
 #include "util/time.h"
 
 #include <errno.h>
+#include <rpc/xdr.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -73,180 +74,123 @@ static struct msgr *g_msgr[RF_ENTITY_TY_NUM];
 /** Thread which sends heartbeat messages */
 static struct redfish_thread g_osd_send_hb_thread;
 
-static void osd_reply_noresp(struct bsend *ctx, struct mtran *tr, void *m)
-{
-	int ret;
-	uint16_t ty;
-	char ep_buf[128];
-
-	ret = bsend_add_tr_or_free(ctx, tr->priv, 0, (struct msg*)m, tr, 0);
-	if (ret) {
-		glitch_log("osd_reply_noresp: bsend_add_tr_or_free failed "
-			"with error %d\n", ret);
-		return;
-	}
-	bsend_join(ctx);
-	tr = bsend_get_mtran(ctx, 0);
-	if (tr) {
-		mtran_ep_to_str(tr, ep_buf, sizeof(ep_buf));
-		ty = unpack_from_be16(&((struct msg*)m)->ty);
-		glitch_log("osd_reply_noresp: failed to send reply message %d "
-			   "to %s: error %d\n", ty, ep_buf, PTR_ERR(tr));
-	}
-	bsend_reset(ctx);
-}
-
 static int handle_mmm_get_osd_read_req(struct recv_pool_thread *rt,
-		struct mtran *tr, const struct mmm_osd_read_req *m)
+		struct mtran *tr, const struct msg *m)
 {
-	struct mmm_resp *resp;
-	struct mmm_osd_read_resp *rr;
-	uint64_t cid, start;
-	uint32_t dlen;
 	int32_t ret;
+	struct mmm_osd_read_req req;
+	struct mmm_osd_read_resp resp;
+	struct msg *r;
+	char *footer;
 
-	cid = unpack_from_be64(&m->cid);
-	start = unpack_from_be64(&m->start);
-	dlen = unpack_from_be32(&m->len);
-	if (dlen > MMM_OSD_MAX_IO_SIZE) {
+	ret = MSG_XDR_DECODE(mmm_osd_read_req, m, &req);
+	if (ret < 0)
+		return ret;
+	if (req.len < 0) {
 		ret = -EINVAL;
 		goto send_resp;
 	}
-	rr = calloc_msg(MMM_OSD_READ_RESP,
-		sizeof(struct mmm_osd_read_resp) + dlen);
-	if (!rr) {
-		ret = -ENOMEM;
+	resp.flags = 0;
+	r = msg_xdr_extalloc(mmm_osd_read_resp_ty,
+		(xdrproc_t)xdr_mmm_osd_read_resp, &resp, req.len,
+		(void**)&footer);
+	if (IS_ERR(r)) {
+		ret = PTR_ERR(r);
 		goto send_resp;
 	}
-	ret = ostor_read(g_ostor, rt->base.fb, cid, start, rr->data, dlen);
+	ret = ostor_read(g_ostor, rt->base.fb, req.cid, req.start,
+		footer, req.len);
 	if (ret < 0) {
-		msg_release((struct msg*)rr);
+		msg_release(r);
 		goto send_resp;
 	}
-	rr = msg_shrink(rr, sizeof(struct mmm_osd_read_req) + ret);
+	r = msg_shrink(r, req.len - ret);
 	ret = 0;
 
 send_resp:
-	if (ret) {
-		resp = resp_alloc(ret);
-		if (!resp)
-			return -ENOMEM;
-		osd_reply_noresp(rt->ctx, tr, resp);
-	}
-	else {
-		osd_reply_noresp(rt->ctx, tr, rr);
-	}
-	return 0;
+	if (ret)
+		ret = bsend_std_reply(rt->base.fb, rt->ctx, tr, ret);
+	else
+		ret = bsend_reply(rt->base.fb, rt->ctx, tr, r);
+	xdr_free((xdrproc_t)xdr_mmm_osd_read_resp, (char*)&req);
+	return ret;
 }
 
 static int handle_mmm_osd_hflush_req(struct recv_pool_thread *rt,
-		struct mtran *tr, const struct mmm_osd_hflush_req *m)
+		struct mtran *tr, const struct msg *m)
 {
-	struct mmm_resp *resp;
-	uint64_t cid;
-	uint32_t dlen;
-	int32_t ret;
+	int32_t dlen, ret;
+	struct mmm_osd_hflush_req req;
+	const char *footer;
 
-	cid = unpack_from_be64(&m->cid);
-	dlen = unpack_from_be32(&m->base.len);
-	dlen -= sizeof(struct mmm_osd_hflush_req);
-	if (dlen > MMM_OSD_MAX_IO_SIZE) {
-		ret = -EINVAL;
+	dlen = msg_xdr_extdecode((xdrproc_t)xdr_mmm_osd_hflush_req,
+		m, &req, (const void**)&footer);
+	if (dlen < 0)
+		return dlen;
+	// TODO: check flags
+	ret = ostor_write(g_ostor, rt->base.fb, req.cid, footer, dlen);
+	if (ret)
 		goto send_resp;
-	}
-	// TODO: honor MMM_HFLUSH_FLAG_SYNC
-	ret = ostor_write(g_ostor, rt->base.fb, cid, m->data, dlen);
-	if (ret) {
-		goto send_resp;
-	}
 send_resp:
-	resp = resp_alloc(ret);
-	if (!resp)
-		return -ENOMEM;
-	osd_reply_noresp(rt->ctx, tr, resp);
-	return 0;
-}
-
-static int realloc_mmm_osd_chunkrep_resp(uint32_t num_cid,
-		struct mmm_osd_chunkrep_resp **mc)
-{
-	struct mmm_osd_chunkrep_resp *c;
-
-	c = realloc(*mc, sizeof(struct mmm_osd_chunkrep_resp) +
-		(sizeof(struct mmm_chunkrep_resp_chunk) * num_cid));
-	if (!c)
-		return -ENOMEM;
-	*mc = c;
-	pack_to_be32(&c->num_cid, num_cid);
-	return 0;
+	ret = bsend_std_reply(rt->base.fb, rt->ctx, tr, ret);
+	xdr_free((xdrproc_t)xdr_mmm_osd_hflush_req, (char*)&req);
+	return ret;
 }
 
 static int handle_mmm_osd_chunkrep_req(struct recv_pool_thread *rt,
-		struct mtran *tr, const struct mmm_osd_chunkrep_req *m)
+		struct mtran *tr, const struct msg *m)
 {
-	struct mmm_resp *resp;
-	struct mmm_osd_chunkrep_resp *mc = NULL;
-	const struct mmm_chunkrep_req_chunk *qh;
-	struct mmm_chunkrep_resp_chunk *ch;
-	uint32_t num_cid, dlen, i, num_resp = 0;
-	uint64_t cid;
-	int ret;
+	int i, j, ret, num_cid;
+	struct mmm_osd_chunkrep_req req;
+	struct mmm_osd_chunkrep_resp resp;
+	struct msg *r;
+	uint64_t cid, *cids, *bad;
+	int32_t dlen;
 
-	num_cid = unpack_from_be32(&m->num_cid);
-	dlen = unpack_from_be32(&m->base.len);
-	dlen -= sizeof(struct mmm_osd_chunkrep_req);
-	if (dlen < (num_cid * (sizeof(struct mmm_chunkrep_req_chunk)))) {
-		ret = -EINVAL;
+	dlen = msg_xdr_extdecode((xdrproc_t)xdr_mmm_osd_chunkrep_req,
+		m, &req, (const void**)&cids);
+	if (dlen < 0)
+		return dlen;
+	memset(&resp, 0, sizeof(resp));
+	resp.flags = 0;
+	r = msg_xdr_extalloc(mmm_osd_chunkrep_resp_ty,
+		(xdrproc_t)xdr_mmm_osd_chunkrep_resp, &resp, dlen,
+		(void**)&bad);
+	if (IS_ERR(r)) {
+		ret = PTR_ERR(r);
 		goto send_resp;
 	}
-	if (realloc_mmm_osd_chunkrep_resp(num_resp, &mc)) {
-		ret = -ENOMEM;
-		goto send_resp;
-	}
-	for (i = 0; i < num_cid; ++i) {
-		qh = &m->ch[i];
-		cid = unpack_from_be64(&qh->cid);
+	num_cid = dlen / sizeof(uint64_t);
+	for (i = 0, j = 0; i < num_cid; ++i) {
+		cid = unpack_from_be64(&cids[i]);
 		ret = ostor_verify(g_ostor, rt->base.fb, cid);
 		if (!ret)
 			continue;
-		if (realloc_mmm_osd_chunkrep_resp(++num_resp, &mc)) {
-			glitch_log("handle_mmm_osd_chunkrep_req: OOM");
-			ret = -ENOMEM;
-			goto send_resp;
-		}
-		ch = &mc->ch[num_resp - 1];
-		pack_to_be64(&ch->cid, cid);
-		pack_to_8(&ch->flags, MMM_OCF_MISSING);
+		pack_to_be64(&bad[j++], cid);
 	}
+	r = msg_shrink(r, (dlen - j) * sizeof(uint64_t));
 	ret = 0;
 send_resp:
-	if (ret) {
-		resp = resp_alloc(ret);
-		if (!resp)
-			glitch_log("handle_mmm_osd_chunkrep_req: OOM");
-		else
-			osd_reply_noresp(rt->ctx, tr, resp);
-	}
-	else {
-		osd_reply_noresp(rt->ctx, tr, mc);
-	}
+	if (ret)
+		ret = bsend_std_reply(rt->base.fb, rt->ctx, tr, ret);
+	else
+		ret = bsend_reply(rt->base.fb, rt->ctx, tr, r);
+	xdr_free((xdrproc_t)xdr_mmm_osd_chunkrep_resp, (char*)&req);
 	return ret;
 }
 
 static int handle_mmm_osd_unlink_req(struct recv_pool_thread *rt,
-		struct mtran *tr, const struct mmm_osd_unlink_req *m)
+		struct mtran *tr, const struct msg *m)
 {
-	struct mmm_resp *resp;
-	uint64_t cid;
+	struct mmm_osd_unlink_req req;
 	int ret;
 
-	cid = unpack_from_be64(&m->cid);
-	ret = ostor_unlink(g_ostor, rt->base.fb, cid);
-	resp = resp_alloc(ret);
-	if (!resp)
-		glitch_log("handle_mmm_osd_chunkrep_req: OOM");
-	else
-		osd_reply_noresp(rt->ctx, tr, resp);
+	ret = MSG_XDR_DECODE(mmm_osd_unlink_req, m, &req);
+	if (ret < 0)
+		return ret;
+	ret = ostor_unlink(g_ostor, rt->base.fb, req.cid);
+	ret = bsend_std_reply(rt->base.fb, rt->ctx, tr, ret);
+	xdr_free((xdrproc_t)xdr_mmm_osd_unlink_req, (char*)&req);
 	return ret;
 }
 
@@ -262,31 +206,30 @@ static int osd_net_handle_tr(struct recv_pool_thread *rt, struct mtran *tr)
 	int ret;
 	uint16_t ty;
 	struct msg *m;
+	char ep_buf[128];
 	
 	m = tr->m;
 	tr->m = NULL;
 	ty = unpack_from_be16(&m->ty);
-	glitch_log("osd_net_handle_tr: incoming message of type %d\n", ty);
+	mtran_ep_to_str(tr, ep_buf, sizeof(ep_buf));
+	glitch_log("osd_net_handle_tr: incoming message of type %d from %s\n",
+		ty, ep_buf); // TODO: make optional
 	switch (ty) {
-	case MMM_OSD_READ_REQ:
-		ret = handle_mmm_get_osd_read_req(rt, tr, 
-			(const struct mmm_osd_read_req*)m);
+	case mmm_osd_read_req_ty:
+		ret = handle_mmm_get_osd_read_req(rt, tr, m);
 		break;
-	case MMM_OSD_HFLUSH_REQ:
-		ret = handle_mmm_osd_hflush_req(rt, tr,
-			(const struct mmm_osd_hflush_req*)m);
+	case mmm_osd_hflush_req_ty:
+		ret = handle_mmm_osd_hflush_req(rt, tr, m);
 		break;
-	case MMM_OSD_CHUNKREP_REQ:
-		ret = handle_mmm_osd_chunkrep_req(rt, tr,
-			(const struct mmm_osd_chunkrep_req*)m);
+	case mmm_osd_chunkrep_req_ty:
+		ret = handle_mmm_osd_chunkrep_req(rt, tr, m);
 		break;
-	case MMM_OSD_UNLINK_REQ:
-		ret = handle_mmm_osd_unlink_req(rt, tr,
-			(const struct mmm_osd_unlink_req*)m);
+	case mmm_osd_unlink_req_ty:
+		ret = handle_mmm_osd_unlink_req(rt, tr, m);
 		break;
 	default:
 		glitch_log("osd_net_handle_mds_tr: unhandled message "
-			   "type %d\n", ty);
+			   "type %d from %s\n", ty, ep_buf);
 		mtran_free(tr);
 		ret = 0;
 		break;
@@ -294,14 +237,15 @@ static int osd_net_handle_tr(struct recv_pool_thread *rt, struct mtran *tr)
 	msg_release(m);
 	if (ret) {
 		glitch_log("osd_net_handle_mds_tr: error %d handling "
-			   "message type %d\n", ret, ty);
+			   "message type %d from %s\n", ret, ty, ep_buf);
 	}
 	return 0;
 }
 
 static int osd_send_hb_thread(struct redfish_thread *rt)
 {
-	struct mmm_heartbeat *m;
+	struct mmm_heartbeat resp;
+	struct msg *r;
 	struct daemon_info *di;
 	struct bsend *ctx;
 	int i;
@@ -314,6 +258,12 @@ static int osd_send_hb_thread(struct redfish_thread *rt)
 			"error %d\n", PTR_ERR(ctx));
 		abort();
 	}
+	resp.ty = RF_ENTITY_TY_OSD;
+	resp.id = g_oid;
+	r = MSG_XDR_ALLOC(mmm_resp, &resp);
+	if (IS_ERR(r)) {
+		abort();
+	}
 	while (1) {
 		glitch_log("osd_send_hb_thread: sending...\n");
 		until = mt_time() + OSD_HB_SEND_IVAL;
@@ -321,23 +271,15 @@ static int osd_send_hb_thread(struct redfish_thread *rt)
 			di = &g_cmap->minfo[i];
 			if (!di->in)
 				continue;
-			m = calloc_msg(MMM_HEARTBEAT,
-				sizeof(struct mmm_heartbeat));
-			if (!m) {
-				glitch_log("mds_send_hb_thread: failed to "
-					"allocate memory for heartbeat "
-					"message.\n");
-				abort();
-			}
-			pack_to_8(&m->entity, RF_ENTITY_TY_OSD);
-			pack_to_be32(&m->id, g_oid);
-			bsend_add(ctx, g_msgr[RF_ENTITY_TY_MDS], 0, (struct msg*)m,
+			msg_addref(r);
+			bsend_add(ctx, g_msgr[RF_ENTITY_TY_MDS], 0, r,
 				di->ip, di->port[RF_ENTITY_TY_OSD], 2);
 		}
 		bsend_join(ctx);
 		bsend_reset(ctx);
 		mt_sleep_until(until);
 	}
+	msg_release(r);
 	bsend_free(ctx);
 	return 0;
 }
@@ -346,7 +288,7 @@ void osd_net_init(struct unitaryc *conf, uint16_t oid,
 		char *err, size_t err_len)
 {
 	const struct osdc *osdc = unitaryc_lookup_osdc(conf, oid);
-	struct msgr_conf mconf[RF_ENTITY_TY_NUM] = {
+	struct msgr_conf oconf[RF_ENTITY_TY_NUM] = {
 		{
 			.max_conn = 65535,
 			.max_tran = 65535,
@@ -385,11 +327,11 @@ void osd_net_init(struct unitaryc *conf, uint16_t oid,
 		abort();
 	}
 	for (i = 0; i < RF_ENTITY_TY_NUM; ++i) {
-		g_msgr[i] = msgr_init(err, err_len, &mconf[i]);
+		g_msgr[i] = msgr_init(err, err_len, &oconf[i]);
 		if (err[0]) {
 			glitch_log("osd_net_init: failed to create %s "
 				"messenger: error %s\n",
-				fish_entity_ty_to_str(i), err);
+				entity_ty_to_short_str(i), err);
 		}
 	}
 	g_mds_rpool = recv_pool_init("mds_rpool");
@@ -448,7 +390,7 @@ void osd_net_init(struct unitaryc *conf, uint16_t oid,
 		if (err[0]) {
 			glitch_log("osd_net_init: failed to start %s "
 				"messenger: error %s\n",
-				fish_entity_ty_to_str(i), err);
+				entity_ty_to_short_str(i), err);
 			abort();
 		}
 	}

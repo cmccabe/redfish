@@ -168,7 +168,7 @@ extern void *calloc_msg(uint32_t ty, uint32_t len);
  *
  * @return		The new response message, or NULL on OOM
  */
-extern struct mmm_resp *resp_alloc(int error);
+extern struct msg *resp_alloc(int error);
 
 /** Shrink a message.
  *
@@ -177,12 +177,12 @@ extern struct mmm_resp *resp_alloc(int error);
  * length field.
  *
  * @param v		The message
- * @param len		New, shorter, length for the message
+ * @param amt		Amount to shrink message by
  *
  * @return		The message.  This cannot be NULL-- it will always be a
  *			valid pointer.
  */
-extern void *msg_shrink(void *v, uint32_t len);
+extern struct msg *msg_shrink(struct msg *m, uint32_t amt);
 
 /** Increment a message's reference count.
  *

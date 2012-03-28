@@ -37,6 +37,14 @@ enum fish_entity_ty {
  *
  * @return		A statically allocated string
  */
-extern const char *fish_entity_ty_to_str(enum fish_entity_ty ty);
+extern const char *entity_ty_to_str(enum fish_entity_ty ty);
+
+/** Convert a Redfish entity type to a short string 
+ *
+ * @param ty		The type
+ *
+ * @return		A statically allocated string
+ */
+extern const char *entity_ty_to_short_str(enum fish_entity_ty ty);
 
 #endif

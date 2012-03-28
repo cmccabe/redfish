@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-#include "msg/generic.h"
+#include "msg/fish_internal.h"
 #include "msg/msg.h"
+#include "msg/xdr.h"
 #include "util/error.h"
 #include "util/packed.h"
 #include "util/macro.h"
@@ -52,30 +53,30 @@ void *calloc_msg(uint32_t ty, uint32_t len)
 	return m;
 }
 
-struct mmm_resp *resp_alloc(int error)
+struct msg *resp_alloc(int error)
 {
-	struct mmm_resp *resp;
+	struct msg *r;
+	struct mmm_resp resp;
 
-	error = FORCE_POSITIVE(error);
-	resp = calloc_msg(MMM_RESP, sizeof(struct mmm_resp));
-	if (!resp)
-		return NULL;
-	pack_to_be32(&resp->error, error);
-	return resp;
+	resp.error = FORCE_POSITIVE(error);
+	r = MSG_XDR_ALLOC(mmm_resp, &resp);
+	if (IS_ERR(r))
+		return r;
+	return r;
 }
 
-void *msg_shrink(void *v, uint32_t len)
+struct msg *msg_shrink(struct msg *m, uint32_t amt)
 {
-	uint32_t cur_len;
-	struct msg *m = v;
-	void *r;
+	uint32_t cur_len, new_len;
+	struct msg *r;
 	
 	cur_len = unpack_from_be32(&m->len);
-	if (cur_len < len)
+	if (cur_len < amt)
 		abort();
-	pack_to_be32(&m->len, len);
-	r = realloc(m, len);
-	return r ? r : v;
+	new_len = cur_len - amt;
+	pack_to_be32(&m->len, new_len);
+	r = realloc(m, new_len);
+	return r ? r : m;
 }
 
 void msg_addref(struct msg *msg)

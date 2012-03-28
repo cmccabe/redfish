@@ -17,6 +17,8 @@
 #ifndef REDFISH_MDS_NET_DOT_H
 #define REDFISH_MDS_NET_DOT_H
 
+#include "common/entity_type.h"
+
 #include <pthread.h> /* for pthread_mutex_t */
 #include <stdint.h> /* for uint16_t, etc. */
 
@@ -48,14 +50,8 @@ EXTERN struct cmap *g_cmap;
 /** Lock that protects the cluster map */
 EXTERN pthread_mutex_t g_cmap_lock;
 
-/** Messenger listening for connections from other MDSes */
-EXTERN struct msgr *g_mds_msgr;
-
-/** Messenger listening for connections from OSDs */
-EXTERN struct msgr *g_osd_msgr;
-
-/** Messenger listening for connections from clients */
-EXTERN struct msgr *g_cli_msgr;
+/** MDS messengers */
+EXTERN struct msgr *g_msgr[RF_ENTITY_TY_NUM];
 
 /** Initialize mds networking stuff
  *

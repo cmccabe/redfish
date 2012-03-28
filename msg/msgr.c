@@ -15,7 +15,6 @@
  */
 
 #include "msg/fast_log.h"
-#include "msg/generic.h"
 #include "msg/msg.h"
 #include "msg/msgr.h"
 #include "util/circ_compare.h"
