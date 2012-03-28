@@ -67,6 +67,9 @@ class OfTestClient(of_node.OfNode):
                 saw_errors = True
         if (saw_errors):
             raise RuntimeError("join_stests_expect_success saw errors.")
+    def kill(self, kill9):
+        for test in self.active_tests:
+            test.kill(self, kill9)
 
 class OfTest(object):
     def __init__(self, test, tsid, test_base_dir, bin_path, pid):
@@ -82,10 +85,14 @@ class OfTest(object):
             return True
         except subprocess.CalledProcessError, e:
             return False
-    def kill(self, test_client):
+    def kill(self, test_client, kill9):
         if (not self.is_running(test_client)):
             return
-        test_client.run("kill %d" % self.pid, {})
+        if (kill9 == True):
+            arg = "-9 "
+        else:
+            arg = ""
+        test_client.run("kill %s%d" % (arg, self.pid), {})
     def get_result(self, test_client):
         err_txt = test_client.run_with_output("cat '%s/err'" % \
             (self.test_base_dir), {})
