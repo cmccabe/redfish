@@ -32,7 +32,7 @@ subprocess.check_call(["make", "install", ("DESTDIR=" + install_dir)])
 for n in of_node.OfNodeIter(node_list, []):
     print "installing " + n.get_short_name()
     # Create base_dir where logs and configuration will go 
-    n.run("mkdir -p " + n.base_dir, {})
+    n.run("mkdir -p '" + n.base_dir + "'", {})
     # Upload configuration file
     n.upload_conf(opts.conf_json)
     # upload system binaries
