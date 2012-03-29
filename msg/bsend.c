@@ -16,9 +16,9 @@
 
 #include "msg/bsend.h"
 #include "msg/fast_log.h"
-#include "msg/fish_internal.h"
 #include "msg/msg.h"
 #include "msg/msgr.h"
+#include "msg/types.h"
 #include "util/compiler.h"
 #include "util/cram.h"
 #include "util/error.h"

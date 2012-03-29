@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include "msg/fish_internal.h"
 #include "msg/msg.h"
+#include "msg/types.h"
 #include "msg/xdr.h"
 #include "util/error.h"
-#include "util/packed.h"
 #include "util/macro.h"
 #include "util/net.h"
+#include "util/packed.h"
 
 #include <arpa/inet.h>
 #include <errno.h>

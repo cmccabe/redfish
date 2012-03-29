@@ -11,7 +11,7 @@ add_library(msgr
 )
 target_link_libraries(msgr
     common
-    fish_msg_ty
+    types
     util
     ${LIBEV_LIBRARIES}
 )
@@ -29,19 +29,19 @@ target_link_libraries(recv_pool_unit core msgr utest)
 add_utest(recv_pool_unit)
 
 ADD_CUSTOM_COMMAND(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/fish.c
-    COMMAND rpcgen -c ${CMAKE_CURRENT_SOURCE_DIR}/fish.x > ${CMAKE_CURRENT_BINARY_DIR}/fish.c
-    DEPENDS fish.x)
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/types.c
+    COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR} && rpcgen -c types.x > ${CMAKE_CURRENT_BINARY_DIR}/types.c
+    DEPENDS types.x)
 
 ADD_CUSTOM_COMMAND(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/fish_internal.h
-    COMMAND rpcgen -h ${CMAKE_CURRENT_SOURCE_DIR}/fish.x > ${CMAKE_CURRENT_BINARY_DIR}/fish_internal.h
-    DEPENDS fish.x)
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/types.h
+    COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR} && rpcgen -h types.x > ${CMAKE_CURRENT_BINARY_DIR}/types.h
+    DEPENDS types.x)
 
-add_library(fish_msg_ty
-    ${CMAKE_CURRENT_BINARY_DIR}/fish.c
-    ${CMAKE_CURRENT_BINARY_DIR}/fish_internal.h
+add_library(types
+    ${CMAKE_CURRENT_BINARY_DIR}/types.c
+    ${CMAKE_CURRENT_BINARY_DIR}/types.h
 )
 # Don't complain about the generated .c files
-set_target_properties(fish_msg_ty
+set_target_properties(types
     PROPERTIES COMPILE_FLAGS "-Wno-all -Wno-error")

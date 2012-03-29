@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "msg/fish_internal.h"
 #include "msg/msg.h"
+#include "msg/types.h"
 #include "msg/xdr.h"
 #include "util/compiler.h"
 #include "util/error.h"
