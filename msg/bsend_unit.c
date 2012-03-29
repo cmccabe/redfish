@@ -54,8 +54,8 @@ struct msgr_conf g_std_bar_msgr_conf = {
 };
 
 enum {
-	MMM_TEST30 = 9030,
-	MMM_TEST31,
+	mmm_test30_ty = 9030,
+	mmm_test31_ty,
 };
 
 PACKED(
@@ -97,12 +97,12 @@ static void bsend_test_cb(struct mconn *conn, struct mtran *tr)
 	}
 	m = (struct mmm_test30*)tr->m;
 	ty = unpack_from_be16(&m->base.ty);
-	if (ty != MMM_TEST30) {
+	if (ty != mmm_test30_ty) {
 		fprintf(stderr, "bsend_test_cb: expected type %d; got "
-			"type %d\n", MMM_TEST30, ty);
+			"type %d\n", mmm_test30_ty, ty);
 		abort();
 	}
-	mout = calloc_msg(MMM_TEST31, sizeof(struct mmm_test31));
+	mout = calloc_msg(mmm_test31_ty, sizeof(struct mmm_test31));
 	if (!mout) {
 		fprintf(stderr, "bsend_test_cb: oom\n");
 		abort();
@@ -133,7 +133,7 @@ static int bsend_test30(struct bsend *ctx, struct msgr *msgr, int flags,
 {
 	struct mmm_test30 *m;
 
-	m = calloc_msg(MMM_TEST30, sizeof(struct mmm_test30));
+	m = calloc_msg(mmm_test30_ty, sizeof(struct mmm_test30));
 	if (!m)
 		return -ENOMEM;
 	pack_to_be32(&m->x, x);
@@ -211,10 +211,10 @@ static int bsend_test_send(struct fast_log_buf *fb, int simult,
 			m = (struct mmm_test31*)tr->m;
 			EXPECT_NOT_ERRPTR(m);
 			ty = unpack_from_be16(&m->base.ty);
-			if (ty != MMM_TEST31) {
+			if (ty != mmm_test31_ty) {
 				fprintf(stderr, "bsend_test_send: expected "
 					"type %d; got type %d\n",
-					MMM_TEST31, ty);
+					mmm_test31_ty, ty);
 				abort();
 			}
 			z = unpack_from_be32(&m->z);

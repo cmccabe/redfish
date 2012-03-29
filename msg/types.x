@@ -123,7 +123,7 @@ struct mmm_heartbeat {
 };
 
 struct mmm_status_req {
-	opaque data<0>;
+	int flags;
 };
 
 /* ============== Client Requests ============== */
@@ -176,9 +176,9 @@ struct mmm_utimes_req {
         string path<RF_PATH_MAX>;
 };
 
-/** Flag for MMM_UNLINK that means remove recursively */
+/** Flag for mmm_unlink that means remove recursively */
 const MMM_UNLINK_RECURSIVE = 1;
-/** Flag for MMM_UNLINK that means implement POSIX rmdir semantics */
+/** Flag for mmm_unlink that means implement POSIX rmdir semantics */
 const MMM_UNLINK_POSIX_RMDIR = 2;
 
 struct mmm_unlink_req {
@@ -214,7 +214,7 @@ const MMM_OSD_FETCH_CHUNK_LEN_MAX = 2147483648;
 
 struct mmm_fetch_chunk_resp {
 	unsigned hyper cid;
-	opaque data<MMM_OSD_FETCH_CHUNK_LEN_MAX>;
+	/* next: data */
 };
 
 /* ============== OSD messages ============== */

@@ -233,7 +233,7 @@ static int osd_net_handle_tr(struct recv_pool_thread *rt, struct mtran *tr)
 		glitch_log("osd_net_handle_mds_tr: unhandled message "
 			   "type %d from %s\n", ty, ep_buf);
 		mtran_free(tr);
-		ret = 0;
+		ret = -ENOSYS;
 		break;
 	}
 	msg_release(m);

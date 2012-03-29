@@ -60,66 +60,46 @@ struct recv_pool *g_rpool[RF_ENTITY_TY_NUM];
 /** Thread that sends heartbeats */
 struct redfish_thread g_mds_send_hb_thread;
 
-static void mds_net_heartbeat_start(void)
+static int handle_mmm_get_mds_status(struct recv_pool_thread *rt,
+		struct mtran *tr, POSSIBLY_UNUSED(const struct msg *m))
 {
-	int ret;
+	struct mmm_mds_status_resp resp;
+	struct msg *r;
 
-	ret = redfish_thread_create(g_fast_log_mgr, &g_mds_send_hb_thread,
-			mds_send_hb_thread, NULL);
-	if (ret) {
-		glitch_log("mds_net_init: failed to create "
-			"mds_send_hb_thread: error %d\n", ret);
-		abort();
+	resp.mid = g_mid;
+	resp.pri_mid = g_pri_mid;
+	r = MSG_XDR_ALLOC(mmm_mds_status_resp, &resp);
+	if (IS_ERR(r)) {
+		return PTR_ERR(r);
 	}
+	return bsend_reply(rt->base.fb, rt->ctx, tr, r);
 }
 
-static int handle_mmm_get_mds_status(struct recv_pool_thread *rt, struct mtran *tr)
-{
-	int ret;
-	struct mmm_mds_status *m;
-	struct bsend *ctx = rt->ctx;
-
-	m = calloc_msg(MMM_MDS_STATUS, sizeof(struct mmm_mds_status));
-	if (!m)
-		return -ENOMEM;
-	pack_to_be16(&m->mid, g_mid);
-	pack_to_be16(&m->pri_mid, g_pri_mid);
-	ret = bsend_add_tr_or_free(ctx, g_mds_msgr, 0, (struct msg*)m, tr,
-				DGOP_STD_TIMEO);
-	if (ret)
-		return ret;
-	ret = bsend_join(ctx);
-	if (ret != 1)
-		return -EIO;
-	bsend_reset(ctx);
-
-	return 0;
-}
-
-static int mds_net_handle_mds_tr(struct recv_pool_thread *rt, struct mtran *tr)
+static int mds_net_handle_tr(struct recv_pool_thread *rt, struct mtran *tr)
 {
 	int ret;
 	uint16_t ty;
+	struct msg *m;
+	char ep_buf[128];
 
-	if (IS_ERR(tr->m)) {
-		glitch_log("mds_net_handle_mds_tr: got error %d\n",
-			PTR_ERR(tr->m));
-		return 0;
-	}
+	m = tr->m;
+	tr->m = NULL;
 	ty = unpack_from_be16(&tr->m->ty);
-	glitch_log("mds_net_handle_mds_tr: incoming message of type %d\n", ty);
+	mtran_ep_to_str(tr, ep_buf, sizeof(ep_buf));
+	glitch_log("mds_net_handle_mds_tr: incoming message of type %d "
+		"from %s\n", ty, ep_buf);
 	switch (ty) {
-	case MMM_GET_MDS_STATUS:
-		ret = handle_mmm_get_mds_status(rt, tr);
+	case mmm_get_mds_status_ty:
+		ret = handle_mmm_get_mds_status(rt, tr, m);
 		break;
-	case MMM_MDS_HEARTBEAT:
+	case mmm_mds_heartbeat:
 		// FIXME: record this
 		ret = 0;
 		break;
 	default:
 		glitch_log("mds_net_handle_mds_tr: unhandled message "
 			   "type %d\n", ty);
-		ret = 0;
+		ret = -ENOSYS;
 		break;
 	}
 	// Handle message (something like a switch statement based on type)
@@ -151,41 +131,11 @@ static int mds_net_handle_mds_tr(struct recv_pool_thread *rt, struct mtran *tr)
 	// 	Release the relevant shard lock.
 	// default:
 	// 	Log message and ignore.  Or abort()?
+	msg_release(m);
 	if (ret) {
-		glitch_log("mds_net_handle_mds_tr: error handling message of "
-			   "type %d: error %d\n", ty, ret);
+		glitch_log("mds_net_handle_mds_tr: error %d handling "
+			"message type %d from %s\n", ret, ry, ep_buf);
 	}
-	return 0;
-}
-
-static int mds_net_handle_osd_tr(POSSIBLY_UNUSED(struct recv_pool_thread *rt),
-				 POSSIBLY_UNUSED(struct mtran *tr))
-{
-	// Handle message (something like a switch statement based on type)
-	//
-	// case MMM_OSD_HEARTBEAT:
-	// 	Update the OSD's last contact time
-	return 0;
-}
-
-static int mds_net_handle_cli_tr(POSSIBLY_UNUSED(struct recv_pool_thread *rt),
-				 POSSIBLY_UNUSED(struct mtran *tr))
-{
-	// Handle message (something like a switch statement based on type)
-	//
-	// case MMM_RENAME:
-	// 	Is it a cross-delegation rename?  If so, then we need to
-	// 	reshard.
-	// MDS OPERATION:
-	//	Look up the relevant shard and make sure that we're a primary for it.
-	//		If we're not, send back MMM_MDS_REVEAL_NEW_DMAP
-	//	Take the relevant shard lock.
-	//	Try to do the operation that is requested.
-	// 		If you can't do it, return a NACK (or similar).
-	// 	Release the relevant shard lock.
-	// default:
-	// 	Log message and ignore.  Or abort()?
-
 	return 0;
 }
 
@@ -314,7 +264,7 @@ void mds_net_init(POSSIBLY_UNUSED(struct fast_log_buf *fb),
 		}
 		for (j = 0; j < recv_pool_nthreads[i]; ++j) {
 			ret = recv_pool_thread_create(*rpool, g_fast_log_mgr,
-					mds_net_handle_mds_tr, NULL);
+					mds_net_handle_tr, NULL);
 			if (ret) {
 				glitch_log("mds_net_msgr_init: "
 					"recv_pool_thread_create failed with "
@@ -340,7 +290,13 @@ void mds_net_init(POSSIBLY_UNUSED(struct fast_log_buf *fb),
 		}
 	}
 	mds_net_root_delegation_setup();
-	mds_net_heartbeat_start();
+	ret = redfish_thread_create(g_fast_log_mgr, &g_mds_send_hb_thread,
+			mds_send_hb_thread, NULL);
+	if (ret) {
+		glitch_log("mds_net_init: failed to create "
+			"mds_send_hb_thread: error %d\n", ret);
+		abort();
+	}
 }
 
 int mds_main_loop(void)

@@ -18,6 +18,7 @@
 #include "common/cluster_map.h"
 #include "common/config/unitaryc.h"
 #include "core/glitch_log.h"
+#include "mds/limits.h"
 #include "msg/bsend.h"
 #include "msg/msg.h"
 #include "msg/types.h"
@@ -154,7 +155,7 @@ static int do_chunk_write(struct chunk_op_ctx *cct, const char *buf,
 	tr = bsend_get_mtran(cct->rrc->ctx, 0);
 	if (IS_ERR(tr->m)) {
 		bsend_reset(cct->rrc->ctx);
-		glitch_log("error sending MMM_OSD_HFLUSH_REQ: error %d\n",
+		glitch_log("error sending mmm_osd_hflush_req: error %d\n",
 			PTR_ERR(tr->m));
 		return FORCE_NEGATIVE(PTR_ERR(tr->m));
 	}
@@ -269,7 +270,7 @@ static int do_chunk_read(struct chunk_op_ctx *cct, const char *fname,
 	tr = bsend_get_mtran(cct->rrc->ctx, 0);
 	if (IS_ERR(tr->m)) {
 		ret = FORCE_NEGATIVE(PTR_ERR(tr->m));
-		glitch_log("error sending MMM_OSD_READ_REQ: error %d\n", ret);
+		glitch_log("error sending mmm_osd_read_req: error %d\n", ret);
 		goto done;
 	}
 	ret = msg_xdr_decode_as_generic(tr->m);
@@ -337,7 +338,7 @@ int fishtool_chunk_read(struct fishtool_params *params)
 	}
 	else {
 		/* If no length is given, read as much as we can. */
-		len = 0xffffffffffffffffLLU;
+		len = RF_OSD_CHUNK_LEN_MAX;
 	}
 	local = params->lowercase_args[ALPHA_IDX('o')];
 	if (local) {

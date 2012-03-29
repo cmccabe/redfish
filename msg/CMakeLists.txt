@@ -42,6 +42,8 @@ add_library(types
     ${CMAKE_CURRENT_BINARY_DIR}/types.c
     ${CMAKE_CURRENT_BINARY_DIR}/types.h
 )
+add_dependencies(types types.x)
+
 # Don't complain about the generated .c files
 set_target_properties(types
     PROPERTIES COMPILE_FLAGS "-Wno-all -Wno-error")

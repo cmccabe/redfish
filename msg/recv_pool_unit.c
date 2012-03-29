@@ -38,7 +38,7 @@
 #define RECV_POOL_UNIT_RT_MAX 32
 
 enum {
-	MMM_TEST40 = 9040,
+	mmm_test40_ty = 9040,
 };
 
 PACKED(
@@ -67,7 +67,7 @@ static int send_foo_tr(struct msgr* msgr, msgr_cb_t cb, uint32_t q)
 	tr = mtran_alloc(msgr);
 	if (!tr)
 		return -ENOMEM;
-	mout = calloc_msg(MMM_TEST40, sizeof(struct mmm_test40));
+	mout = calloc_msg(mmm_test40_ty, sizeof(struct mmm_test40));
 	if (!mout) {
 		mtran_free(tr);
 		return -ENOMEM;
@@ -101,7 +101,7 @@ static int recv_pool_test_handler(POSSIBLY_UNUSED(struct recv_pool_thread *rt),
 	uint16_t ty;
 
 	ty = unpack_from_be16(&m->base.ty);
-	if (ty != MMM_TEST40)
+	if (ty != mmm_test40_ty)
 		abort();
 	q = unpack_from_be32(&m->q);
 	pthread_mutex_lock(&g_full_set_lock);

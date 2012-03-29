@@ -63,6 +63,9 @@
 /** Invalid delegation ID */
 #define RF_INVAL_DGID 0xffffffffffffffffULL
 
+/** Maximum chunk length */
+#define RF_OSD_CHUNK_LEN_MAX 0xffffffffffffffffULL
+
 #define MSTOR_ROOT_NID_INIT_MODE 0755
 
 #endif

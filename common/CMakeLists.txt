@@ -11,7 +11,7 @@ add_library(common
     config/ostorc.c
     config/unitaryc.c
 )
-target_link_libraries(common jorm util pthread)
+target_link_libraries(common jorm types util pthread)
 
 add_executable(cluster_map_unit cluster_map_unit.c)
 target_link_libraries(cluster_map_unit common utest)
