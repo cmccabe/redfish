@@ -125,12 +125,14 @@ static int handle_mmm_osd_hflush_req(struct recv_pool_thread *rt,
 
 	dlen = msg_xdr_extdecode((xdrproc_t)xdr_mmm_osd_hflush_req,
 		m, &req, (const void**)&footer);
-	if (dlen < 0)
+	if (dlen < 0) {
 		return dlen;
+	}
 	// TODO: check flags
 	ret = ostor_write(g_ostor, rt->base.fb, req.cid, footer, dlen);
-	if (ret)
+	if (ret) {
 		goto send_resp;
+	}
 send_resp:
 	ret = bsend_std_reply(rt->base.fb, rt->ctx, tr, ret);
 	xdr_free((xdrproc_t)xdr_mmm_osd_hflush_req, (char*)&req);

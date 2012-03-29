@@ -253,12 +253,15 @@ int bsend_reply(struct fast_log_buf *fb, struct bsend *ctx, struct mtran *tr,
 		return ret;
 	bsend_join(ctx);
 	tr = bsend_get_mtran(ctx, 0);
-	if (!tr) {
+	if (!tr->m) {
 		ret = 0;
+	}
+	else if (!IS_ERR(tr->m)) {
+		abort();
 	}
 	else {
 		ty = unpack_from_be16(&r->ty);
-		ret = PTR_ERR(tr);
+		ret = PTR_ERR(tr->m);
 		fast_log_bsend(fb, FAST_LOG_BSEND_ERROR, FLBS_REPLY_FAIL,
 			unpack_from_be16(&tr->port), unpack_from_be32(&tr->ip),
 			0, cram_into_u16(ret), ty);
