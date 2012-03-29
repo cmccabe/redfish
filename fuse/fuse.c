@@ -20,6 +20,7 @@
 #include "core/glitch_log.h"
 #include "client/fishc.h"
 #include "mds/limits.h"
+#include "msg/types.h"
 #include "util/cram.h"
 #include "util/error.h"
 #include "util/safe_io.h"

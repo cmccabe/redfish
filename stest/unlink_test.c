@@ -17,6 +17,7 @@
 #include "client/fishc.h"
 #include "core/env.h"
 #include "mds/limits.h"
+#include "msg/types.h"
 #include "stest/stest.h"
 #include "util/string.h"
 

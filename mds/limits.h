@@ -17,12 +17,6 @@
 #ifndef REDFISH_MDS_LIMITS_DOT_H
 #define REDFISH_MDS_LIMITS_DOT_H
 
-/** maximum length of a path name in Redfish */
-#define RF_PATH_MAX 4096
-
-/** maximum number of OSDs that will be used store a single chunk */
-#define RF_MAX_OID 7
-
 /** maximum number of replicas for any delegation */
 #define RF_MAX_REPLICAS 7
 
@@ -34,12 +28,6 @@
 
 /** invalid MDS ID */
 #define RF_INVAL_MID 255
-
-/** Maximum length of a user name */
-#define RF_USER_MAX 64
-
-/** Maximum length of a group name */
-#define RF_GROUP_MAX 64
 
 /** The superuser */
 #define RF_SUPERUSER_NAME "superuser"

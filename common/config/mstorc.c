@@ -16,6 +16,7 @@
 
 #include "common//config/mstorc.h"
 #include "mds/limits.h"
+#include "msg/types.h"
 
 #define JORM_CUR_FILE "common/config/mstorc.jorm"
 #include "jorm/jorm_generate_body.h"

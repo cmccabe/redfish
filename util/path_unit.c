@@ -15,6 +15,7 @@
  */
 
 #include "mds/limits.h"
+#include "msg/types.h"
 #include "util/path.h"
 #include "util/string.h"
 #include "util/test.h"
