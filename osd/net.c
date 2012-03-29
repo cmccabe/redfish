@@ -112,7 +112,7 @@ send_resp:
 		ret = bsend_std_reply(rt->base.fb, rt->ctx, tr, ret);
 	else
 		ret = bsend_reply(rt->base.fb, rt->ctx, tr, r);
-	xdr_free((xdrproc_t)xdr_mmm_osd_read_resp, (char*)&req);
+	XDR_REQ_FREE(mmm_osd_read_req, &req);
 	return ret;
 }
 
@@ -135,7 +135,7 @@ static int handle_mmm_osd_hflush_req(struct recv_pool_thread *rt,
 	}
 send_resp:
 	ret = bsend_std_reply(rt->base.fb, rt->ctx, tr, ret);
-	xdr_free((xdrproc_t)xdr_mmm_osd_hflush_req, (char*)&req);
+	XDR_REQ_FREE(mmm_osd_hflush_req, &req);
 	return ret;
 }
 
@@ -177,7 +177,7 @@ send_resp:
 		ret = bsend_std_reply(rt->base.fb, rt->ctx, tr, ret);
 	else
 		ret = bsend_reply(rt->base.fb, rt->ctx, tr, r);
-	xdr_free((xdrproc_t)xdr_mmm_osd_chunkrep_resp, (char*)&req);
+	XDR_REQ_FREE(mmm_osd_chunkrep_req, &req);
 	return ret;
 }
 
@@ -192,7 +192,7 @@ static int handle_mmm_osd_unlink_req(struct recv_pool_thread *rt,
 		return ret;
 	ret = ostor_unlink(g_ostor, rt->base.fb, req.cid);
 	ret = bsend_std_reply(rt->base.fb, rt->ctx, tr, ret);
-	xdr_free((xdrproc_t)xdr_mmm_osd_unlink_req, (char*)&req);
+	XDR_REQ_FREE(mmm_osd_unlink_req, &req);
 	return ret;
 }
 

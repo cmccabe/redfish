@@ -82,11 +82,42 @@ extern int32_t msg_xdr_extdecode(xdrproc_t xdrproc,
 extern int32_t msg_xdr_decode(xdrproc_t xdrproc,
 		const struct msg *m, void *out);
 
+/** Allocate a message on the heap
+ *
+ * @param t		The message type
+ * @param payload	Payload to include in the message
+ *
+ * @return		A message, or an error pointer on error.
+ *			The message must be freed with msg_release
+ */
 #define MSG_XDR_ALLOC(t, payload) \
 	(msg_xdr_alloc(t##_ty, (xdrproc_t)xdr_##t, payload))
 
+/** Deserialize a message into a response struct
+ *
+ * Basically, this is a wrapper around xdr_free that provides typechecking.
+ *
+ * @param t		The message type
+ * @param m		The message
+ * @param out		(out param) The response structure.
+ *			This must be freed with XDR_RESP_FREE.
+ *
+ * @return		A negative error code on error, 0 or higher otherwise
+ */
 #define MSG_XDR_DECODE(t, m, out) \
 	(msg_xdr_decode((xdrproc_t)xdr_##t, m, out))
+
+/** Free a message allocated with msg_xdr_alloc.
+ *
+ * Basically, this is a wrapper around xdr_free that provides typechecking.
+ *
+ * @param t		The message type
+ * @param payload	The payload to free
+ */
+#define XDR_REQ_FREE(t, payload) do { \
+	struct t *__p = payload; \
+	xdr_free((xdrproc_t)xdr_##t, (void*)__p); \
+} while (0);
 
 /** Try to decode a message as a generic response
  *
