@@ -21,6 +21,8 @@
 #include "mds/mstor.h"
 #include "mds/srange_lock.h"
 #include "mds/user.h"
+#include "msg/types.h"
+#include "msg/xdr.h"
 #include "util/error.h"
 #include "util/fast_log.h"
 #include "util/macro.h"
@@ -81,7 +83,12 @@
 #define TMP_CINFO_BUF_SZ 64
 
 /****************************** prototypes ********************************/
+struct mnode;
 static void mstor_leveldb_shutdown(struct mstor *mstor);
+static int fill_rf_stat(struct mstor *mstor, struct rf_stat *stat,
+		const struct mnode *cnode);
+static int fill_rf_lentry(struct mstor *mstor, struct rf_lentry *le,
+		struct mnode *node, const char *path);
 
 /****************************** types ********************************/
 /** A metadata node representing either a file or a directory
@@ -1144,51 +1151,10 @@ static int mstor_do_mkdir(struct mstor *mstor, struct mreq *mreq,
 	return ret;
 }
 
-static int add_stat_to_list(struct mstor *mstor, uint32_t *off,
-		uint32_t out_len, const struct mnode *node, char *out)
-{
-	int ret;
-	struct mmm_packed_stat *hdr;
-	uint32_t o, uid, gid;
-	struct user *user;
-	struct group *group;
-
-	o = *off;
-	if ((out_len - o) < sizeof(struct mmm_packed_stat)) {
-		return -ENAMETOOLONG;
-	}
-	hdr = (struct mmm_packed_stat*)(out + o);
-	hdr->mode_and_type = node->val->mode_and_type;
-	hdr->block_sz = 0; // TODO: fill in
-	hdr->mtime = node->val->mtime;
-	hdr->atime = node->val->atime;
-	hdr->length = node->val->length;
-	// TODO: support custom per-file replication settings
-	pack_to_8(&hdr->man_repl, mstor->man_repl);
-	o += sizeof(struct mmm_packed_stat);
-	/* owner */
-	uid = unpack_from_be32(&node->val->uid);
-	user = udata_lookup_uid(mstor->udata, uid);
-	ret = pack_str(out, &o, out_len,
-		IS_ERR(user) ? RF_NOBODY_NAME : user->name);
-	if (ret)
-		return ret;
-	/* group */
-	gid = unpack_from_be32(&node->val->gid);
-	group = udata_lookup_gid(mstor->udata, gid);
-	ret = pack_str(out, &o, out_len,
-		IS_ERR(group) ? RF_NOBODY_NAME : group->name);
-	if (ret)
-		return ret;
-	/* success */
-	*off = o;
-	return 0;
-}
-
 static int mstor_do_listdir(struct mstor *mstor, struct mreq *mreq,
 		const struct mnode *dnode)
 {
-	int ret;
+	int i, ret, num_stat = 0;
 	char *err = NULL;
 	leveldb_iterator_t *iter = NULL;
 	const char *k;
@@ -1196,12 +1162,10 @@ static int mstor_do_listdir(struct mstor *mstor, struct mreq *mreq,
 	char ckey[1 + sizeof(uint64_t)], pcomp[RF_PCOMP_MAX];
 	size_t klen, vlen;
 	struct mnode node;
-	uint32_t off;
 	uint64_t nid;
 	struct mreq_listdir *req;
 
 	req = (struct mreq_listdir*)mreq;
-	req->used_len = 0;
 	memset(&node, 0, sizeof(struct mnode));
 	ret = mstor_mode_check(dnode, mreq,
 			MSTOR_PERM_READ | MNODE_IS_DIR);
@@ -1216,7 +1180,6 @@ static int mstor_do_listdir(struct mstor *mstor, struct mreq *mreq,
 	ckey[0] = 'c';
 	pack_to_be64(ckey + 1, dnode->nid);
 	leveldb_iter_seek(iter, ckey, sizeof(ckey));
-	off = 0;
 	while (1) {
 		if (!leveldb_iter_valid(iter)) {
 			break;
@@ -1248,6 +1211,10 @@ static int mstor_do_listdir(struct mstor *mstor, struct mreq *mreq,
 			ret = -EIO;
 			goto done;
 		}
+		if (num_stat >= req->max_stat) {
+			ret = -ENAMETOOLONG;
+			goto done;
+		}
 		nid = unpack_from_be64(v);
 		if (klen - MCHILD_KEY_LEN_PREFIX >= RF_PCOMP_MAX) {
 			ret = -ENAMETOOLONG;
@@ -1265,25 +1232,31 @@ static int mstor_do_listdir(struct mstor *mstor, struct mreq *mreq,
 			/* error condition */
 			goto done;
 		}
-		ret = pack_str(req->out, &off, req->out_len, pcomp);
-		if (ret)
-			goto done;
-		ret = add_stat_to_list(mstor, &off, req->out_len,
-				&node, req->out);
+		ret = fill_rf_lentry(mstor, &req->le[num_stat], &node,
+			pcomp);
 		if (ret)
 			goto done;
 next:
 		mnode_free(&node);
 		memset(&node, 0, sizeof(struct mnode));
 		leveldb_iter_next(iter);
+		++num_stat;
 	}
-	req->used_len = off;
 	ret = 0;
 done:
 	free(err);
 	if (iter)
 		leveldb_iter_destroy(iter);
 	mnode_free(&node);
+	if (ret) {
+		for (i = 0; i < num_stat; ++i) {
+			XDR_REQ_FREE(rf_lentry, &req->le[i]);
+		}
+		req->num_stat = 0;
+	}
+	else {
+		req->num_stat = num_stat;
+	}
 	return ret;
 }
 
@@ -1292,8 +1265,7 @@ static int mstor_do_stat(struct mstor *mstor, struct mreq *mreq,
 		const struct mnode *cnode)
 {
 	int ret;
-	struct mreq_stat *req;
-	uint32_t off = 0;
+	struct mreq_stat *req = (struct mreq_stat*)mreq;
 
 	if (pnode->val) {
 		/* In order to stat an entry, we need read permissions on its
@@ -1305,9 +1277,52 @@ static int mstor_do_stat(struct mstor *mstor, struct mreq *mreq,
 		if (ret)
 			return ret;
 	}
-	req = (struct mreq_stat*)mreq;
-	ret = add_stat_to_list(mstor, &off, req->out_len, cnode, req->out);
-	return ret;
+	return fill_rf_stat(mstor, &req->stat, cnode);
+}
+
+static int fill_rf_stat(struct mstor *mstor, struct rf_stat *stat,
+		const struct mnode *node)
+{
+	struct user *user;
+	struct group *group;
+	uint64_t uid, gid;
+
+	stat->mtime = unpack_from_be64(&node->val->mtime);
+	stat->atime = unpack_from_be64(&node->val->atime);
+	stat->length = unpack_from_be64(&node->val->length);
+	stat->block_sz = 0; // TODO: fill in
+	stat->mode_and_type = unpack_from_be32(&node->val->mode_and_type);
+	// TODO: support custom per-file replication settings
+	stat->man_repl = mstor->man_repl;
+	uid = unpack_from_be32(&node->val->uid);
+	user = udata_lookup_uid(mstor->udata, uid);
+	stat->user = strdup(user->name);
+	if (!stat->user)
+		return -ENOMEM;
+	gid = unpack_from_be32(&node->val->gid);
+	group = udata_lookup_gid(mstor->udata, gid);
+	stat->group = strdup(group->name);
+	if (!stat->group) {
+		free(stat->user);
+		return -ENOMEM;
+	}
+	return 0;
+}
+
+static int fill_rf_lentry(struct mstor *mstor, struct rf_lentry *le,
+		struct mnode *node, const char *pcomp)
+{
+	int ret;
+
+	le->pcomp = strdup(pcomp);
+	if (!le->pcomp)
+		return -ENAMETOOLONG;
+	ret = fill_rf_stat(mstor, &le->stat, node);
+	if (ret) {
+		free(le->pcomp);
+		return ret;
+	}
+	return 0;
 }
 
 static int mstor_do_chmod(struct mstor *mstor, struct mreq *mreq,

@@ -32,12 +32,15 @@
 #include "msg/msg.h"
 #include "msg/msgr.h"
 #include "msg/recv_pool.h"
+#include "msg/types.h"
+#include "msg/xdr.h"
 #include "util/compiler.h"
 #include "util/error.h"
 #include "util/fast_log.h"
 #include "util/fast_log_types.h"
 #include "util/packed.h"
 #include "util/string.h"
+#include "util/terror.h"
 #include "util/thread.h"
 #include "util/time.h"
 
@@ -89,12 +92,12 @@ static int mds_net_handle_tr(struct recv_pool_thread *rt, struct mtran *tr)
 	glitch_log("mds_net_handle_mds_tr: incoming message of type %d "
 		"from %s\n", ty, ep_buf);
 	switch (ty) {
-	case mmm_get_mds_status_ty:
-		ret = handle_mmm_get_mds_status(rt, tr, m);
-		break;
-	case mmm_mds_heartbeat:
+	case mmm_heartbeat_ty:
 		// FIXME: record this
 		ret = 0;
+		break;
+	case mmm_status_req_ty:
+		ret = handle_mmm_get_mds_status(rt, tr, m);
 		break;
 	default:
 		glitch_log("mds_net_handle_mds_tr: unhandled message "
@@ -134,7 +137,7 @@ static int mds_net_handle_tr(struct recv_pool_thread *rt, struct mtran *tr)
 	msg_release(m);
 	if (ret) {
 		glitch_log("mds_net_handle_mds_tr: error %d handling "
-			"message type %d from %s\n", ret, ry, ep_buf);
+			"message type %d from %s\n", ret, ty, ep_buf);
 	}
 	return 0;
 }
@@ -191,7 +194,7 @@ static void mds_net_root_delegation_setup(void)
 }
 
 void mds_net_init(POSSIBLY_UNUSED(struct fast_log_buf *fb),
-		struct unitaryc *conf, struct mdsc *mconf, uint16_t mid)
+		struct unitaryc *conf, struct mdsc *mdsc, uint16_t mid)
 {
 	int i, j, ret;
 	char err[512] = { 0 };
@@ -202,7 +205,7 @@ void mds_net_init(POSSIBLY_UNUSED(struct fast_log_buf *fb),
 		{ 16, 16, 8 };
 	const int recv_pool_ports[RF_ENTITY_TY_NUM] =
 		{ mdsc->mds_port, mdsc->osd_port, mdsc->cli_port };
-	struct msgr_conf mconf[RF_ENTITY_TY_NUM] = {
+	struct msgr_conf msgr_conf[RF_ENTITY_TY_NUM] = {
 		{
 			.max_conn = 65535,
 			.max_tran = 65535,
@@ -246,7 +249,7 @@ void mds_net_init(POSSIBLY_UNUSED(struct fast_log_buf *fb),
 		abort();
 	}
 	for (i = 0; i < RF_ENTITY_TY_NUM; ++i) {
-		g_msgr[i] = msgr_init(err, err_len, &oconf[i]);
+		g_msgr[i] = msgr_init(err, err_len, &msgr_conf[i]);
 		if (err[0]) {
 			glitch_log("osd_net_init: failed to create %s "
 				"messenger: error %s\n",
@@ -263,8 +266,8 @@ void mds_net_init(POSSIBLY_UNUSED(struct fast_log_buf *fb),
 			abort();
 		}
 		for (j = 0; j < recv_pool_nthreads[i]; ++j) {
-			ret = recv_pool_thread_create(*rpool, g_fast_log_mgr,
-					mds_net_handle_tr, NULL);
+			ret = recv_pool_thread_create(g_rpool[i],
+				g_fast_log_mgr, mds_net_handle_tr, NULL);
 			if (ret) {
 				glitch_log("mds_net_msgr_init: "
 					"recv_pool_thread_create failed with "
@@ -276,12 +279,13 @@ void mds_net_init(POSSIBLY_UNUSED(struct fast_log_buf *fb),
 			recv_pool_ports[i], err, err_len);
 		if (err[0]) {
 			glitch_log("mds_net_msgr_init: failed to listen on "
-				"port %d : error %s\n", port, err);
+				"port %d : error %s\n",
+				recv_pool_ports[i], err);
 			abort();
 		}
 	}
 	for (i = 0; i < RF_ENTITY_TY_NUM; ++i) {
-		msgr_start(g_mds_msgr, err, err_len);
+		msgr_start(g_msgr[i], err, err_len);
 		if (err[0]) {
 			glitch_log("mds_net_msgr_init: failed to initialize "
 				"%s messenger: error %s",

@@ -50,6 +50,15 @@ struct rf_stat {
 	string group<RF_GROUP_MAX>;
 };
 
+/** maximum length of a path component in Redfish */
+const RF_PCOMP_MAX = 256;
+
+/** A path,stat combo returned by listdir */
+struct rf_lentry {
+	string pcomp<RF_PCOMP_MAX>;
+	struct rf_stat stat;
+};
+
 enum fish_msg_ty {
 	/* ============== Common ============== */
 	/** Generic response */

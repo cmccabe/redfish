@@ -20,9 +20,6 @@
 /** maximum number of replicas for any delegation */
 #define RF_MAX_REPLICAS 7
 
-/** maximum length of a path component in Redfish */
-#define RF_PCOMP_MAX 256
-
 /** maximum number of MDSes in a cluster */
 #define RF_MAX_MDS 254
 

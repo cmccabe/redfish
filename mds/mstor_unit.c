@@ -20,6 +20,7 @@
 #include "mds/mstor.h"
 #include "mds/srange_lock.h"
 #include "mds/user.h"
+#include "msg/xdr.h"
 #include "util/compiler.h"
 #include "util/error.h"
 #include "util/packed.h"
@@ -95,8 +96,8 @@ static void mstoru_tls_destroy(void *v)
 	free(tls);
 }
 
-typedef int (*stat_check_fn_t)(void *arg, struct mmm_packed_stat *hdr,
-		const char *pcomp, const char *owner, const char *group);
+typedef int (*stat_check_fn_t)(void *arg, const struct rf_stat *stat,
+		const char *pcomp);
 
 static struct udata *udata_unit_create_default(void)
 {
@@ -320,60 +321,38 @@ static int mstoru_do_chunkfind(struct mstor *mstor, const char *full_path,
 	return mreq.num_cinfos;
 }
 
+#define MSTORU_DO_LISTDIR_MAX_LE 128
+
 static int mstoru_do_listdir(struct mstor *mstor, const char *full_path,
 		const char *user_name, void *arg, stat_check_fn_t fn)
 {
-	int ret, num_entries;
-	struct mmm_packed_stat *hdr;
+	int ret, i;
 	struct mreq_listdir mreq;
-	char buf[16384], pcomp[RF_PCOMP_MAX];
-	char owner[RF_USER_MAX], group[RF_GROUP_MAX];
-	uint32_t off;
+	struct rf_lentry le_buf[MSTORU_DO_LISTDIR_MAX_LE];
 	struct mstoru_tls *tls = mstoru_tls_get();
 
 	memset(&mreq, 0, sizeof(mreq));
-	memset(buf, 0, sizeof(buf));
+	memset(le_buf, 0, sizeof(le_buf));
 	mreq.base.lk = tls->lk;
 	mreq.base.op = MSTOR_OP_LISTDIR;
 	mreq.base.full_path = full_path;
 	mreq.base.user_name = user_name;
-	mreq.out = buf;
-	mreq.out_len = sizeof(buf);
+	mreq.le = le_buf;
+	mreq.max_stat = MSTORU_DO_LISTDIR_MAX_LE;
 	ret = mstor_do_operation(mstor, (struct mreq*)&mreq);
 	if (ret) {
 		fprintf(stderr, "do_listdir failed with error %d\n", ret);
 		return FORCE_NEGATIVE(ret);
 	}
-	off = 0;
-	num_entries = 0;
-	while (1) {
-		if (off >= mreq.used_len)
+	for (i = 0; i < mreq.num_stat; ++i) {
+		ret = fn(arg, &mreq.le[i].stat, mreq.le[i].pcomp);
+		if (ret)
 			break;
-		ret = unpack_str(buf, &off, mreq.used_len, pcomp,
-				RF_PCOMP_MAX);
-		if (ret)
-			return FORCE_NEGATIVE(ret);
-		if (off + sizeof(struct mmm_packed_stat) >= mreq.used_len)
-			return -EIO;
-		hdr = (struct mmm_packed_stat*)(buf + off);
-		off += sizeof(struct mmm_packed_stat);
-		ret = unpack_str(buf, &off, mreq.used_len, owner,
-				RF_USER_MAX);
-		if (ret)
-			return FORCE_NEGATIVE(ret);
-		ret = unpack_str(buf, &off, mreq.used_len, group,
-				RF_GROUP_MAX);
-		if (ret)
-			return FORCE_NEGATIVE(ret);
-		if (fn) {
-			ret = fn(arg, hdr, pcomp, owner, group);
-			if (ret)
-				return FORCE_NEGATIVE(ret);
-		}
-		num_entries++;
 	}
-	//fprintf(stderr, "mreq.used_len = %Zd\n", mreq.used_len);
-	return num_entries;
+	for (i = 0; i < mreq.num_stat; ++i) {
+		XDR_REQ_FREE(rf_lentry, &mreq.le[i]);
+	}
+	return (ret == 0) ? mreq.num_stat : FORCE_NEGATIVE(ret);
 }
 
 static int mstoru_do_rmdir(struct mstor *mstor, const char *full_path,
@@ -396,43 +375,33 @@ static int mstoru_do_stat(struct mstor *mstor, const char *full_path,
 		const char *user_name, void *arg, stat_check_fn_t fn)
 {
 	int ret;
-	struct mmm_packed_stat *hdr;
 	struct mreq_stat mreq;
-	char buf[16384];
-	char owner[RF_USER_MAX], group[RF_GROUP_MAX], pcomp[RF_PCOMP_MAX];
-	uint32_t off;
 	struct mstoru_tls *tls = mstoru_tls_get();
+	char pcomp[RF_PCOMP_MAX];
 
 	memset(&mreq, 0, sizeof(mreq));
-	memset(buf, 0, sizeof(buf));
 	mreq.base.lk = tls->lk;
 	mreq.base.op = MSTOR_OP_STAT;
 	mreq.base.full_path = full_path;
 	mreq.base.user_name = user_name;
-	mreq.out = buf;
-	mreq.out_len = sizeof(buf);
 	ret = mstor_do_operation(mstor, (struct mreq*)&mreq);
 	if (ret) {
 		fprintf(stderr, "do_stat failed with error %d\n", ret);
-		return FORCE_NEGATIVE(ret);
+		goto done;
 	}
-	hdr = (struct mmm_packed_stat*)buf;
-	off = offsetof(struct mmm_packed_stat, data);
-	ret = unpack_str(hdr, &off, mreq.out_len, owner, RF_USER_MAX);
-	if (ret)
-		return FORCE_NEGATIVE(ret);
-	ret = unpack_str(buf, &off, mreq.out_len, group, RF_GROUP_MAX);
-	if (ret)
-		return FORCE_NEGATIVE(ret);
-	ret = do_basename(pcomp, sizeof(pcomp), full_path);
-	if (ret)
-		return FORCE_NEGATIVE(ret);
 	if (fn) {
-		ret = fn(arg, hdr, pcomp, owner, group);
+		ret = do_basename(pcomp, sizeof(pcomp), full_path);
 		if (ret)
-			return FORCE_NEGATIVE(ret);
+			goto done_free_resp;
+		ret = fn(arg, &mreq.stat, pcomp);
+		if (ret)
+			goto done_free_resp;
 	}
-	return 0;
+	ret = 0;
+done_free_resp:
+	XDR_REQ_FREE(rf_stat, &mreq.stat);
+done:
+	return FORCE_NEGATIVE(ret);
 }
 
 static int mstoru_do_chown(struct mstor *mstor, const char *full_path,
@@ -480,33 +449,30 @@ static int mstoru_do_chmod(struct mstor *mstor, const char *full_path,
 }
 
 static int test1_expect_c(POSSIBLY_UNUSED(void *arg),
-		struct mmm_packed_stat *hdr, const char *pcomp,
-		const char *owner, const char *group)
+		const struct rf_stat *stat, const char *pcomp)
 {
-	EXPECT_EQ(unpack_from_be16(&hdr->mode_and_type),
-			MNODE_IS_DIR | 0644);
-	EXPECT_EQ(unpack_from_be64(&hdr->mtime), 123ULL);
-	EXPECT_EQ(unpack_from_be64(&hdr->atime), 123ULL);
-	//printf("pcomp='%s', uid='%d', gid='%d'\n", pcomp, uid, gid);
+	EXPECT_EQ(stat->mode_and_type, MNODE_IS_DIR | 0644);
+	EXPECT_EQ(stat->mtime, 123ULL);
+	EXPECT_EQ(stat->atime, 123ULL);
+	//printf("pcomp='%s', uid='%d', gid='%d', "
+	//	"user='%s', group='%s'\n", pcomp, stat->uid, stat->gid,
+	//	stat->user, stat->group);
 	EXPECT_ZERO(strcmp(pcomp, "c"));
-	printf("owner = '%s'\n", owner);
-	EXPECT_ZERO(strcmp(owner, MSTORU_SPOONY_USER));
-	printf("group = '%s'\n", group);
-	EXPECT_ZERO(strcmp(group, MSTORU_USERS_GROUP));
+	EXPECT_ZERO(strcmp(stat->user, MSTORU_SPOONY_USER));
+	EXPECT_ZERO(strcmp(stat->group, MSTORU_USERS_GROUP));
 	return 0;
 }
 
-static int test1_expect_root(void *arg, struct mmm_packed_stat *hdr,
-		const char *pcomp, const char *owner, const char *group)
+static int test1_expect_root(void *arg,
+		const struct rf_stat *stat, const char *pcomp)
 {
 	int expect_mode = (int)(uintptr_t)arg;
 
-	EXPECT_EQ(unpack_from_be16(&hdr->mode_and_type),
-			expect_mode | MNODE_IS_DIR);
+	EXPECT_EQ(stat->mode_and_type, expect_mode | MNODE_IS_DIR);
 	//printf("pcomp='%s', uid='%s', gid='%d'\n", pcomp, uid, gid);
 	EXPECT_ZERO(strcmp(pcomp, ""));
-	EXPECT_ZERO(strcmp(owner, MSTORU_WOOT_USER));
-	EXPECT_ZERO(strcmp(group, MSTORU_USERS_GROUP));
+	EXPECT_ZERO(strcmp(stat->user, MSTORU_WOOT_USER));
+	EXPECT_ZERO(strcmp(stat->group, MSTORU_USERS_GROUP));
 	return 0;
 }
 

@@ -21,6 +21,7 @@
 #include <stdint.h> /* uint32_t, etc. */
 
 #include "mds/limits.h"
+#include "msg/types.h" /* for RF_MAX_OID */
 
 #define MNODE_IS_DIR 0x8000
 
@@ -170,22 +171,21 @@ struct mreq_mkdirs {
 
 struct mreq_stat {
 	struct mreq base;
-	/** Pointer to buffer to use to return the results.
-	 * The result will be returned as a packed stat entry. */
-	char *out;
-	/** Length of the out buffer. */
-	size_t out_len;
+	/** (out param) Redfish stat structure.  Must be freed with XDR_FREE
+	 * after use. */
+	struct rf_stat stat;
 };
 
 struct mreq_listdir {
 	struct mreq base;
-	/** Pointer to buffer to use to return the results.
-	 * The results will be returned as a series of packed stat entries. */
-	char *out;
-	/** Length of the out buffer. */
-	size_t out_len;
-	/** Length used in the out buffer. */
-	size_t used_len;
+	/** (inout param) Pointer to buffer to use to return the results.
+	 * The results will be returned as an array of rf_stat entries. */
+	struct rf_lentry *le;
+	/** Maximum number of rf_lentry structures that can fit in our
+	 * buffer. */
+	int max_stat;
+	/** (out param) Number of stat structures returned */
+	int num_stat;
 };
 
 struct mreq_chown {

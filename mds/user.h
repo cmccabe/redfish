@@ -20,7 +20,7 @@
 #include <stdint.h> /* for uint32_t, etc. */
 #include <unistd.h> /* for size_t */
 
-#include "mds/limits.h" /* for RF_USER_MAX */
+#include "msg/types.h" /* for RF_USER_MAX */
 #include "util/tree.h" /* for RB_ENTRY */
 
 struct user {

@@ -15,8 +15,8 @@
  */
 
 #include "mds/dmap.h"
-#include "core/glitch_log.h"
 #include "mds/limits.h"
+#include "msg/types.h"
 #include "util/error.h"
 #include "util/queue.h"
 #include "util/tree.h"

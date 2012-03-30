@@ -15,6 +15,7 @@
  */
 
 #include "core/process_ctx.h"
+#include "mds/limits.h"
 #include "mds/user.h"
 #include "util/error.h"
 #include "util/string.h"

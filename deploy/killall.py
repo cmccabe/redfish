@@ -8,7 +8,6 @@ import of_util
 import os
 import subprocess
 import sys
-import tempfile
 
 of_util.check_python_version()
 parser = OptionParser()
