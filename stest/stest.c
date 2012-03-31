@@ -19,7 +19,7 @@
 #include "common/config/logc.h"
 #include "core/env.h"
 #include "core/process_ctx.h"
-#include "mds/limits.h"
+#include "mds/const.h"
 #include "stest/stest.h"
 #include "util/compiler.h"
 #include "util/error.h"

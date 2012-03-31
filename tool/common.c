@@ -18,7 +18,7 @@
 #include "common/config/unitaryc.h"
 #include "core/glitch_log.h"
 #include "core/process_ctx.h"
-#include "mds/limits.h"
+#include "mds/const.h"
 #include "msg/bsend.h"
 #include "msg/msgr.h"
 #include "tool/common.h"

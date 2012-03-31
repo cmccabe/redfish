@@ -16,7 +16,7 @@
 
 #include "client/fishc.h"
 #include "core/process_ctx.h"
-#include "mds/limits.h"
+#include "mds/const.h"
 #include "tool/tool.h"
 #include "util/string.h"
 

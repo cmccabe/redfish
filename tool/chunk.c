@@ -18,7 +18,7 @@
 #include "common/cluster_map.h"
 #include "common/config/unitaryc.h"
 #include "core/glitch_log.h"
-#include "mds/limits.h"
+#include "mds/const.h"
 #include "msg/bsend.h"
 #include "msg/msg.h"
 #include "msg/types.h"

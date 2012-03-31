@@ -20,7 +20,7 @@
 #include "core/glitch_log.h"
 #include "core/process_ctx.h"
 #include "jorm/jorm_const.h"
-#include "mds/limits.h"
+#include "mds/const.h"
 #include "msg/bsend.h"
 #include "msg/msg.h"
 #include "msg/msgr.h"

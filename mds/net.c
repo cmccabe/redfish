@@ -26,7 +26,7 @@
 #include "mds/dmap.h"
 #include "mds/dslots.h"
 #include "mds/heartbeat.h"
-#include "mds/limits.h"
+#include "mds/const.h"
 #include "mds/net.h"
 #include "msg/bsend.h"
 #include "msg/msg.h"

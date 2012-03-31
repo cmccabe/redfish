@@ -15,7 +15,7 @@
  */
 
 #include "mds/dmap.h"
-#include "mds/limits.h"
+#include "mds/const.h"
 #include "msg/types.h"
 #include "util/error.h"
 #include "util/queue.h"

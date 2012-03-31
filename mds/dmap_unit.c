@@ -16,7 +16,7 @@
 
 #include "core/process_ctx.h"
 #include "mds/dmap.h"
-#include "mds/limits.h"
+#include "mds/const.h"
 #include "util/error.h"
 #include "util/test.h"
 

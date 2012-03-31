@@ -19,7 +19,7 @@
 
 #include "core/glitch_log.h"
 #include "client/fishc.h"
-#include "mds/limits.h"
+#include "mds/const.h"
 #include "msg/types.h"
 #include "util/cram.h"
 #include "util/error.h"

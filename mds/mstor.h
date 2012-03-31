@@ -20,7 +20,7 @@
 #include <stdio.h> /* for FILE */
 #include <stdint.h> /* uint32_t, etc. */
 
-#include "mds/limits.h"
+#include "mds/const.h"
 #include "msg/types.h" /* for RF_MAX_OID */
 
 #define MNODE_IS_DIR 0x8000

@@ -17,7 +17,7 @@
 #include "client/fishc.h"
 #include "client/fishc_internal.h"
 #include "client/stub/xattrs.h"
-#include "mds/limits.h"
+#include "mds/const.h"
 #include "msg/types.h"
 #include "util/compiler.h"
 #include "util/dir.h"

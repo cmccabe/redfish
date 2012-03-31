@@ -16,7 +16,7 @@
 
 #include "client/fishc.h"
 #include "core/process_ctx.h"
-#include "mds/limits.h"
+#include "mds/const.h"
 #include "util/str_to_int.h"
 #include "util/string.h"
 

@@ -16,7 +16,7 @@
 
 #include "common/config/mstorc.h"
 #include "core/process_ctx.h"
-#include "mds/limits.h"
+#include "mds/const.h"
 #include "mds/mstor.h"
 #include "mds/srange_lock.h"
 #include "mds/user.h"

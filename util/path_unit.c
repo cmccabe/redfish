@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "mds/limits.h"
+#include "mds/const.h"
 #include "msg/types.h"
 #include "util/path.h"
 #include "util/string.h"

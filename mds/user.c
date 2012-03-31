@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "mds/limits.h"
+#include "mds/const.h"
 #include "mds/user.h"
 #include "util/compiler.h"
 #include "util/error.h"

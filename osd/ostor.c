@@ -20,7 +20,7 @@
 #include "core/glitch_log.h"
 #include "core/process_ctx.h"
 #include "jorm/jorm_const.h"
-#include "mds/limits.h"
+#include "mds/const.h"
 #include "osd/fast_log.h"
 #include "osd/ostor.h"
 #include "util/compiler.h"
