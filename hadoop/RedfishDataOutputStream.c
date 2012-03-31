@@ -21,7 +21,6 @@
 
 #include "client/fishc.h"
 #include "hadoop/common.h"
-#include "mds/limits.h"
 #include "util/compiler.h"
 #include "util/error.h"
 #include "util/macro.h"

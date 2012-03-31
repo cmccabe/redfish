@@ -15,7 +15,6 @@
  */
 
 #include "common//config/ostorc.h"
-#include "mds/limits.h"
 
 #define JORM_CUR_FILE "common/config/ostorc.jorm"
 #include "jorm/jorm_generate_body.h"

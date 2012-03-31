@@ -18,6 +18,7 @@
 #include "core/glitch_log.h"
 #include "util/compiler.h"
 #include "util/error.h"
+#include "util/queue.h"
 
 #include <errno.h>
 #include <stdint.h>

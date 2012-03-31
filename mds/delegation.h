@@ -20,9 +20,8 @@
 #include <stdint.h> /* for uint64_t, etc. */
 #include <time.h> /* for time_t, etc. */
 
-#include "mds/limits.h" /* for RF_MAX_MDS */
 #include "util/compiler.h" /* for PURE */
-#include "util/queue.h" /* for STAILQ_ENTRY */
+#include "util/queue.h"
 #include "util/tree.h" /* for RB_ENTRY */
 
 struct dslot;

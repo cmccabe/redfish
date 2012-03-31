@@ -15,7 +15,6 @@
  */
 
 #include "client/fishc.h"
-#include "mds/limits.h"
 #include "stest/stest.h"
 #include "util/string.h"
 
