@@ -1291,7 +1291,7 @@ static int fill_rf_stat(struct mstor *mstor, struct rf_stat *stat,
 	stat->atime = unpack_from_be64(&node->val->atime);
 	stat->length = unpack_from_be64(&node->val->length);
 	stat->block_sz = 0; // TODO: fill in
-	stat->mode_and_type = unpack_from_be32(&node->val->mode_and_type);
+	stat->mode_and_type = unpack_from_be16(&node->val->mode_and_type);
 	// TODO: support custom per-file replication settings
 	stat->man_repl = mstor->man_repl;
 	uid = unpack_from_be32(&node->val->uid);
