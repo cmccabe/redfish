@@ -32,9 +32,6 @@ struct unitaryc;
 #define EXTERN extern
 #endif
 
-/** Current delegation map */
-EXTERN struct dmap *g_dmap;
-
 /** Delegation locks */
 EXTERN struct dslots *g_dslots;
 

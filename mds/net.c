@@ -23,7 +23,6 @@
 #include "core/process_ctx.h"
 #include "jorm/jorm_const.h"
 #include "mds/delegation.h"
-#include "mds/dmap.h"
 #include "mds/dslots.h"
 #include "mds/heartbeat.h"
 #include "mds/const.h"
@@ -234,12 +233,6 @@ void mds_net_init(POSSIBLY_UNUSED(struct fast_log_buf *fb),
 	if (err[0]) {
 		glitch_log("mds_net_init: failed to create cluster map "
 			"from configuration: error %s\n", err);
-		abort();
-	}
-	g_dmap = dmap_alloc();
-	if (IS_ERR(g_dmap)) {
-		glitch_log("mds_net_init: failed to allocate dmap: "
-			"error %d\n", PTR_ERR(g_dmap));
 		abort();
 	}
 	g_dslots = dslots_init(NUM_DSLOTS);

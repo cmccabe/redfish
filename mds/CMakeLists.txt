@@ -1,6 +1,5 @@
 add_executable(fishmds
     delegation.c
-    dmap.c
     dslots.c
     force_cpp.cc
     heartbeat.c
@@ -43,10 +42,6 @@ add_utest(user_unit)
 add_executable(dslots_unit dslots_unit.c delegation.c dslots.c)
 target_link_libraries(dslots_unit core util utest)
 add_utest(dslots_unit)
-
-add_executable(dmap_unit dmap_unit.c dmap.c)
-target_link_libraries(dmap_unit core util utest)
-add_utest(dmap_unit)
 
 add_executable(fishmdump
     dump.c
