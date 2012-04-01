@@ -200,10 +200,11 @@ void *mtran_alloc(struct msgr *msgr)
 	struct mtran *tr = calloc(1, sizeof(struct mtran));
 	if (!tr)
 		return NULL;
-	tr->trid = msgr->next_trid;
-	msgr->next_trid++;
+	// TODO: should really make this thread-local so we don't have to suffer
+	// through an atomic operation here
+	tr->trid = __sync_fetch_and_add(&msgr->next_trid, 1);
 	if (msgr->next_trid == 0)
-		msgr->next_trid++;
+		msgr->next_trid = 0x40000000;
 	tr->state = MTRAN_STATE_IDLE;
 	return tr;
 }
