@@ -71,11 +71,7 @@ enum mstor_op_ty {
 	/** Operation that changes modification and access times.
 	 * Locking: uses range locker */
 	MSTOR_OP_UTIMES,
-	/** Operation that unlinks a file or directory (HDFS semantics)
-	 * or a directory (POSIX semantics.)
-	 * Locking: uses range locker */
-	MSTOR_OP_RMDIR,
-	/** Operation that unlinks a file
+	/** Operation that unlinks a file or directory
 	 * Locking: uses range locker */
 	MSTOR_OP_UNLINK,
 	/** Operation that finds zombie chunks.
@@ -212,25 +208,13 @@ struct mreq_utimes {
 	uint64_t new_mtime;
 };
 
-struct mreq_rmdir {
-	struct mreq base;
-	/** Time of rmdir */
-	uint64_t ztime;
-	/** If 0 -- POSIX rmdir behavior: succeed if the directory is empty,
-	 * fail otherwise.
-	 * If 1 -- try to delete all the files in this directory.
-	 * Fail if we encounter a directory entry or a file we cannot delete.
-	 *
-	 * This is a simple optimization to make it easier for clients to
-	 * implement Hadoop-style recursive rm.
-	 */
-	int rmr;
-};
-
 struct mreq_unlink {
 	struct mreq base;
-	/** Time of unlink */
+	/** Time of unlink operation */
 	uint64_t ztime;
+	/** Unlink operation type
+	 */
+	enum mmm_unlink_op uop;
 };
 
 struct zombie_info {

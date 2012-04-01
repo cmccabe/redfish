@@ -249,7 +249,7 @@ static int mstoru_do_rename(struct mstor *mstor, const char *src,
 }
 
 static int mstoru_do_unlink(struct mstor *mstor, const char *full_path,
-		const char *user_name, uint64_t ztime)
+		const char *user_name, uint64_t ztime, enum mmm_unlink_op uop)
 {
 	struct mreq_unlink mreq;
 	struct mstoru_tls *tls = mstoru_tls_get();
@@ -260,6 +260,7 @@ static int mstoru_do_unlink(struct mstor *mstor, const char *full_path,
 	mreq.base.full_path = full_path;
 	mreq.base.user_name = user_name;
 	mreq.ztime = ztime;
+	mreq.uop = uop;
 	return mstor_do_operation(mstor, (struct mreq*)&mreq);
 }
 
@@ -353,22 +354,6 @@ static int mstoru_do_listdir(struct mstor *mstor, const char *full_path,
 		XDR_REQ_FREE(rf_lentry, &mreq.le[i]);
 	}
 	return (ret == 0) ? mreq.num_stat : FORCE_NEGATIVE(ret);
-}
-
-static int mstoru_do_rmdir(struct mstor *mstor, const char *full_path,
-		const char *user_name, uint64_t ztime, int rmr)
-{
-	struct mreq_rmdir mreq;
-	struct mstoru_tls *tls = mstoru_tls_get();
-
-	memset(&mreq, 0, sizeof(mreq));
-	mreq.base.lk = tls->lk;
-	mreq.base.op = MSTOR_OP_RMDIR;
-	mreq.base.full_path = full_path;
-	mreq.base.user_name = user_name;
-	mreq.ztime = ztime;
-	mreq.rmr = rmr;
-	return mstor_do_operation(mstor, (struct mreq*)&mreq);
 }
 
 static int mstoru_do_utimes(struct mstor *mstor, const char *full_path,
@@ -564,16 +549,16 @@ static int mstoru_test1(const char *tdir)
 		&times, test1_expect_c), 1);
 
 	/* test rmdir */
-	EXPECT_EQ(mstoru_do_rmdir(mstor, "/", RF_SUPERUSER_NAME,
-		456, 0), -EINVAL);
-	EXPECT_EQ(mstoru_do_rmdir(mstor, "/b/c", RF_SUPERUSER_NAME,
-		456, 0), 0);
+	EXPECT_EQ(mstoru_do_unlink(mstor, "/", RF_SUPERUSER_NAME,
+		456, MMM_UOP_RMDIR), -EINVAL);
+	EXPECT_EQ(mstoru_do_unlink(mstor, "/b/c", RF_SUPERUSER_NAME,
+		456, MMM_UOP_RMDIR), 0);
 	EXPECT_ZERO(mstoru_do_mkdirs(mstor, "/b/c/m",
 		0755, 123, MSTORU_WOOT_USER));
-	EXPECT_EQ(mstoru_do_rmdir(mstor, "/b/c", MSTORU_WOOT_USER,
-		456, 0), -ENOTEMPTY);
-	EXPECT_EQ(mstoru_do_rmdir(mstor, "/b/c", MSTORU_WOOT_USER,
-		456, 1), 0);
+	EXPECT_EQ(mstoru_do_unlink(mstor, "/b/c", MSTORU_WOOT_USER,
+		456, MMM_UOP_RMDIR), -ENOTEMPTY);
+	EXPECT_EQ(mstoru_do_unlink(mstor, "/b/c", MSTORU_WOOT_USER,
+		456, MMM_UOP_RMRF), 0);
 
 	/* test file operations */
 	EXPECT_ZERO(mstoru_do_mkdirs(mstor, "/b/c/d",
@@ -632,11 +617,11 @@ static int mstoru_test1(const char *tdir)
 
 	/* test unlink */
 	EXPECT_EQ(mstoru_do_unlink(mstor, "/b/c/d",
-		RF_SUPERUSER_NAME, 123), -EISDIR);
+		RF_SUPERUSER_NAME, 123, MMM_UOP_UNLINK), -EISDIR);
 	EXPECT_EQ(mstoru_do_unlink(mstor, "/b/c/foo2",
-		MSTORU_WOOT_USER, 124), 0);
+		MSTORU_WOOT_USER, 124, MMM_UOP_UNLINK), 0);
 	EXPECT_EQ(mstoru_do_unlink(mstor, "/b/c/d/bar",
-		MSTORU_WOOT_USER, 125), 0);
+		MSTORU_WOOT_USER, 125, MMM_UOP_UNLINK), 0);
 	lower_bound.ztime = 123;
 	lower_bound.cid = 0;
 	EXPECT_EQ(mstoru_do_find_zombies(mstor, &lower_bound,

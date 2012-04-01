@@ -144,16 +144,57 @@ struct mstor {
 };
 
 /****************************** functions ********************************/
+enum rl_strat_ty {
+	RL_STRAT_NO_LOCK,
+	RL_STRAT_ENTRY,
+	RL_STRAT_ENTRY_AND_PARENT,
+	RL_STRAT_ENTRY_SUBTREE_AND_PARENT,
+	RL_STRAT_ENTRY_SUBTREE_AND_PARENT_SUBTREE,
+};
+
 static int mstor_range_lock_by_op(struct mstor *mstor, struct mreq *mreq)
 {
 	struct srange_locker *lk = mreq->lk;
+	enum rl_strat_ty strat;
 
 	switch (mreq->op) {
 	case MSTOR_OP_CREAT:
 	case MSTOR_OP_OPEN:
-	case MSTOR_OP_UNLINK:
 	case MSTOR_OP_LISTDIR:
 	case MSTOR_OP_STAT:
+		strat = RL_STRAT_ENTRY_AND_PARENT;
+		break;
+	case MSTOR_OP_UNLINK:
+		if (((struct mreq_unlink *)mreq)->uop == MMM_UOP_UNLINK)
+			strat = RL_STRAT_ENTRY_AND_PARENT;
+		else
+			strat = RL_STRAT_ENTRY_SUBTREE_AND_PARENT;
+		break;
+	case MSTOR_OP_MKDIRS:
+		strat = RL_STRAT_ENTRY_SUBTREE_AND_PARENT;
+		break;
+	case MSTOR_OP_CHUNKFIND:
+	case MSTOR_OP_CHMOD:
+	case MSTOR_OP_CHOWN:
+	case MSTOR_OP_UTIMES:
+		strat = RL_STRAT_ENTRY;
+		break;
+	case MSTOR_OP_RENAME:
+		strat = RL_STRAT_ENTRY_SUBTREE_AND_PARENT_SUBTREE;
+		break;
+	case MSTOR_OP_CHUNKALLOC:
+	case MSTOR_OP_FIND_ZOMBIES:
+	case MSTOR_OP_DESTROY_ZOMBIE:
+		strat = RL_STRAT_NO_LOCK;
+		break;
+	case MSTOR_OP_NODE_SEARCH:
+	default:
+		abort();
+		break;
+	}
+
+	switch (strat) {
+	case RL_STRAT_ENTRY_AND_PARENT:
 		/* Lock /a/b/ to /a/b/ */
 		do_dirname(mreq->full_path, (char*)lk->range[0].start, RF_PATH_MAX);
 		canon_path_add_suffix((char*)lk->range[0].start,
@@ -170,8 +211,7 @@ static int mstor_range_lock_by_op(struct mstor *mstor, struct mreq *mreq)
 		mreq->lk->num_range = 2;
 		srange_lock(mstor->tk, mreq->lk);
 		return 1;
-	case MSTOR_OP_RMDIR:
-	case MSTOR_OP_MKDIRS:
+	case RL_STRAT_ENTRY_SUBTREE_AND_PARENT:
 		/* Note: we might be able to do better than than this for
 		 * mkdirs, with a little bit of cleverness */
 		/* Lock /a/b/ to /a/b/ */
@@ -193,10 +233,7 @@ static int mstor_range_lock_by_op(struct mstor *mstor, struct mreq *mreq)
 		mreq->lk->num_range = 2;
 		srange_lock(mstor->tk, mreq->lk);
 		return 1;
-	case MSTOR_OP_CHUNKFIND:
-	case MSTOR_OP_CHMOD:
-	case MSTOR_OP_CHOWN:
-	case MSTOR_OP_UTIMES:
+	case RL_STRAT_ENTRY:
 		/* Lock /a/b/ to /a/b/ */
 		do_dirname(mreq->full_path, (char*)lk->range[0].start, RF_PATH_MAX);
 		canon_path_add_suffix((char*)lk->range[0].start,
@@ -206,7 +243,7 @@ static int mstor_range_lock_by_op(struct mstor *mstor, struct mreq *mreq)
 		mreq->lk->num_range = 1;
 		srange_lock(mstor->tk, mreq->lk);
 		return 1;
-	case MSTOR_OP_RENAME:
+	case RL_STRAT_ENTRY_SUBTREE_AND_PARENT_SUBTREE:
 		/* Note: this could be made finer-grained by taking 4 locks
 		 * instead of 2... */
 		/* Assuming we're moving /a/b/c to /d/e/f */
@@ -228,12 +265,8 @@ static int mstor_range_lock_by_op(struct mstor *mstor, struct mreq *mreq)
 		mreq->lk->num_range = 2;
 		srange_lock(mstor->tk, mreq->lk);
 		return 1;
-	case MSTOR_OP_CHUNKALLOC:
-	case MSTOR_OP_FIND_ZOMBIES:
-	case MSTOR_OP_DESTROY_ZOMBIE:
-		/* These operations don't take a range lock */
+	case RL_STRAT_NO_LOCK:
 		return 0;
-	case MSTOR_OP_NODE_SEARCH:
 	default:
 		/** Logic error */
 		abort();
@@ -266,8 +299,6 @@ const char *mstor_op_ty_to_str(enum mstor_op_ty op)
 		return "MSTOR_OP_CHOWN";
 	case MSTOR_OP_UTIMES:
 		return "MSTOR_OP_UTIMES";
-	case MSTOR_OP_RMDIR:
-		return "MSTOR_OP_RMDIR";
 	case MSTOR_OP_UNLINK:
 		return "MSTOR_OP_UNLINK";
 	case MSTOR_OP_FIND_ZOMBIES:
@@ -1522,10 +1553,10 @@ static int mstor_do_rmdir(struct mstor *mstor, struct mreq *mreq,
 	size_t klen, vlen;
 	struct mnode node;
 	uint64_t nid, ztime;
-	struct mreq_rmdir *req;
+	struct mreq_unlink *req;
 	uint16_t mode_and_type;
 
-	req = (struct mreq_rmdir*)mreq;
+	req = (struct mreq_unlink*)mreq;
 	ztime = req->ztime;
 	memset(&node, 0, sizeof(struct mnode));
 	if (pnode->val == NULL) {
@@ -1587,7 +1618,9 @@ static int mstor_do_rmdir(struct mstor *mstor, struct mreq *mreq,
 			ret = -EIO;
 			goto done;
 		}
-		if (!req->rmr) {
+		if (req->uop == MMM_UOP_RMDIR) {
+			/* Are we implementing POSIX rmdir semantics?  If so, we
+			 * can't delete a non-empty directory. */
 			ret = -ENOTEMPTY;
 			goto done;
 		}
@@ -1883,10 +1916,14 @@ static int mstor_do_path_operation(struct mstor *mstor, struct mreq *mreq,
 		return mstor_do_chown(mstor, mreq, cnode);
 	case MSTOR_OP_UTIMES:
 		return mstor_do_utimes(mstor, mreq, cnode);
-	case MSTOR_OP_RMDIR:
-		return mstor_do_rmdir(mstor, mreq, pcomp, pnode, cnode);
 	case MSTOR_OP_UNLINK:
-		return mstor_do_unlink(mstor, mreq, pcomp, pnode, cnode);
+		if (((struct mreq_unlink*)mreq)->uop == MMM_UOP_UNLINK) {
+			return mstor_do_unlink(mstor, mreq, pcomp,
+				pnode, cnode);
+		}
+		else
+			return mstor_do_rmdir(mstor, mreq, pcomp,
+				pnode, cnode);
 	case MSTOR_OP_NODE_SEARCH: {
 		struct mreq_node_search *req = (struct mreq_node_search*)mreq;
 		req->npc_rem = 0;
