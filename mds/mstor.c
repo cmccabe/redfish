@@ -1374,13 +1374,13 @@ static int mstor_do_chown(struct mstor *mstor, struct mreq *mreq,
 
 	req = (struct mreq_chown*)mreq;
 	memcpy(&new_node, node->val, sizeof(struct mnode_payload));
-	if (req->new_user) {
+	if (req->new_user[0]) {
 		new_user = udata_lookup_user(mstor->udata, req->new_user);
 		if (IS_ERR(new_user))
 			return PTR_ERR(new_user);
 		pack_to_be32(&new_node.uid, new_user->uid);
 	}
-	if (req->new_group) {
+	if (req->new_group[0]) {
 		new_group = udata_lookup_group(mstor->udata, req->new_group);
 		if (IS_ERR(new_group))
 			return PTR_ERR(new_group);

@@ -495,7 +495,7 @@ static int mstoru_test1(const char *tdir)
 		0644, 123, MSTORU_INVALID_USER), -EUSERS);
 	/* change root node's mode to 0775 and group to 'users' */
 	EXPECT_EQ(mstoru_do_chown(mstor, "/", RF_SUPERUSER_NAME,
-		NULL, MSTORU_USERS_GROUP), 0);
+		"", MSTORU_USERS_GROUP), 0);
 	EXPECT_EQ(mstoru_do_chmod(mstor, "/", RF_SUPERUSER_NAME,
 		0775), 0);
 	EXPECT_ZERO(mstoru_do_creat(mstor, "/a", 0700, 123,
@@ -520,7 +520,7 @@ static int mstoru_test1(const char *tdir)
 	EXPECT_EQ(mstoru_do_chown(mstor, "/", RF_SUPERUSER_NAME,
 		MSTORU_WOOT_USER, MSTORU_USERS_GROUP), 0);
 	EXPECT_EQ(mstoru_do_chown(mstor, "/", MSTORU_SPOONY_USER,
-		MSTORU_SPOONY_USER, NULL), -EPERM);
+		MSTORU_SPOONY_USER, ""), -EPERM);
 	EXPECT_EQ(mstoru_do_stat(mstor, "/", MSTORU_SPOONY_USER,
 		(void*)(uintptr_t)0775, test1_expect_root), 0);
 	EXPECT_EQ(mstoru_do_chmod(mstor, "/b", RF_SUPERUSER_NAME,

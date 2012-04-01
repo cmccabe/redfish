@@ -190,9 +190,9 @@ struct mreq_listdir {
 
 struct mreq_chown {
 	struct mreq base;
-	/** New owner, or NULL for no change */
+	/** New owner, or zero-length string for no change */
 	const char *new_user;
-	/** New group, or NULL for no change */
+	/** New group, or zero-length string for no change */
 	const char *new_group;
 };
 
