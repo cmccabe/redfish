@@ -21,6 +21,7 @@
 #include "util/macro.h"
 #include "util/net.h"
 #include "util/packed.h"
+#include "util/string.h"
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -106,14 +107,34 @@ void msg_release(struct msg *msg)
 	}
 }
 
-void dump_msg_hdr(struct msg *msg, char *buf, size_t buf_len)
+int dump_msg_hdr(struct msg *msg, char *buf, size_t buf_len)
 {
-	snprintf(buf, buf_len,
+	return snprintf(buf, buf_len,
 		"{trid=0x%08x, rem_trid=0x%08x, len=%d, ty=%d}",
 		unpack_from_be32(&msg->trid),
 		unpack_from_be32(&msg->rem_trid),
 		unpack_from_be32(&msg->len),
 		unpack_from_be16(&msg->ty));
+}
+
+void dump_msg(struct msg *m, char *buf, size_t buf_len)
+{
+	int ret;
+	uint32_t len;
+
+	len = unpack_from_be32(&m->len);
+	if (len < sizeof(struct msg)) {
+		snprintf(buf, buf_len, "(invalid msg");
+		return;
+	}
+	len -= sizeof(struct msg);
+	ret = dump_msg_hdr(m, buf, buf_len);
+	if ((ret < 0) || (ret >= (int)buf_len))
+		return;
+	if (++ret >= (int)buf_len)
+		return;
+	buf[ret - 1] = ' ';
+	hex_dump(m->data, len, buf + ret, buf_len - ret);
 }
 
 const char *mtran_state_to_str(uint16_t state)

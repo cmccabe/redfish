@@ -196,13 +196,28 @@ extern void msg_addref(struct msg *msg);
  */
 extern void msg_release(struct msg *msg);
 
-/** Dump out a message header in human-readable form
+/** Dump out a message header in human-readable form.
+ *
+ * @param msg		The message
+ * @param buf		(out param) output buffer
+ * @param buf_len	length of buf
+ *
+ * @return		The number of bytes that would have been used (not
+ *			including the terminating null character) if there had
+ *			been enough space in the output buffer, or a negative
+ *			number on error.
+ */
+extern int dump_msg_hdr(struct msg *msg, char *buf, size_t buf_len);
+
+/** Dump out a message in human-readable form.
+ *
+ * The message body will be printed as hex.
  *
  * @param msg		The message
  * @param buf		(out param) output buffer
  * @param buf_len	length of buf
  */
-extern void dump_msg_hdr(struct msg *msg, char *buf, size_t buf_len);
+extern void dump_msg(struct msg *msg, char *buf, size_t buf_len);
 
 /** Get ipv4 address of localhost
  *
