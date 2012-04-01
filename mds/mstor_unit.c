@@ -371,6 +371,22 @@ static int mstoru_do_rmdir(struct mstor *mstor, const char *full_path,
 	return mstor_do_operation(mstor, (struct mreq*)&mreq);
 }
 
+static int mstoru_do_utimes(struct mstor *mstor, const char *full_path,
+		const char *user_name, uint64_t new_atime, uint64_t new_mtime)
+{
+	struct mreq_utimes mreq;
+	struct mstoru_tls *tls = mstoru_tls_get();
+
+	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.lk = tls->lk;
+	mreq.base.op = MSTOR_OP_UTIMES;
+	mreq.base.full_path = full_path;
+	mreq.base.user_name = user_name;
+	mreq.new_atime = new_atime;
+	mreq.new_mtime = new_mtime;
+	return mstor_do_operation(mstor, (struct mreq*)&mreq);
+}
+
 static int mstoru_do_stat(struct mstor *mstor, const char *full_path,
 		const char *user_name, void *arg, stat_check_fn_t fn)
 {
@@ -448,12 +464,18 @@ static int mstoru_do_chmod(struct mstor *mstor, const char *full_path,
 	return 0;
 }
 
-static int test1_expect_c(POSSIBLY_UNUSED(void *arg),
+struct mstoru_atime_and_mtime {
+	uint64_t atime;
+	uint64_t mtime;
+};
+
+static int test1_expect_c(void *arg,
 		const struct rf_stat *stat, const char *pcomp)
 {
+	struct mstoru_atime_and_mtime *times = arg;
 	EXPECT_EQ(stat->mode_and_type, MNODE_IS_DIR | 0644);
-	EXPECT_EQ(stat->mtime, 123ULL);
-	EXPECT_EQ(stat->atime, 123ULL);
+	EXPECT_EQ(stat->atime, times->atime);
+	EXPECT_EQ(stat->mtime, times->mtime);
 	//printf("pcomp='%s', uid='%d', gid='%d', "
 	//	"user='%s', group='%s'\n", pcomp, stat->uid, stat->gid,
 	//	stat->user, stat->group);
@@ -486,6 +508,7 @@ static int mstoru_test1(const char *tdir)
 	struct zombie_info lower_bound;
 	struct zombie_info zinfos[MSTORU_MAX_ZINFOS];
 	uint64_t csize = 134217728ULL;
+	struct mstoru_atime_and_mtime times = { 123ULL, 123ULL };
 
 	udata = udata_unit_create_default();
 	EXPECT_NOT_ERRPTR(udata);
@@ -504,11 +527,17 @@ static int mstoru_test1(const char *tdir)
 		0644, 123, MSTORU_SPOONY_USER));
 	EXPECT_EQ(mstoru_do_mkdirs(mstor, "/a/d/e",
 		0644, 123, MSTORU_SPOONY_USER), -ENOTDIR);
+	/* change mtime of /b/c */
+	times.mtime = 789ULL;
+	EXPECT_EQ(mstoru_do_utimes(mstor, "/b/c", RF_SUPERUSER_NAME,
+		RF_INVAL_TIME, times.mtime), 0);
+	EXPECT_EQ(mstoru_do_stat(mstor, "/b/c", RF_SUPERUSER_NAME,
+		&times, test1_expect_c), 0);
 	//mstor_dump(mstor, stdout);
 	EXPECT_EQ(mstoru_do_listdir(mstor, "/a", MSTORU_SPOONY_USER,
 		NULL, NULL), -ENOTDIR);
 	EXPECT_EQ(mstoru_do_listdir(mstor, "/b", MSTORU_SPOONY_USER,
-		NULL, test1_expect_c), 1);
+		&times, test1_expect_c), 1);
 	EXPECT_EQ(mstoru_do_listdir(mstor, "/b/c", MSTORU_SPOONY_USER,
 		NULL, NULL), -EPERM);
 	EXPECT_EQ(mstoru_do_listdir(mstor, "/b/c", RF_SUPERUSER_NAME,
@@ -516,7 +545,7 @@ static int mstoru_test1(const char *tdir)
 	EXPECT_EQ(mstoru_do_listdir(mstor, "/b/c", RF_SUPERUSER_NAME,
 		NULL, NULL), 0);
 	EXPECT_EQ(mstoru_do_stat(mstor, "/b/c", RF_SUPERUSER_NAME,
-		NULL, test1_expect_c), 0);
+		&times, test1_expect_c), 0);
 	EXPECT_EQ(mstoru_do_chown(mstor, "/", RF_SUPERUSER_NAME,
 		MSTORU_WOOT_USER, MSTORU_USERS_GROUP), 0);
 	EXPECT_EQ(mstoru_do_chown(mstor, "/", MSTORU_SPOONY_USER,
@@ -526,13 +555,13 @@ static int mstoru_test1(const char *tdir)
 	EXPECT_EQ(mstoru_do_chmod(mstor, "/b", RF_SUPERUSER_NAME,
 		0770), 0);
 	EXPECT_EQ(mstoru_do_listdir(mstor, "/b", MSTORU_SPOONY_USER,
-		NULL, test1_expect_c), 1);
+		&times, test1_expect_c), 1);
 	EXPECT_EQ(mstoru_do_chown(mstor, "/b", RF_SUPERUSER_NAME,
 		RF_SUPERUSER_NAME, MSTORU_WOOTERS_GROUP), 0);
 	EXPECT_EQ(mstoru_do_listdir(mstor, "/b", MSTORU_SPOONY_USER,
 		NULL, NULL), -EPERM);
 	EXPECT_EQ(mstoru_do_listdir(mstor, "/b", MSTORU_WOOT_USER,
-		NULL, test1_expect_c), 1);
+		&times, test1_expect_c), 1);
 
 	/* test rmdir */
 	EXPECT_EQ(mstoru_do_rmdir(mstor, "/", RF_SUPERUSER_NAME,

@@ -1334,7 +1334,6 @@ static int mstor_do_chmod(struct mstor *mstor, struct mreq *mreq,
 	char nkey[MNODE_KEY_LEN], *err = NULL;
 	uint16_t old_mode_and_type, mode_and_type;
 
-	// TODO: take lock here
 	req = (struct mreq_chmod*)mreq;
 	hdr = (struct mnode_payload*)node->val;
 	mode_and_type = req->mode;
@@ -1358,7 +1357,6 @@ static int mstor_do_chmod(struct mstor *mstor, struct mreq *mreq,
 
 done:
 	free(err);
-	// TODO: release lock here
 	return ret;
 }
 
@@ -1421,7 +1419,6 @@ static int mstor_do_chown(struct mstor *mstor, struct mreq *mreq,
 
 done:
 	free(err);
-	// TODO: release lock here
 	return ret;
 }
 
@@ -1433,13 +1430,12 @@ static int mstor_do_utimes(struct mstor *mstor, struct mreq *mreq,
 	struct mnode_payload *hdr;
 	char nkey[MNODE_KEY_LEN], *err = NULL;
 
-	// TODO: take lock here
 	req = (struct mreq_utimes*)mreq;
 	hdr = (struct mnode_payload*)node->val;
-	if (req->atime != RF_INVAL_TIME)
-		pack_to_be64(&hdr->atime, req->atime);
-	if (req->mtime != RF_INVAL_TIME)
-		pack_to_be64(&hdr->mtime, req->mtime);
+	if (req->new_atime != RF_INVAL_TIME)
+		pack_to_be64(&hdr->atime, req->new_atime);
+	if (req->new_mtime != RF_INVAL_TIME)
+		pack_to_be64(&hdr->mtime, req->new_mtime);
 	nkey[0] = 'n';
 	pack_to_be64(nkey + 1, node->nid);
 	leveldb_put(mstor->ldb, mstor->lwropt, nkey, MNODE_KEY_LEN,
@@ -1454,7 +1450,6 @@ static int mstor_do_utimes(struct mstor *mstor, struct mreq *mreq,
 
 done:
 	free(err);
-	// TODO: release lock here
 	return ret;
 }
 
@@ -1827,8 +1822,6 @@ static int mstor_do_path_operation(struct mstor *mstor, struct mreq *mreq,
 		pcomp = memchr(pcomp, '\0', RF_PATH_MAX) + 1;
 		if (pnode->nid == forbidden)
 			return -EINVAL;
-		// TODO: lock if this is a write operation, and this is the
-		// last path component.  Or if this is a mkdirs operation.
 		ret = mstor_fetch_child(mstor, mreq, pcomp, pnode, cnode);
 		if (ret == -ENOENT) {
 			switch (mreq->op) {

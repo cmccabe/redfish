@@ -204,12 +204,12 @@ struct mreq_chmod {
 
 struct mreq_utimes {
 	struct mreq base;
-	/** New modification time, or RF_INVAL_TIME if the modification time
-	 * should not change.  */
-	uint64_t mtime;
 	/** New access time, or RF_INVAL_TIME if the access time should not
 	 * change.  */
-	uint64_t atime;
+	uint64_t new_atime;
+	/** New modification time, or RF_INVAL_TIME if the modification time
+	 * should not change.  */
+	uint64_t new_mtime;
 };
 
 struct mreq_rmdir {
