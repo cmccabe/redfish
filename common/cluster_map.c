@@ -296,4 +296,3 @@ struct daemon_info *cmap_get_oinfo(struct cmap *cmap, int oid)
 		return NULL;
 	return &cmap->oinfo[oid];
 }
-

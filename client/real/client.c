@@ -218,7 +218,7 @@ static struct msg *fishc_do_mds_rpc(struct redfish_client *cli,
 		mds_port = cli->cmap->minfo[mid]->port;
 		pthread_mutex_unlock(&cli->lock);
 		msg_addref(m);
-		bsend_add(tls->ctx, cli->msgr, BSF_RESP, m, mds_ip, mds_port);
+		bsend_add(tls->ctx, cli->msgr, BSF_RESP, m, mds_ip, mds_port, NULL);
 		if (ret) {
 			msg_release(m);
 			return ret;
@@ -263,7 +263,7 @@ static int failthread_ask_about_pri_mid(struct redfish_thread *rt,
 		sizeof(struct mmm_get_mds_status));
 	if (!m)
 		return -ENOMEM;
-	ret = bsend_add(cli->fail_ctx, cli->msgr, BSF_RESP, m, mds_ip, mds_port);
+	ret = bsend_add(cli->fail_ctx, cli->msgr, BSF_RESP, m, mds_ip, mds_port, NULL);
 	if (ret) {
 		msg_release(m);
 		return ret;
@@ -904,7 +904,7 @@ static int redfish_hflush_send_out_chunk(struct redfish_client *cli,
 	for (i = 0; i < ch->num_ep; ++i) {
 		msg_addref(m);
 		bsend_add(tls->ctx, cli->msgr, BSF_RESP, m,
-			ch->ep[i].ip, ch->ep[i].port);
+			ch->ep[i].ip, ch->ep[i].port, NULL);
 	}
 	bsend_join(tls->ctx);
 	msg_release(m);

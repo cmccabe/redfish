@@ -275,7 +275,7 @@ static int osd_send_hb_thread(struct redfish_thread *rt)
 				continue;
 			msg_addref(r);
 			bsend_add(ctx, g_msgr[RF_ENTITY_TY_MDS], 0, r,
-				di->ip, di->port[RF_ENTITY_TY_OSD], 2);
+				di->ip, di->port[RF_ENTITY_TY_OSD], 2, NULL);
 		}
 		bsend_join(ctx);
 		bsend_reset(ctx);

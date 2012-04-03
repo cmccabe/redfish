@@ -142,62 +142,77 @@ struct mmm_create_file_req {
 	unsigned int repl;
 	unsigned hyper mtime;
 	string path<RF_PATH_MAX>;
+        string user<RF_USER_MAX>;
 };
 
 struct mmm_open_file_req {
 	uint64_t atime;
 	uint16_t path_len;
 	string path<RF_PATH_MAX>;
+        string user<RF_USER_MAX>;
 };
 
 struct mmm_mkdirs_req {
-	unsigned hyper mtime;
+	unsigned hyper ctime;
 	int mode;
         string path<RF_PATH_MAX>;
+        string user<RF_USER_MAX>;
 };
 
 struct mmm_listdir_req {
         string path<RF_PATH_MAX>;
+        string user<RF_USER_MAX>;
 };
 
 struct mmm_path_stat_req {
         string path<RF_PATH_MAX>;
+        string user<RF_USER_MAX>;
 };
 
 struct mmm_nid_stat_req {
 	unsigned hyper nid;
+        string user<RF_USER_MAX>;
 };
 
 struct mmm_chmod_req {
 	int mode;
+        string user<RF_USER_MAX>;
         string path<RF_PATH_MAX>;
 };
 
 struct mmm_chown_req {
         string path<RF_PATH_MAX>;
         string user<RF_USER_MAX>;
-        string group<RF_GROUP_MAX>;
+        string new_user<RF_USER_MAX>;
+        string new_group<RF_GROUP_MAX>;
 };
 
 struct mmm_utimes_req {
-	unsigned hyper atime;
-	unsigned hyper mtime;
+	unsigned hyper new_atime;
+	unsigned hyper new_mtime;
         string path<RF_PATH_MAX>;
+        string user<RF_USER_MAX>;
 };
 
-/** Flag for mmm_unlink that means remove recursively */
-const MMM_UNLINK_RECURSIVE = 1;
-/** Flag for mmm_unlink that means implement POSIX rmdir semantics */
-const MMM_UNLINK_POSIX_RMDIR = 2;
+enum mmm_unlink_op {
+	/** Unlink a single file */
+	MMM_UOP_UNLINK = 1,
+	/** POSIX rmdir */
+	MMM_UOP_RMDIR = 2,
+	/** Remove recursively */
+	MMM_UOP_RMRF = 4
+};
 
 struct mmm_unlink_req {
-	int flags;
-        string path<RF_PATH_MAX>;
+	enum mmm_unlink_op uop;
+	string path<RF_PATH_MAX>;
+        string user<RF_USER_MAX>;
 };
 
 struct mmm_rename_req {
         string src<RF_PATH_MAX>;
         string dst<RF_PATH_MAX>;
+        string user<RF_USER_MAX>;
 };
 
 /* ============== MDS messages ============== */
@@ -216,7 +231,7 @@ struct mmm_stat_resp {
 };
 
 struct mmm_listdir_resp {
-	struct rf_stat stat<RF_MAX_FILES_PER_LISTDIR>;
+	struct rf_lentry le<RF_MAX_FILES_PER_LISTDIR>;
 };
 
 const MMM_OSD_FETCH_CHUNK_LEN_MAX = 2147483648;

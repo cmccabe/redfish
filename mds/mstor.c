@@ -1308,7 +1308,7 @@ static int mstor_do_stat(struct mstor *mstor, struct mreq *mreq,
 		if (ret)
 			return ret;
 	}
-	return fill_rf_stat(mstor, &req->stat, cnode);
+	return fill_rf_stat(mstor, req->stat, cnode);
 }
 
 static int fill_rf_stat(struct mstor *mstor, struct rf_stat *stat,

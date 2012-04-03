@@ -169,7 +169,7 @@ struct mreq_stat {
 	struct mreq base;
 	/** (out param) Redfish stat structure.  Must be freed with XDR_FREE
 	 * after use. */
-	struct rf_stat stat;
+	struct rf_stat *stat;
 };
 
 struct mreq_listdir {

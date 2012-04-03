@@ -40,6 +40,7 @@
 struct bsend_mtran {
 	struct mtran *tr;
 	struct bsend *ctx;
+	void *tag;
 	uint8_t flags;
 };
 
@@ -146,7 +147,7 @@ static void bsend_cb(struct mconn *conn, struct mtran *tr)
 }
 
 int bsend_add(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
-		struct msg *msg, uint32_t addr, uint16_t port, int timeo)
+	struct msg *msg, uint32_t addr, uint16_t port, int timeo, void *tag)
 {
 	struct mtran *tr;
 
@@ -158,11 +159,11 @@ int bsend_add(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
 	}
 	tr->ip = addr;
 	tr->port = port;
-	return bsend_add_tr_or_free(ctx, msgr, flags, msg, tr, timeo);
+	return bsend_add_tr_or_free(ctx, msgr, flags, msg, tr, timeo, tag);
 }
 
 int bsend_add_tr_or_free(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
-		struct msg *msg, struct mtran *tr, int timeo)
+		struct msg *msg, struct mtran *tr, int timeo, void *tag)
 {
 	struct bsend_mtran *btr;
 
@@ -175,10 +176,11 @@ int bsend_add_tr_or_free(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
 	btr = &ctx->btrs[ctx->num_tr];
 	btr->tr = tr;
 	btr->ctx = ctx;
+	btr->tag = tag;
 	btr->flags = flags;
 	ctx->num_tr++;
 	fast_log_bsend(ctx->fb, FAST_LOG_BSEND_DEBUG, FLBS_ADD_TR,
-		       tr->port, tr->ip, flags, 0, ctx->num_tr);
+			tr->port, tr->ip, flags, 0, ctx->num_tr);
 	mtran_send(msgr, tr, bsend_cb, btr, msg, timeo);
 	return 0;
 }
@@ -192,7 +194,7 @@ int bsend_join(struct bsend *ctx)
 		if (ctx->num_finished == ctx->num_tr) {
 			pthread_mutex_unlock(&ctx->lock);
 			fast_log_bsend(ctx->fb, FAST_LOG_BSEND_DEBUG, FLBS_JOIN,
-				       0, 0, 1, 0, ctx->num_finished);
+					0, 0, 1, 0, ctx->num_finished);
 			return ctx->num_tr;
 		}
 		pthread_cond_wait(&ctx->cond, &ctx->lock);
@@ -204,6 +206,18 @@ struct mtran *bsend_get_mtran(struct bsend *ctx, int ntr)
 	if (ntr >= ctx->num_tr)
 		return NULL;
 	return ctx->btrs[ntr].tr;
+}
+
+void *bsend_get_mtran_tag(struct bsend *ctx, int ntr)
+{
+	if (ntr >= ctx->num_tr)
+		return NULL;
+	return ctx->btrs[ntr].tag;
+}
+
+int bsend_get_num_sent(const struct bsend *ctx)
+{
+	return ctx->num_tr;
 }
 
 void bsend_reset(struct bsend *ctx)
@@ -248,7 +262,7 @@ int bsend_reply(struct fast_log_buf *fb, struct bsend *ctx, struct mtran *tr,
 	int ret;
 	uint16_t ty;
 
-	ret = bsend_add_tr_or_free(ctx, tr->priv, 0, r, tr, 0);
+	ret = bsend_add_tr_or_free(ctx, tr->priv, 0, r, tr, 0, NULL);
 	if (ret)
 		return ret;
 	bsend_join(ctx);

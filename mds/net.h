@@ -19,36 +19,11 @@
 
 #include "common/entity_type.h"
 
-#include <pthread.h> /* for pthread_mutex_t */
 #include <stdint.h> /* for uint16_t, etc. */
 
 struct fast_log_buf;
 struct mdsc;
 struct unitaryc;
-
-#ifdef REDFISH_MDS_NET_DOT_C
-#define EXTERN
-#else
-#define EXTERN extern
-#endif
-
-/** Delegation locks */
-EXTERN struct dslots *g_dslots;
-
-/** The metadata server ID for this server */
-EXTERN uint16_t g_mid;
-
-/** The primary metadata server ID */
-EXTERN uint16_t g_pri_mid;
-
-/** Current cluster map */
-EXTERN struct cmap *g_cmap;
-
-/** Lock that protects the cluster map */
-EXTERN pthread_mutex_t g_cmap_lock;
-
-/** MDS messengers */
-EXTERN struct msgr *g_msgr[RF_ENTITY_TY_NUM];
 
 /** Initialize mds networking stuff
  *

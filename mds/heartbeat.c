@@ -47,6 +47,14 @@
 #include <string.h>
 #include <time.h>
 
+extern int g_mid;
+
+extern pthread_mutex_t g_cmap_lock;
+
+extern struct cmap *g_cmap;
+
+extern struct msgr *g_msgr[];
+
 #define MDS_HB_SEND_IVAL 5
 
 #define MDS_SUICIDE_TIMEOUT 40
@@ -111,7 +119,8 @@ int mds_send_hb_thread(struct redfish_thread *rt)
 				continue;
 			msg_addref(r);
 			bsend_add(ctx, g_msgr[RF_ENTITY_TY_MDS], 0, r,
-				di->ip, di->port[RF_ENTITY_TY_MDS], 2);
+				di->ip, di->port[RF_ENTITY_TY_MDS], 2,
+				(void*)(uintptr_t)i);
 		}
 		pthread_mutex_unlock(&g_cmap_lock);
 

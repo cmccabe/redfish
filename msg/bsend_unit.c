@@ -139,7 +139,7 @@ static int bsend_test30(struct bsend *ctx, struct msgr *msgr, int flags,
 	pack_to_be32(&m->x, x);
 	pack_to_be32(&m->y, y);
 	EXPECT_EQ(bsend_add(ctx, msgr, flags, (struct msg*)m,
-			g_localhost, MSGR_UNIT_PORT, timeo), ex);
+			g_localhost, MSGR_UNIT_PORT, timeo, NULL), ex);
 	return 0;
 }
 

@@ -376,6 +376,7 @@ static int mstoru_do_stat(struct mstor *mstor, const char *full_path,
 		const char *user_name, void *arg, stat_check_fn_t fn)
 {
 	int ret;
+	struct rf_stat stat;
 	struct mreq_stat mreq;
 	struct mstoru_tls *tls = mstoru_tls_get();
 	char pcomp[RF_PCOMP_MAX];
@@ -385,6 +386,7 @@ static int mstoru_do_stat(struct mstor *mstor, const char *full_path,
 	mreq.base.op = MSTOR_OP_STAT;
 	mreq.base.full_path = full_path;
 	mreq.base.user_name = user_name;
+	mreq.stat = &stat;
 	ret = mstor_do_operation(mstor, (struct mreq*)&mreq);
 	if (ret) {
 		fprintf(stderr, "do_stat failed with error %d\n", ret);
@@ -394,13 +396,13 @@ static int mstoru_do_stat(struct mstor *mstor, const char *full_path,
 		ret = do_basename(pcomp, sizeof(pcomp), full_path);
 		if (ret)
 			goto done_free_resp;
-		ret = fn(arg, &mreq.stat, pcomp);
+		ret = fn(arg, mreq.stat, pcomp);
 		if (ret)
 			goto done_free_resp;
 	}
 	ret = 0;
 done_free_resp:
-	XDR_REQ_FREE(rf_stat, &mreq.stat);
+	XDR_REQ_FREE(rf_stat, mreq.stat);
 done:
 	return FORCE_NEGATIVE(ret);
 }

@@ -61,7 +61,7 @@ extern struct bsend *bsend_init(struct fast_log_buf *fb, int max_tr);
  * @return		0 on success; error code otherwise
  */
 extern int bsend_add(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
-		struct msg *msg, uint32_t addr, uint16_t port, int timeo);
+	struct msg *msg, uint32_t addr, uint16_t port, int timeo, void *tag);
 
 /** Send out an RPC message
  *
@@ -78,7 +78,8 @@ extern int bsend_add(struct bsend *ctx, struct msgr *msgr, uint8_t flags,
  * @return		0 on success; error code otherwise
  */
 extern int bsend_add_tr_or_free(struct bsend *ctx, struct msgr *msgr,
-		uint8_t flags, struct msg *msg, struct mtran *tr, int timeo);
+		uint8_t flags, struct msg *msg, struct mtran *tr, int timeo,
+		void *tag);
 
 /** Block until all the RPC calls have been made.
  *
@@ -111,6 +112,25 @@ extern int bsend_join(struct bsend *ctx);
  * @return		the mtran, or an error pointer on error
  */
 extern struct mtran *bsend_get_mtran(struct bsend *ctx, int ntr);
+
+/** Get the tag for an mtran.
+ *
+ * This must be invoked after bsend_join.
+ *
+ * @param ctx		The blocking RPC context
+ * @param ntr		Index of the tag to get
+ *
+ * @return		The mtran tag
+ */
+extern void *bsend_get_mtran_tag(struct bsend *ctx, int ntr);
+
+/** Get the number of messages sent
+ *
+ * @param ctx		The blocking RPC context
+ *
+ * @return		The number of messages sent
+ */
+extern int bsend_get_num_sent(const struct bsend *ctx);
 
 /** Free all messages remaining from an RPC session
  *
