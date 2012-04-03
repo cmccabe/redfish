@@ -38,7 +38,7 @@ void* redfish_thread_trampoline(void *v)
 	char name[FAST_LOG_BUF_NAME_MAX];
 	struct redfish_thread *rt = (struct redfish_thread*)v;
 
-	rt->thread_id = create_unique_thread_id();
+	rt->thread_id = get_tid();
 	snprintf(name, FAST_LOG_BUF_NAME_MAX, "thread %d", rt->thread_id);
 	fast_log_set_name(rt->fb, name);
 	ret = rt->fn(rt);

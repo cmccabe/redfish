@@ -20,9 +20,20 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
-uint32_t create_unique_thread_id(void)
+#define INVALID_TID 0xffffffffU
+
+/** The current thread ID.  We're in the Linux-specific code section, so we can
+ * use ELF TLS here */
+static __thread uint32_t g_tid = INVALID_TID;
+
+uint32_t get_tid(void)
 {
-	/* Use the super secret gettid() call to get the real kernel
-	 * thread ID */
-	return syscall(__NR_gettid);
+	if (g_tid == INVALID_TID) {
+		/* Use the super secret gettid() call to get the real kernel
+		 * thread ID.  We can do this because we know that on Linux,
+		 * people are using a 1-to-1 pthreads package.
+		 */
+		g_tid = syscall(__NR_gettid);
+	}
+	return g_tid;
 }

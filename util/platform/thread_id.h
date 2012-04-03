@@ -21,12 +21,13 @@
 
 /** Create a unique thread ID.
  *
- * Only call this once per thread.  It _may_ return a new value each time you
- * call it.  On certain platforms, it will return the kernel's thread id, which
- * may be useful for debugging.
+ * Return the thread's unique ID.  The first time this is called in a thread, it
+ * _may_ make a system call.  Thereafter, it will access thread-local data.  On
+ * certain platforms, such as Linux, this will return the kernel's thread id,
+ * which may be useful for debugging.
  *
- * @return		a unique thread id
+ * @return		a unique 32-bit thread id
  */
-extern uint32_t create_unique_thread_id(void);
+extern uint32_t get_tid(void);
 
 #endif
