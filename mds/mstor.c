@@ -173,6 +173,7 @@ static int mstor_range_lock_by_op(struct mstor *mstor, struct mreq *mreq)
 	case MSTOR_OP_MKDIRS:
 		strat = RL_STRAT_ENTRY_SUBTREE_AND_PARENT;
 		break;
+	case MSTOR_OP_NID_STAT:
 	case MSTOR_OP_CHUNKFIND:
 	case MSTOR_OP_CHMOD:
 	case MSTOR_OP_CHOWN:
@@ -293,6 +294,8 @@ const char *mstor_op_ty_to_str(enum mstor_op_ty op)
 		return "MSTOR_OP_LISTDIR";
 	case MSTOR_OP_STAT:
 		return "MSTOR_OP_STAT";
+	case MSTOR_OP_NID_STAT:
+		return "MSTOR_OP_NID_STAT";
 	case MSTOR_OP_CHMOD:
 		return "MSTOR_OP_CHMOD";
 	case MSTOR_OP_CHOWN:
@@ -1311,6 +1314,22 @@ static int mstor_do_stat(struct mstor *mstor, struct mreq *mreq,
 	return fill_rf_stat(mstor, req->stat, cnode);
 }
 
+static int mstor_do_nid_stat(struct mstor *mstor, struct mreq *mreq)
+{
+	int ret;
+	struct mreq_nid_stat *req = (struct mreq_nid_stat*)mreq;
+	struct mnode node;
+
+	memset(&node, 0, sizeof(node));
+	req = (struct mreq_nid_stat*)mreq;
+	ret = mstor_fetch_node(mstor, req->nid, &node);
+	if (ret)
+		return ret;
+	ret = fill_rf_stat(mstor, req->stat, &node);
+	mnode_free(&node);
+	return ret;
+}
+
 static int fill_rf_stat(struct mstor *mstor, struct rf_stat *stat,
 		const struct mnode *node)
 {
@@ -2106,6 +2125,9 @@ int mstor_do_operation(struct mstor *mstor, struct mreq *mreq)
 		break;
 	case MSTOR_OP_DESTROY_ZOMBIE:
 		ret = mstor_do_destroy_zombie(mstor, mreq);
+		break;
+	case MSTOR_OP_NID_STAT:
+		ret = mstor_do_nid_stat(mstor, mreq);
 		break;
 	case MSTOR_OP_RENAME:
 		// TODO: handle cross-delegation renames

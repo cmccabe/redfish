@@ -314,10 +314,40 @@ done:
 	return ret;
 }
 
-static int handle_mmm_nid_stat_req(POSSIBLY_UNUSED(struct recv_pool_thread *rt),
-	POSSIBLY_UNUSED(struct mtran *tr), POSSIBLY_UNUSED(struct msg *m))
+static int handle_mmm_nid_stat_req(struct recv_pool_thread *rt,
+		struct mtran *tr, struct msg *m)
 {
-	return -ENOSYS;
+	int ret;
+	struct mmm_nid_stat_req req;
+	struct mmm_stat_resp resp;
+	struct mreq_nid_stat mreq;
+	struct mnrp_tls *tls = rt->base.priv;
+	struct msg *r;
+
+	ret = MSG_XDR_DECODE(mmm_nid_stat_req, m, &req);
+	if (ret)
+		goto done;
+	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.lk = &tls->lk;
+	mreq.base.op = MSTOR_OP_STAT;
+	mreq.nid = req.nid;
+	mreq.stat = &resp.stat;
+	ret = mstor_do_operation(g_mstor, (struct mreq*)&mreq);
+	if (ret < 0) {
+		ret = bsend_std_reply(rt->base.fb, rt->ctx, tr, ret);
+		goto done_free_req;
+	}
+	memset(&resp, 0, sizeof(resp));
+	r = MSG_XDR_ALLOC(mmm_stat_resp, &resp);
+	if (IS_ERR(r)) {
+		ret = PTR_ERR(r);
+		goto done_free_req;
+	}
+	ret = bsend_reply(rt->base.fb, rt->ctx, tr, r);
+done_free_req:
+	XDR_REQ_FREE(mmm_nid_stat_req, &req);
+done:
+	return ret;
 }
 
 static int handle_mmm_chmod_req(struct recv_pool_thread *rt,

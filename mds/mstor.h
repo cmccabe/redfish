@@ -60,8 +60,11 @@ enum mstor_op_ty {
 	 * Locking: uses range locker */
 	MSTOR_OP_LISTDIR,
 	/** Operation that gets information about a file or directory
-	 * Locking: uses range locker */
+	 * based on its path.  Locking: uses range locker */
 	MSTOR_OP_STAT,
+	/** Operation that gets information about a file or directory
+	 * based on its node ID.  Locking: uses range locker */
+	MSTOR_OP_NID_STAT,
 	/** Operation that changes the mode
 	 * Locking: uses range locker */
 	MSTOR_OP_CHMOD,
@@ -167,6 +170,15 @@ struct mreq_mkdirs {
 
 struct mreq_stat {
 	struct mreq base;
+	/** (out param) Redfish stat structure.  Must be freed with XDR_FREE
+	 * after use. */
+	struct rf_stat *stat;
+};
+
+struct mreq_nid_stat {
+	struct mreq base;
+	/** Node ID to look up */
+	uint64_t nid;
 	/** (out param) Redfish stat structure.  Must be freed with XDR_FREE
 	 * after use. */
 	struct rf_stat *stat;
