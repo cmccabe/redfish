@@ -187,6 +187,27 @@ static int handle_mmm_get_mds_status(struct recv_pool_thread *rt,
 	return bsend_reply(rt->base.fb, rt->ctx, tr, r);
 }
 
+static int handle_mmm_set_primary_user_group(
+	POSSIBLY_UNUSED(struct recv_pool_thread *rt),
+	POSSIBLY_UNUSED(struct mtran *tr), POSSIBLY_UNUSED(struct msg *m))
+{
+	return -ENOSYS;
+}
+
+static int handle_mmm_add_user_to_group(
+	POSSIBLY_UNUSED(struct recv_pool_thread *rt),
+	POSSIBLY_UNUSED(struct mtran *tr), POSSIBLY_UNUSED(struct msg *m))
+{
+	return -ENOSYS;
+}
+
+static int handle_mmm_remove_user_from_group(
+	POSSIBLY_UNUSED(struct recv_pool_thread *rt),
+	POSSIBLY_UNUSED(struct mtran *tr), POSSIBLY_UNUSED(struct msg *m))
+{
+	return -ENOSYS;
+}
+
 static int handle_mmm_create_file_req(POSSIBLY_UNUSED(struct recv_pool_thread *rt),
 	POSSIBLY_UNUSED(struct mtran *tr), POSSIBLY_UNUSED(struct msg *m))
 {
@@ -517,6 +538,15 @@ static int mds_net_handle_tr(struct recv_pool_thread *rt, struct mtran *tr)
 		break;
 	case mmm_status_req_ty:
 		ret = handle_mmm_get_mds_status(rt, tr, m);
+		break;
+	case mmm_set_primary_user_group_ty:
+		ret = handle_mmm_set_primary_user_group(rt, tr, m);
+		break;
+	case mmm_add_user_to_group_ty:
+		ret = handle_mmm_add_user_to_group(rt, tr, m);
+		break;
+	case mmm_remove_user_from_group_ty:
+		ret = handle_mmm_remove_user_from_group(rt, tr, m);
 		break;
 	case mmm_create_file_req_ty:
 		ret = handle_mmm_create_file_req(rt, tr, m);

@@ -41,9 +41,18 @@ struct srange_locker;
 struct udata;
 
 enum mstor_op_ty {
+	/** Operation that changes a user's primary group
+	 * Locking: uses range locker */
+	MSTOR_OP_SET_PRIMARY_USER_GROUP = 1,
+	/** Operation that adds a user to a group
+	 * Locking: uses range locker */
+	MSTOR_OP_ADD_USER_TO_GROUP,
+	/** Operation that remove a user from a group
+	 * Locking: uses range locker */
+	MSTOR_OP_REMOVE_USER_FROM_GROUP,
 	/** Operation that creates a file
 	 * Locking: uses range locker */
-	MSTOR_OP_CREAT = 1,
+	MSTOR_OP_CREAT,
 	/** Operation that opens a file
 	 * Locking: uses range locker */
 	MSTOR_OP_OPEN,
@@ -106,6 +115,27 @@ struct mreq {
 	int flags;
 	/** Operation type-specific data */
 	char data[0];
+};
+
+struct mreq_set_primary_user_group {
+	/** User to modify */
+	const char *tgt_user;
+	/** New primary group to set */
+	const char *tgt_group;
+};
+
+struct mreq_add_user_to_group {
+	/** User to modify */
+	const char *tgt_user;
+	/** New group to add */
+	const char *tgt_group;
+};
+
+struct mreq_remove_user_from_group {
+	/** User to modify */
+	const char *tgt_user;
+	/** Group to remove */
+	const char *tgt_group;
 };
 
 struct mreq_creat {

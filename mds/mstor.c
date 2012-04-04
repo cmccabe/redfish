@@ -145,6 +145,7 @@ struct mstor {
 
 /****************************** functions ********************************/
 enum rl_strat_ty {
+	RL_STRAT_LOCK_ALL,
 	RL_STRAT_NO_LOCK,
 	RL_STRAT_ENTRY,
 	RL_STRAT_ENTRY_AND_PARENT,
@@ -158,6 +159,12 @@ static int mstor_range_lock_by_op(struct mstor *mstor, struct mreq *mreq)
 	enum rl_strat_ty strat;
 
 	switch (mreq->op) {
+	case MSTOR_OP_SET_PRIMARY_USER_GROUP:
+	case MSTOR_OP_ADD_USER_TO_GROUP:
+	case MSTOR_OP_REMOVE_USER_FROM_GROUP:
+		/* TODO: can we do better here? */
+		strat = RL_STRAT_LOCK_ALL;
+		break;
 	case MSTOR_OP_CREAT:
 	case MSTOR_OP_OPEN:
 	case MSTOR_OP_LISTDIR:
@@ -195,6 +202,13 @@ static int mstor_range_lock_by_op(struct mstor *mstor, struct mreq *mreq)
 	}
 
 	switch (strat) {
+	case RL_STRAT_LOCK_ALL:
+		/* Lock / to 0 */
+		snprintf((char*)lk->range[0].start, RF_PATH_MAX + 1, "/");
+		snprintf((char*)lk->range[0].end, RF_PATH_MAX + 1, "0");
+		mreq->lk->num_range = 1;
+		srange_lock(mstor->tk, mreq->lk);
+		return 1;
 	case RL_STRAT_ENTRY_AND_PARENT:
 		/* Lock /a/b/ to /a/b/ */
 		do_dirname(mreq->full_path, (char*)lk->range[0].start, RF_PATH_MAX);
@@ -280,6 +294,12 @@ BUILD_BUG_ON(SRANGE_LOCKER_MAX_RANGE < 2);
 const char *mstor_op_ty_to_str(enum mstor_op_ty op)
 {
 	switch (op) {
+	case MSTOR_OP_SET_PRIMARY_USER_GROUP:
+		return "MSTOR_OP_SET_PRIMARY_USER_GROUP";
+	case MSTOR_OP_ADD_USER_TO_GROUP:
+		return "MSTOR_OP_ADD_USER_TO_GROUP";
+	case MSTOR_OP_REMOVE_USER_FROM_GROUP:
+		return "MSTOR_OP_REMOVE_USER_FROM_GROUP";
 	case MSTOR_OP_CREAT:
 		return "MSTOR_OP_CREAT";
 	case MSTOR_OP_OPEN:
@@ -1095,6 +1115,27 @@ static int mstor_assign_oid(POSSIBLY_UNUSED(struct mstor *mstor),
 	oid[0] = 123;
 	oid[1] = 456;
 	return 2;
+}
+
+static int mstor_do_set_primary_user_group(
+	POSSIBLY_UNUSED(struct mstor *mstor),
+	POSSIBLY_UNUSED(struct mreq *mreq))
+{
+	return -ENOSYS;
+}
+
+static int mstor_do_add_user_to_group(
+	POSSIBLY_UNUSED(struct mstor *mstor),
+	POSSIBLY_UNUSED(struct mreq *mreq))
+{
+	return -ENOSYS;
+}
+
+static int mstor_do_remove_user_from_group(
+	POSSIBLY_UNUSED(struct mstor *mstor),
+	POSSIBLY_UNUSED(struct mreq *mreq))
+{
+	return -ENOSYS;
 }
 
 static int mstor_do_chunkalloc(struct mstor *mstor, struct mreq *mreq)
@@ -2117,6 +2158,15 @@ int mstor_do_operation(struct mstor *mstor, struct mreq *mreq)
 	/* Take the range locks we need */
 	rlocked = mstor_range_lock_by_op(mstor, mreq);
 	switch (mreq->op) {
+	case MSTOR_OP_SET_PRIMARY_USER_GROUP:
+		ret = mstor_do_set_primary_user_group(mstor, mreq);
+		break;
+	case MSTOR_OP_ADD_USER_TO_GROUP:
+		ret = mstor_do_add_user_to_group(mstor, mreq);
+		break;
+	case MSTOR_OP_REMOVE_USER_FROM_GROUP:
+		ret = mstor_do_remove_user_from_group(mstor, mreq);
+		break;
 	case MSTOR_OP_CHUNKALLOC:
 		ret = mstor_do_chunkalloc(mstor, mreq);
 		break;

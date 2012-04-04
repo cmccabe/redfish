@@ -143,48 +143,57 @@ extern struct redfish_client *redfish_connect(const char *conf_path,
 	const char *user, redfish_log_fn_t log_cb, void *log_ctx,
 	char *err, size_t err_len);
 
-/** Create a new redfish user
+/** Set the primary group for a user.
+ * Redfish implements the traditional UNIX permissions model, wherein the
+ * primary group of a user determines the group in which new files created by
+ * that user will reside.
+ * After you change the primary group of a user, he will continue to be a member
+ * of the old primary group.  However, you can use
+ * redfish_remove_user_from_group to remove him from that group.
  *
- * @param cli		The Redfish client
- * @param user		The new user name
- * @param group		The primary group of the new user
- *
- * @return		0 on success; return code otherwise
- */
-int redfish_useradd(struct redfish_client *cli, const char *user,
-		const char *group);
-
-/** Delete a redfish user
- * Files and directories assigned by this user will be reassigned to the user
- * 'nobody'.
- *
- * @param cli		The Redfish client
- * @param user		The user name
- *
- * @return		0 on success; return code otherwise
- */
-int redfish_userdel(struct redfish_client *cli, const char *user);
-
-/** Create a new redfish group
- *
- * @param cli		The Redfish client
- * @param group		The new group name
- *
- * @return		0 on success; return code otherwise
- */
-int redfish_groupadd(struct redfish_client *cli, const char *group);
-
-/** Destroy a redfish group
- * Files and directories assigned to this group will be reassigned to the group
- * 'everyone'.  Users who have this group as their primary group will instead
- * have the primary group 'everyone.'
+ * Only superusers can modify users other than themselves.
  *
  * @param cli		The Redfish client
  * @param group		The group name
+ * @param user		The user name
  *
- * @return		0 on success; return code otherwise
+ * @return		0 on success; -EEXIST if the user is already a member
+ *			of the group.
  */
-int redfish_groupdel(struct redfish_client *cli, const char *group);
+extern int redfish_set_primary_user_group(struct redfish_client *cli,
+		const char *user, const char *group);
+
+/** Remove a user from a group
+ * The user will be removed from the designated group.  If the group was the
+ * user's primary group, his new primary group will be 'everyone.'
+ *
+ * Only superusers can modify users other than themselves.
+ *
+ * @param cli		The Redfish client
+ * @param group		The group name
+ * @param user		The user name
+ *
+ * @return		0 on success; -EEXIST if the user is already a member
+ *			of the group.
+ */
+extern int redfish_add_user_to_group(struct redfish_client *cli,
+		const char *user, const char *group);
+
+/** Remove a user from a group
+ * The user will be removed from the designated group.  If the group was the
+ * user's primary group, his new primary group will be 'nobody.'
+ *
+ * Only superusers can modify users other than themselves.
+ *
+ * @param cli		The Redfish client
+ * @param group		The group name
+ * @param user		The user name
+ *
+ * @return		0 on success; -ENOENT if the user is not currently known
+ *			to be a member of the group.
+ */
+extern int redfish_remove_user_from_group(struct redfish_client *cli,
+		const char *user, const char *group);
 
 /** Create a file in Redfish
  *

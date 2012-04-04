@@ -403,6 +403,30 @@ static int set_group(int fd, const char *group)
 	return fxsets(fd, XATTR_FISH_GROUP, group);
 }
 
+int redfish_set_primary_user_group(POSSIBLY_UNUSED(struct redfish_client *cli),
+	POSSIBLY_UNUSED(const char *user), POSSIBLY_UNUSED(const char *group))
+{
+	/* In order to implement this, the stub client would have to modify the
+	 * users and groups of the underlying UNIX system.
+	 * We'll punt on this, since client/stub is just a mockup anyway.
+	 */
+	return -ENOSYS;
+}
+
+int redfish_add_user_to_group(POSSIBLY_UNUSED(struct redfish_client *cli),
+	POSSIBLY_UNUSED(const char *user), POSSIBLY_UNUSED(const char *group))
+{
+	/* see comment for redfish_set_primary_user_group */
+	return -ENOSYS;
+}
+
+int redfish_remove_user_from_group(POSSIBLY_UNUSED(struct redfish_client *cli),
+	POSSIBLY_UNUSED(const char *user), POSSIBLY_UNUSED(const char *group))
+{
+	/* see comment for redfish_set_primary_user_group */
+	return -ENOSYS;
+}
+
 int redfish_create(struct redfish_client *cli, const char *path,
 	int mode, POSSIBLY_UNUSED(uint64_t bufsz), POSSIBLY_UNUSED(int repl),
 	POSSIBLY_UNUSED(uint32_t blocksz), struct redfish_file **ofe)
