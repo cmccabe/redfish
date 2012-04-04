@@ -14,19 +14,22 @@
  * limitations under the License.
  */
 
-const MMM_PACKED_STAT_IS_DIR = 0x8000;
+/** RPC Message definitions and constants
+ */
 
-/** maximum length of a path name in Redfish */
+/** maximum length of a path name in Redfish, including terminating NULL */
 const RF_PATH_MAX = 4096;
 
-/** Maximum length of a user name */
+/** Maximum length of a user name, including terminating NULL */
 const RF_USER_MAX = 64;
 
-/** Maximum length of a group name */
+/** Maximum length of a group name, including terminating NULL */
 const RF_GROUP_MAX = 64;
 
 /** maximum number of OSDs that will be used store a single chunk */
 const RF_MAX_OID = 7;
+
+const MMM_PACKED_STAT_IS_DIR = 0x8000;
 
 /** Maximum files per directory.  This can go away when we get the ability to
  * do a partial listdir() */
