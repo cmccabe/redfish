@@ -165,7 +165,8 @@ extern int redfish_set_primary_user_group(struct redfish_client *cli,
 
 /** Remove a user from a group
  * The user will be removed from the designated group.  If the group was the
- * user's primary group, his new primary group will be 'everyone.'
+ * user's primary group, his new primary group will be the same as his
+ * username.
  *
  * Only superusers can modify users other than themselves.
  *
@@ -181,7 +182,8 @@ extern int redfish_add_user_to_group(struct redfish_client *cli,
 
 /** Remove a user from a group
  * The user will be removed from the designated group.  If the group was the
- * user's primary group, his new primary group will be 'nobody.'
+ * user's primary group, his new primary group will be the same as his
+ * username.  A user is always a member of the group of the same name.
  *
  * Only superusers can modify users other than themselves.
  *

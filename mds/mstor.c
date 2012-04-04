@@ -52,6 +52,10 @@
  *      h[8-byte-chunk-id] => <packed-array of 4-byte OSD-IDs>
  * for zombie chunks:
  *      z[8-byte-death-time][8-byte-zombie-chunk-id] => []
+ * for users:
+ *      u[user-name] => primary-group-name
+ * for groups for which the user is a member:
+ *      g[user-name] => {}
  */
 /****************************** constants ********************************/
 
@@ -81,6 +85,10 @@
 
 #define MREQ_FLAG_CHECK_PERMS 0x1
 #define TMP_CINFO_BUF_SZ 64
+
+#define MUSER_KEY_MAX (1 + RF_USER_MAX)
+#define MUSER_VAL_MAX (RF_GROUP_MAX)
+#define MGROUP_KEY_MAX (1 + RF_USER_MAX + 1 + RF_GROUP_MAX)
 
 /****************************** prototypes ********************************/
 struct mnode;
@@ -142,6 +150,38 @@ struct mstor {
 	/** Tracker for string range locks */
 	struct srange_tracker *tk;
 };
+
+/****************************** utility ********************************/
+static void leveldb_try_delete_cb(void *state, POSSIBLY_UNUSED(const char *k),
+		POSSIBLY_UNUSED(size_t klen))
+{
+	*((int*)state) = 0;
+}
+
+static int leveldb_try_delete(leveldb_t *ldb, leveldb_writeoptions_t* lwropt,
+		const char *key, size_t key_len, char **err)
+{
+	int ret;
+	leveldb_writebatch_t* bat;
+	
+	bat = leveldb_writebatch_create();
+	if (!bat) {
+		ret = -ENOMEM;
+		goto done;
+	}
+	leveldb_writebatch_delete(bat, key, key_len);
+	leveldb_write(ldb, lwropt, bat, err);
+	if (*err) {
+		ret = -EIO;
+		goto done_free_writebatch;
+	}
+	ret = -ENOENT;
+	leveldb_writebatch_iterate(bat, (void*)&ret, NULL, leveldb_try_delete_cb);
+done_free_writebatch:
+	leveldb_writebatch_destroy(bat);
+done:
+	return ret;
+}
 
 /****************************** functions ********************************/
 enum rl_strat_ty {
@@ -1117,25 +1157,206 @@ static int mstor_assign_oid(POSSIBLY_UNUSED(struct mstor *mstor),
 	return 2;
 }
 
-static int mstor_do_set_primary_user_group(
-	POSSIBLY_UNUSED(struct mstor *mstor),
-	POSSIBLY_UNUSED(struct mreq *mreq))
+static int mstor_do_set_primary_user_group_impl(struct mstor *mstor,
+	const char *tgt_user, const char *tgt_group)
 {
-	return -ENOSYS;
+	char *err = NULL;
+	char ukey[MUSER_KEY_MAX + 1], uval[MUSER_VAL_MAX + 1];
+
+	snprintf(ukey, sizeof(ukey), "u%s", tgt_user);
+	snprintf(uval, sizeof(uval), "%s", tgt_group);
+	leveldb_put(mstor->ldb, mstor->lwropt, ukey, strlen(ukey),
+		uval, strlen(uval), &err);
+	if (err) {
+		glitch_log("mstor_do_set_primary_user_group_impl: leveldb_put("
+			"tgt_user=%s, tgt_group=%s) returned error '%s'\n",
+			tgt_user, tgt_group, err);
+		free(err);
+		return -EIO;
+	}
+	return 0;
 }
 
-static int mstor_do_add_user_to_group(
-	POSSIBLY_UNUSED(struct mstor *mstor),
-	POSSIBLY_UNUSED(struct mreq *mreq))
+static int mstor_do_set_primary_user_group(struct mstor *mstor,
+	struct mreq *mreq)
 {
-	return -ENOSYS;
+	struct mreq_set_primary_user_group *req =
+			(struct mreq_set_primary_user_group*)mreq;
+	// TODO: check that mreq.user_name is a superuser, or 
+	// mreq.user_name == tgt_user
+	return mstor_do_set_primary_user_group_impl(mstor,
+			req->tgt_user, req->tgt_group);
 }
 
-static int mstor_do_remove_user_from_group(
-	POSSIBLY_UNUSED(struct mstor *mstor),
-	POSSIBLY_UNUSED(struct mreq *mreq))
+/** Get the primary group for a user.
+ *
+ * @param mstor		The mstor
+ * @param user		The user
+ * @param group		(out param) The primary group
+ * @param group_len	Length of the group buffer.  Should be at least
+ *			RF_GROUP_MAX
+ *
+ * @return		0 on success; error code otherwise
+ */
+static int mstor_get_primary_user_group(struct mstor *mstor,
+	const char *user, char *group, size_t group_len)
 {
-	return -ENOSYS;
+	char *err = NULL;
+	char ukey[MUSER_KEY_MAX + 1], *val;
+	size_t vlen;
+
+	if (zsnprintf(ukey, sizeof(ukey), "u%s", user))
+		return -ENAMETOOLONG;
+	val = leveldb_get(mstor->ldb, mstor->lreadopt, ukey, strlen(ukey),
+		&vlen, &err);
+	if (err) {
+		glitch_log("leveldb_get(user=%s) failed with error %s\n",
+			user, err);
+		free(err);
+		return -EIO;
+	}
+	if (!val) {
+		/* No primary group was set.  Default to the username. */
+		return zsnprintf(group, group_len, "%s", group);
+	}
+	if (vlen + 1 >= group_len)
+		return -ENAMETOOLONG;
+	memcpy(group, val, vlen);
+	group[vlen] = '\0';
+	free(val);
+	return 0;
+}
+
+BUILD_BUG_ON(RF_GROUP_MAX < RF_USER_MAX);
+
+/** Determine if a user is a member of a group
+ *
+ * @param mstor		The mstor
+ * @param user		The user
+ * @param group		The group
+ *
+ * @return		0 if the user is __not__ a member,
+ * 			1 if the user is a member,
+ * 			a negative error code otherwise
+ */
+int mstor_user_is_member(struct mstor *mstor,
+	const char *user, const char *group)
+{
+	char *err = NULL;
+	char ukey[MUSER_KEY_MAX + 1], *val;
+	size_t vlen;
+
+	/** Users foo is always a member of group foo. */
+	if (!strcmp(user, group))
+		return 1;
+	if (zsnprintf(ukey, sizeof(ukey), "u%s", user))
+		return -ENAMETOOLONG;
+	val = leveldb_get(mstor->ldb, mstor->lreadopt, ukey, strlen(ukey),
+		&vlen, &err);
+	if (err) {
+		glitch_log("leveldb_get(user=%s) failed with error %s\n",
+			user, err);
+		free(err);
+		return -EIO;
+	}
+	if (!val)
+		return 0;
+	free(val);
+	return 1;
+}
+
+/** Calculate the key for a user->primary group mapping
+ *
+ * @param gkey		(out param) The binary key.  Must have length
+ *			at least MGROUP_KEY_MAX.
+ * @param tgt_user	The target user name
+ * @param tgt_group	The target primary group name
+ * */
+static int mstor_user_op_calc_gkey(char *gkey,
+		const char *tgt_user, const char *tgt_group)
+{
+	size_t user_len, group_len;
+
+	user_len = strlen(tgt_user);
+	if (user_len >= RF_USER_MAX)
+		return -ENAMETOOLONG;
+	group_len = strlen(tgt_group);
+	if (group_len >= RF_GROUP_MAX)
+		return -ENAMETOOLONG;
+	gkey[0] = 'g';
+	memcpy(gkey + 1, tgt_user, user_len);
+	gkey[user_len] = '\0';
+	memcpy(gkey + 1 + user_len + 1, tgt_group, group_len);
+	return 1 + user_len + 1 + group_len;
+}
+
+static int mstor_do_add_user_to_group(struct mstor *mstor,
+	struct mreq *mreq)
+{
+	struct mreq_add_user_to_group *req =
+		(struct mreq_add_user_to_group*)mreq;
+	char *err = NULL;
+	char gkey[MGROUP_KEY_MAX], buf[1] = { 0 };
+	int gkey_len;
+
+	// TODO: check that mreq.user_name is a superuser, or 
+	// mreq.user_name == tgt_user
+	if (!strcmp(req->tgt_user, req->tgt_group))
+		return 0;
+	gkey_len = mstor_user_op_calc_gkey(gkey,
+		req->tgt_user, req->tgt_group);
+	if (gkey_len < 0)
+		return gkey_len;
+	leveldb_put(mstor->ldb, mstor->lwropt, gkey, gkey_len,
+		buf, 0, &err);
+	if (err) {
+		glitch_log("mstor_do_add_user_to_group: leveldb_put("
+			"tgt_user=%s, tgt_group=%s) returned error '%s'\n",
+			req->tgt_user, req->tgt_group, err);
+		free(err);
+		return -EIO;
+	}
+	return 0;
+}
+
+static int mstor_do_remove_user_from_group(struct mstor *mstor,
+	struct mreq *mreq)
+{
+	struct mreq_remove_user_from_group *req =
+		(struct mreq_remove_user_from_group *)mreq;
+	char *err = NULL;
+	char gkey[MGROUP_KEY_MAX], group[RF_GROUP_MAX];
+	int ret, gkey_len;
+
+	// TODO: check that mreq.user_name is a superuser, or 
+	// mreq.user_name == tgt_user
+	if (!strcmp(req->tgt_user, req->tgt_group))
+		return -EINVAL;
+	gkey_len = mstor_user_op_calc_gkey(gkey,
+		req->tgt_user, req->tgt_group);
+	if (gkey_len < 0)
+		return gkey_len;
+	ret = mstor_get_primary_user_group(mstor, req->tgt_user, group,
+			RF_GROUP_MAX);
+	if (ret)
+		return ret;
+	if (!strcmp(group, req->tgt_group)) {
+		ret = mstor_do_set_primary_user_group_impl(mstor,
+			req->tgt_user, req->tgt_user);
+		if (ret)
+			return ret;
+	}
+	ret = leveldb_try_delete(mstor->ldb, mstor->lwropt, gkey,
+			gkey_len, &err);
+	if (err) {
+		glitch_log("mstor_do_remove_user_from_group: "
+			"leveldb_try_delete(tgt_user=%s, tgt_group=%s) "
+			"returned error '%s'\n",
+			req->tgt_user, req->tgt_group, err);
+		free(err);
+		return -EIO;
+	}
+	return ret;
 }
 
 static int mstor_do_chunkalloc(struct mstor *mstor, struct mreq *mreq)
@@ -2252,6 +2473,52 @@ static int mstor_dump_file_entry(FILE *out, const char *k, size_t klen,
 		nid, off, cid);
 }
 
+static int mstor_dump_group(FILE *out, const char *k, size_t klen, size_t vlen)
+{
+	char user_group[MGROUP_KEY_MAX + 1];
+	const char *group;
+
+	if (vlen != 0) {
+		glitch_log("mstor_dump_group: expected empty value!\n");
+		return -EINVAL;
+	}
+	if (klen > MGROUP_KEY_MAX) {
+		glitch_log("mstor_dump_group: group mapping key is too "
+			"long.\n");
+		return -EINVAL;
+	}
+	memcpy(user_group, k, klen);
+	user_group[klen] = '\0';
+	group = memchr(user_group, '\0', klen);
+	if (!group) {
+		glitch_log("mstor_dump_group: group mapping has no embedded "
+			"NULL.\n");
+		return -EINVAL;
+	}
+	return zfprintf(out, "GROUP(user=%s, group=%s)\n", user_group, group);
+}
+
+static int mstor_dump_user(FILE *out, const char *k, size_t klen,
+		const char *v, size_t vlen)
+{
+	char user[RF_USER_MAX], pri_group[RF_GROUP_MAX];
+
+	if (klen - 1 >= RF_USER_MAX) {
+		glitch_log("mstor_dump_user: user mapping is too long!\n");
+		return -EINVAL;
+	}
+	memcpy(user, k, klen - 1);
+	user[klen] = '\0';
+	if (vlen >= RF_GROUP_MAX) {
+		glitch_log("mstor_dump_user: pri_group mapping is too "
+			"long!\n");
+		return -EINVAL;
+	}
+	memcpy(pri_group, v, vlen);
+	pri_group[vlen] = '\0';
+	return zfprintf(out, "USER(user=%s, pri_group=%s)\n", user, pri_group);
+}
+
 static int mstor_dump_chunk_entry(FILE *out, const char *k, size_t klen,
 		const char *v, size_t vlen)
 {
@@ -2389,6 +2656,11 @@ int mstor_dump(struct mstor *mstor, FILE *out)
 			if (ret)
 				goto done;
 			break;
+		case 'g':
+			ret = mstor_dump_group(out, k, klen, vlen);
+			if (ret)
+				goto done;
+			break;
 		case 'h':
 			ret = mstor_dump_chunk_entry(out, k, klen, v, vlen);
 			if (ret)
@@ -2396,6 +2668,11 @@ int mstor_dump(struct mstor *mstor, FILE *out)
 			break;
 		case 'n':
 			ret = mstor_dump_node(out, k, klen, v, vlen);
+			if (ret)
+				goto done;
+			break;
+		case 'u':
+			ret = mstor_dump_user(out, k, klen, v, vlen);
 			if (ret)
 				goto done;
 			break;
