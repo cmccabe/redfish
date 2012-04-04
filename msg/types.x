@@ -68,7 +68,13 @@ enum fish_msg_ty {
 	/** get current daemon status */
 	mmm_status_req_ty,
 
-        /* ============== client requests ============== */
+	/* ============== client requests ============== */
+	/** Client request to set a user's primary group */
+	mmm_set_primary_user_group_ty,
+	/** Client request to add a user to a group */
+	mmm_add_user_to_group_ty,
+	/** Client request to remove a user from a group */
+	mmm_remove_user_from_group_ty,
 	/** client request to create a new file */
 	mmm_create_file_req_ty = 2000,
 	/** client request to open a new file */
@@ -92,7 +98,7 @@ enum fish_msg_ty {
 	/** client rename request */
 	mmm_rename_req_ty,
 
-        /* ============== mds messages ============== */
+	/* ============== mds messages ============== */
 	/** current mds status */
 	mmm_mds_status_resp_ty = 3000,
 	/** a new chunk id for the client.  the mds will send this in
@@ -106,7 +112,7 @@ enum fish_msg_ty {
 	/** osd response to a request for a chunk */
 	mmm_fetch_chunk_resp_ty,
 
-        /* ============== osd messages ============== */
+	/* ============== osd messages ============== */
 	/** request to read from the osd */
 	mmm_osd_read_req_ty = 4000,
 	/** response to mmm_osd_read_req */
@@ -123,7 +129,7 @@ enum fish_msg_ty {
 
 /* ============== Common ============== */
 struct mmm_resp {
-        unsigned int error;
+	unsigned int error;
 };
 
 struct mmm_heartbeat {
@@ -136,62 +142,80 @@ struct mmm_status_req {
 };
 
 /* ============== Client Requests ============== */
+struct mmm_set_primary_user_group {
+	string user<RF_USER_MAX>;
+	string tgt_user<RF_USER_MAX>;
+	string new_pri_group<RF_GROUP_MAX>;
+};
+
+struct mmm_add_user_to_group {
+	string user<RF_USER_MAX>;
+	string tgt_user<RF_USER_MAX>;
+	string group<RF_GROUP_MAX>;
+};
+
+struct mmm_remove_user_from_group {
+	string user<RF_USER_MAX>;
+	string tgt_user<RF_USER_MAX>;
+	string group<RF_GROUP_MAX>;
+};
+
 struct mmm_create_file_req {
 	unsigned int block_sz;
 	unsigned int mode;
 	unsigned int repl;
 	unsigned hyper mtime;
 	string path<RF_PATH_MAX>;
-        string user<RF_USER_MAX>;
+	string user<RF_USER_MAX>;
 };
 
 struct mmm_open_file_req {
 	uint64_t atime;
 	uint16_t path_len;
 	string path<RF_PATH_MAX>;
-        string user<RF_USER_MAX>;
+	string user<RF_USER_MAX>;
 };
 
 struct mmm_mkdirs_req {
 	unsigned hyper ctime;
 	int mode;
-        string path<RF_PATH_MAX>;
-        string user<RF_USER_MAX>;
+	string path<RF_PATH_MAX>;
+	string user<RF_USER_MAX>;
 };
 
 struct mmm_listdir_req {
-        string path<RF_PATH_MAX>;
-        string user<RF_USER_MAX>;
+	string path<RF_PATH_MAX>;
+	string user<RF_USER_MAX>;
 };
 
 struct mmm_path_stat_req {
-        string path<RF_PATH_MAX>;
-        string user<RF_USER_MAX>;
+	string path<RF_PATH_MAX>;
+	string user<RF_USER_MAX>;
 };
 
 struct mmm_nid_stat_req {
 	unsigned hyper nid;
-        string user<RF_USER_MAX>;
+	string user<RF_USER_MAX>;
 };
 
 struct mmm_chmod_req {
 	int mode;
-        string user<RF_USER_MAX>;
-        string path<RF_PATH_MAX>;
+	string user<RF_USER_MAX>;
+	string path<RF_PATH_MAX>;
 };
 
 struct mmm_chown_req {
-        string path<RF_PATH_MAX>;
-        string user<RF_USER_MAX>;
-        string new_user<RF_USER_MAX>;
-        string new_group<RF_GROUP_MAX>;
+	string path<RF_PATH_MAX>;
+	string user<RF_USER_MAX>;
+	string new_user<RF_USER_MAX>;
+	string new_group<RF_GROUP_MAX>;
 };
 
 struct mmm_utimes_req {
 	unsigned hyper new_atime;
 	unsigned hyper new_mtime;
-        string path<RF_PATH_MAX>;
-        string user<RF_USER_MAX>;
+	string path<RF_PATH_MAX>;
+	string user<RF_USER_MAX>;
 };
 
 enum mmm_unlink_op {
@@ -206,13 +230,13 @@ enum mmm_unlink_op {
 struct mmm_unlink_req {
 	enum mmm_unlink_op uop;
 	string path<RF_PATH_MAX>;
-        string user<RF_USER_MAX>;
+	string user<RF_USER_MAX>;
 };
 
 struct mmm_rename_req {
-        string src<RF_PATH_MAX>;
-        string dst<RF_PATH_MAX>;
-        string user<RF_USER_MAX>;
+	string src<RF_PATH_MAX>;
+	string dst<RF_PATH_MAX>;
+	string user<RF_USER_MAX>;
 };
 
 /* ============== MDS messages ============== */
@@ -277,13 +301,9 @@ struct mmm_osd_unlink_req {
 
 struct mmm_create_file_resp {
 	uint64_t nid;
-	uint8_t num_ep;
-	char data[0];
 };
 struct mmm_open_rfile_resp {
 	uint64_t nid;
 	uint32_t chunk_addr;
 	uint64_t chunk_id;
 };
-
-
