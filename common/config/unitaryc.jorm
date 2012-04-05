@@ -15,6 +15,6 @@
  */
 
 JORM_CONTAINER_BEGIN(unitaryc)
-	JORM_ARRAY(osd, osdc)
-	JORM_ARRAY(mds, mdsc)
+	JORM_OARRAY(osd, osdc)
+	JORM_OARRAY(mds, mdsc)
 JORM_CONTAINER_END

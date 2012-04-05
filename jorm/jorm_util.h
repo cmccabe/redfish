@@ -20,7 +20,7 @@
 #include <string.h> /* for memmove */
 
 #define JORM_CONTAINER_BEGIN(ty) \
-struct ty* JORM_ARRAY_APPEND_##ty(struct ty ***arr) { \
+struct ty* JORM_OARRAY_APPEND_##ty(struct ty ***arr) { \
 	struct ty **narr; \
 	int i; \
 	if (*arr == JORM_INVAL_ARRAY) { \
@@ -47,7 +47,7 @@ struct ty* JORM_ARRAY_APPEND_##ty(struct ty ***arr) { \
 	return narr[i]; \
 } \
 \
-void JORM_ARRAY_REMOVE_##ty(struct ty ***arr, struct ty *elem) { \
+void JORM_OARRAY_REMOVE_##ty(struct ty ***arr, struct ty *elem) { \
 	struct ty **xarr; \
 	int tw, nw; \
 	if (*arr == NULL) \
@@ -72,7 +72,7 @@ void JORM_ARRAY_REMOVE_##ty(struct ty ***arr, struct ty *elem) { \
 		*arr = xarr; \
 } \
 \
-void JORM_ARRAY_FREE_##ty(struct ty ***arr) { \
+void JORM_OARRAY_FREE_##ty(struct ty ***arr) { \
 	struct ty **a; \
 	if (*arr == JORM_INVAL_ARRAY) \
 		return; \
@@ -83,7 +83,7 @@ void JORM_ARRAY_FREE_##ty(struct ty ***arr) { \
 	*arr = JORM_INVAL_ARRAY; \
 } \
 \
-struct ty** JORM_ARRAY_COPY_##ty(struct ty **arr) { \
+struct ty** JORM_OARRAY_COPY_##ty(struct ty **arr) { \
 	int i, slen = 0; \
 	struct ty **narr; \
 	if (*arr != JORM_INVAL_ARRAY) { \
@@ -113,6 +113,6 @@ struct ty** JORM_ARRAY_COPY_##ty(struct ty **arr) { \
 #define JORM_NESTED(name, ty)
 #define JORM_EMBEDDED(name, ty)
 #define JORM_BOOL(name)
-#define JORM_ARRAY(name, ty)
+#define JORM_OARRAY(name, ty)
 #define JORM_CONTAINER_END
 #define JORM_IGNORE(x)

@@ -69,7 +69,7 @@ void JORM_TYCHECK_##ty(struct json_object *jo, \
 
 #define JORM_BOOL(name) JORM_TYCHECK_IMPL(name, json_type_boolean)
 
-#define JORM_ARRAY(name, ty) { \
+#define JORM_OARRAY(name, ty) { \
 struct json_object* ji = json_object_object_get(jo, #name); \
 if (ji) { \
 	json_type aty = json_object_get_type(ji); \

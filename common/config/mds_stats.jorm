@@ -20,5 +20,5 @@ JORM_CONTAINER_END
 
 JORM_CONTAINER_BEGIN(mds_stats)
 	JORM_INT(version)
-	JORM_ARRAY(mds_stat_id, up_mids)
+	JORM_OARRAY(mds_stat_id, up_mids)
 JORM_CONTAINER_END

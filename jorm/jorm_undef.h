@@ -21,6 +21,6 @@
 #undef JORM_NESTED
 #undef JORM_EMBEDDED
 #undef JORM_BOOL
-#undef JORM_ARRAY
+#undef JORM_OARRAY
 #undef JORM_CONTAINER_END
 #undef JORM_IGNORE

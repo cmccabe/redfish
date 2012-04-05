@@ -25,12 +25,12 @@ struct json_object;
 	extern struct json_object *JORM_TOJSON_##ty(struct ty *me); \
 	extern void JORM_FREE_##ty(struct ty *jorm); \
 	extern int JORM_COPY_##ty(struct ty *src, struct ty *dst); \
-	extern struct ty** JORM_ARRAY_COPY_##ty(struct ty **arr); \
+	extern struct ty** JORM_OARRAY_COPY_##ty(struct ty **arr); \
 	extern void JORM_TYCHECK_##ty(struct json_object *jo, char* acc, \
 				size_t acc_len, char *err, size_t err_len); \
-	extern struct ty* JORM_ARRAY_APPEND_##ty(struct ty ***arr); \
-	extern void JORM_ARRAY_FREE_##ty(struct ty ***arr); \
-	extern void JORM_ARRAY_REMOVE_##ty(struct ty ***arr, struct ty *elem);
+	extern struct ty* JORM_OARRAY_APPEND_##ty(struct ty ***arr); \
+	extern void JORM_OARRAY_FREE_##ty(struct ty ***arr); \
+	extern void JORM_OARRAY_REMOVE_##ty(struct ty ***arr, struct ty *elem);
 #define JORM_INT(name)
 #define JORM_DOUBLE(name)
 #define JORM_STR(name)
@@ -39,7 +39,7 @@ struct json_object;
 #define JORM_EMBEDDED(name, ty) \
 	struct ty;
 #define JORM_BOOL(name)
-#define JORM_ARRAY(name, ty)
+#define JORM_OARRAY(name, ty)
 #define JORM_CONTAINER_END
 #define JORM_IGNORE(x)
 

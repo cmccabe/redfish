@@ -73,7 +73,7 @@ int JORM_COPY_##name(struct name *src, struct name *dst) { \
 	if (src->name != JORM_INVAL_BOOL) \
 		dst->name = src->name;
 
-#define JORM_ARRAY(name, ty) \
+#define JORM_OARRAY(name, ty) \
 	if (src->name != JORM_INVAL_ARRAY) { \
 		struct ty **arr; \
 		int i, slen, dlen; \

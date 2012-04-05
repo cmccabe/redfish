@@ -89,7 +89,7 @@ handle_oom: \
 		out->name = JORM_INVAL_BOOL; \
 	} \
 }
-#define JORM_ARRAY(name, ty) { \
+#define JORM_OARRAY(name, ty) { \
 	struct json_object* ji = json_object_object_get(jo, #name); \
 	if (ji && (json_object_get_type(ji) == json_type_array)) { \
 		int i, arr_len = json_object_array_length(ji); \

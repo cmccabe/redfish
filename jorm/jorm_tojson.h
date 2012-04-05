@@ -91,7 +91,7 @@ if (me->name != JORM_INVAL_BOOL) { \
 	json_object_object_add(jo, #name, ji); \
 }
 
-#define JORM_ARRAY(name, ty) \
+#define JORM_OARRAY(name, ty) \
 if (me->name != JORM_INVAL_ARRAY) { \
 	int i; \
 	struct json_object* ji = json_object_new_array(); \

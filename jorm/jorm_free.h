@@ -48,8 +48,8 @@ void JORM_FREE_##name(struct name *jorm) { \
 #define JORM_BOOL(name) \
 	jorm->name = JORM_INVAL_BOOL;
 
-#define JORM_ARRAY(name, ty) \
-	JORM_ARRAY_FREE_##ty(&jorm->name);
+#define JORM_OARRAY(name, ty) \
+	JORM_OARRAY_FREE_##ty(&jorm->name);
 
 #define JORM_CONTAINER_END \
 	free(jorm); \

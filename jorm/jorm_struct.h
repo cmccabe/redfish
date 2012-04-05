@@ -21,6 +21,6 @@
 #define JORM_NESTED(name, ty) struct ty *name;
 #define JORM_EMBEDDED(name, ty) struct ty *name;
 #define JORM_BOOL(name) int name;
-#define JORM_ARRAY(name, ty) struct ty **name;
+#define JORM_OARRAY(name, ty) struct ty **name;
 #define JORM_CONTAINER_END };
 #define JORM_IGNORE(x) x

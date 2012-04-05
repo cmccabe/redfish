@@ -45,7 +45,7 @@ struct ty* JORM_INIT_##ty(void) { \
 #define JORM_BOOL(name) \
 	me->name = JORM_INVAL_BOOL;
 
-#define JORM_ARRAY(name, ty) \
+#define JORM_OARRAY(name, ty) \
 	me->name = JORM_INVAL_ARRAY;
 
 #define JORM_CONTAINER_END \

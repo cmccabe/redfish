@@ -131,7 +131,7 @@ static int handle_take_rsem(struct rsem_server *rss, int fd,
 		/* This was a no-delay request */
 		return write_u32("handle_take_rsem", fd, RSEM_SERVER_NACK);
 	}
-	w = JORM_ARRAY_APPEND_rsem_waiter(&rl->wait);
+	w = JORM_OARRAY_APPEND_rsem_waiter(&rl->wait);
 	if (!w) {
 		glitch_log("handle_take_rsem: out of memory\n");
 		return write_u32("handle_take_rsem", fd,
@@ -141,7 +141,7 @@ static int handle_take_rsem(struct rsem_server *rss, int fd,
 	w->s_addr = s_addr;
 	ret = write_u32("handle_take_rsem", fd, RSEM_SERVER_DELAY_SEM);
 	if (ret) {
-		JORM_ARRAY_REMOVE_rsem_waiter(&rl->wait, w);
+		JORM_OARRAY_REMOVE_rsem_waiter(&rl->wait, w);
 		return ret;
 	}
 	return 0;
@@ -152,7 +152,7 @@ static void free_rsems(struct rsem* rls, int nrls)
 	int i;
 	for (i = 0; i < nrls; ++i) {
 		free(rls[i].name);
-		JORM_ARRAY_FREE_rsem_waiter(&rls[i].wait);
+		JORM_OARRAY_FREE_rsem_waiter(&rls[i].wait);
 	}
 	free(rls);
 }
@@ -258,7 +258,7 @@ static void wake_any_waiter(struct rsem *rl)
 	}
 	for (w = rl->wait; *w; ++w) {
 		if (wake_waiter(rl, *w) == 0) {
-			JORM_ARRAY_REMOVE_rsem_waiter(&rl->wait, *w);
+			JORM_OARRAY_REMOVE_rsem_waiter(&rl->wait, *w);
 			return;
 		}
 	}
