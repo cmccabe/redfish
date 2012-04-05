@@ -78,6 +78,8 @@ enum fish_msg_ty {
 	mmm_add_user_to_group_ty,
 	/** Client request to remove a user from a group */
 	mmm_remove_user_from_group_ty,
+	/** Client request to get user info */
+	mmm_get_user_info_req_ty,
 	/** client request to create a new file */
 	mmm_create_file_req_ty = 2000,
 	/** client request to open a new file */
@@ -114,6 +116,8 @@ enum fish_msg_ty {
 	mmm_listdir_resp_ty,
 	/** osd response to a request for a chunk */
 	mmm_fetch_chunk_resp_ty,
+	/** response to get user info message */
+	mmm_get_user_info_resp_ty,
 
 	/* ============== osd messages ============== */
 	/** request to read from the osd */
@@ -161,6 +165,11 @@ struct mmm_remove_user_from_group {
 	string user<RF_USER_MAX>;
 	string tgt_user<RF_USER_MAX>;
 	string group<RF_GROUP_MAX>;
+};
+
+struct mmm_get_user_info_req {
+	string user<RF_USER_MAX>;
+	string tgt_user<RF_USER_MAX>;
 };
 
 struct mmm_create_file_req {
@@ -265,6 +274,11 @@ const MMM_OSD_FETCH_CHUNK_LEN_MAX = 2147483648;
 
 struct mmm_fetch_chunk_resp {
 	unsigned hyper cid;
+	/* next: data */
+};
+
+struct mmm_get_user_info_resp {
+	int flags;
 	/* next: data */
 };
 
