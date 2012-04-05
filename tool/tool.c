@@ -39,6 +39,7 @@ struct fishtool_act g_fishtool_unlink;
 struct fishtool_act g_fishtool_write;
 struct fishtool_act g_fishtool_chunk_write;
 struct fishtool_act g_fishtool_chunk_read;
+struct fishtool_act g_fishtool_usermod;
 
 const struct fishtool_act *g_fishtool_acts[] = {
 	&g_fishtool_chmod,
@@ -52,6 +53,7 @@ const struct fishtool_act *g_fishtool_acts[] = {
 	&g_fishtool_write,
 	&g_fishtool_chunk_write,
 	&g_fishtool_chunk_read,
+	&g_fishtool_usermod,
 	NULL,
 };
 
@@ -126,7 +128,7 @@ static struct fishtool_params* fishtool_parse_argv(int argc, char **argv)
 	char c, **a;
 	const char *s;
 	size_t i;
-	char getopt_str[512] = "hm:u:";
+	char getopt_str[512] = "c:hm:u:";
 	struct fishtool_params *params;
 	static const char TRUE[] = "true";
 

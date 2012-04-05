@@ -197,6 +197,31 @@ extern int redfish_add_user_to_group(struct redfish_client *cli,
 extern int redfish_remove_user_from_group(struct redfish_client *cli,
 		const char *user, const char *group);
 
+/** Get information about a user
+ * Get information about a user.  The information will be given in the form of a
+ * JSON string.
+ *
+ * The current format is:
+ * {
+ *	"user_name" : "<user_name>",
+ *	"primary_group" : "<group_name>",
+ *	"groups" : [ "<group_name>", ... ]
+ * }
+ *
+ * New fields may be added in the future.
+ *
+ * @param cli		The Redfish client
+ * @param group		The user name
+ * @param buf		Buffer size
+ * @param buf_len	Buffer length
+ *
+ * @return		0 on success
+ *			-EMSGSIZE if the user-provided buffer is too short.
+ *			Other error codes as appropriate.
+ */
+extern int redfish_get_user_info(struct redfish_client *cli,
+		const char *user, char *buf, size_t buf_len);
+
 /** Create a file in Redfish
  *
  * @param cli		The Redfish client

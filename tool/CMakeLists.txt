@@ -10,6 +10,7 @@ add_executable(fishtool
     rename.c
     tool.c
     unlink.c
+    user.c
     write.c
 )
 target_link_libraries(fishtool

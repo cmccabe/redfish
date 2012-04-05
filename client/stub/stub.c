@@ -427,6 +427,12 @@ int redfish_remove_user_from_group(POSSIBLY_UNUSED(struct redfish_client *cli),
 	return -ENOSYS;
 }
 
+int redfish_get_user_info(POSSIBLY_UNUSED(struct redfish_client *cli),
+		POSSIBLY_UNUSED(const char *user), char *buf, size_t buf_len)
+{
+	return zsnprintf(buf, buf_len, "{ \"unimplemented\" }");
+}
+
 int redfish_create(struct redfish_client *cli, const char *path,
 	int mode, POSSIBLY_UNUSED(uint64_t bufsz), POSSIBLY_UNUSED(int repl),
 	POSSIBLY_UNUSED(uint32_t blocksz), struct redfish_file **ofe)

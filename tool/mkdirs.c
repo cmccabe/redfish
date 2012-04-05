@@ -44,7 +44,7 @@ int fishtool_mkdirs(struct fishtool_params *params)
 	if (mode_str) {
 		mode = str_to_oct(mode_str, err, err_len);
 		if (err[0]) {
-			fprintf(stderr, "fishtool_write: error parsing -p: "
+			fprintf(stderr, "fishtool_mkdirs: error parsing -p: "
 				"%s\n", err);
 			ret = -EINVAL;
 			goto done;
