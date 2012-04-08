@@ -29,7 +29,9 @@ const RF_GROUP_MAX = 64;
 /** maximum number of OSDs that will be used store a single chunk */
 const RF_MAX_OID = 7;
 
-const MMM_PACKED_STAT_IS_DIR = 0x8000;
+const MMM_STAT_TYPE_FILE = 0x0000;
+const MMM_STAT_TYPE_DIR = 0x8000;
+const MMM_STAT_MODE_MASK = 0x7fff;
 
 /** Maximum files per directory.  This can go away when we get the ability to
  * do a partial listdir() */
@@ -37,8 +39,8 @@ const RF_MAX_FILES_PER_LISTDIR = 100000;
 
 /** Describes an endpoint */
 struct endpoint {
-	int ip;
-	int port;
+	unsigned int ip;
+	unsigned int port;
 };
 
 /** Describes the stat() information stored with a file. */
@@ -46,6 +48,7 @@ struct rf_stat {
 	unsigned hyper mtime;
 	unsigned hyper atime;
 	unsigned hyper length;
+	unsigned hyper nid;
 	unsigned hyper block_sz;
 	int mode_and_type;
 	int man_repl;
@@ -102,6 +105,8 @@ enum fish_msg_ty {
 	mmm_unlink_req_ty,
 	/** client rename request */
 	mmm_rename_req_ty,
+	/** Locate blocks in a file */
+	mmm_locate_req_ty,
 
 	/* ============== mds messages ============== */
 	/** current mds status */
@@ -118,6 +123,8 @@ enum fish_msg_ty {
 	mmm_fetch_chunk_resp_ty,
 	/** response to get user info message */
 	mmm_get_user_info_resp_ty,
+	/** response to locate request */
+	mmm_locate_resp_ty,
 
 	/* ============== osd messages ============== */
 	/** request to read from the osd */
@@ -251,6 +258,13 @@ struct mmm_rename_req {
 	string user<RF_USER_MAX>;
 };
 
+struct mmm_locate_req {
+	string path<RF_PATH_MAX>;
+	string user<RF_USER_MAX>;
+	unsigned hyper start;
+	unsigned hyper len;
+};
+
 /* ============== MDS messages ============== */
 struct mmm_mds_status_resp {
 	int mid;
@@ -280,6 +294,16 @@ struct mmm_fetch_chunk_resp {
 struct mmm_get_user_info_resp {
 	int flags;
 	/* next: data */
+};
+
+struct mmm_redfish_block_loc {
+	unsigned hyper start;
+	unsigned hyper len;
+	struct endpoint ep<RF_MAX_OID>;
+};
+
+struct mmm_locate_resp {
+	struct mmm_redfish_block_loc locs<>;
 };
 
 /* ============== OSD messages ============== */
