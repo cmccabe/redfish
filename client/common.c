@@ -62,6 +62,8 @@ void redfish_free_block_locs(struct redfish_block_loc **blcs, int nblc)
 
 	for (i = 0; i < nblc; ++i) {
 		blc = blcs[i];
+		if (!blc)
+			continue;
 		for (j = 0; j < blc->nhosts; ++j) {
 			free(blc->hosts[j].hostname);
 		}
