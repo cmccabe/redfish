@@ -73,36 +73,34 @@ static int test2(void)
 	int i, ret;
 	const char *str;
 	struct json_object *jo = NULL;
-	struct abbie *my_abbie[TEST2_NUM_ABBIE + 1] = { 0 };
+	struct abbie *my_abbie[TEST2_NUM_ABBIE] = { 0 };
 	struct bob *my_bob = NULL;
+
+	EXPECT_NOT_EQ(my_abbie, NULL);
 	for (i = 0; i < TEST2_NUM_ABBIE; ++i) {
 		my_abbie[i] = JORM_INIT_abbie();
-		if (!my_abbie[i]) {
-			ret = EXIT_FAILURE;
-			goto done;
-		}
+		EXPECT_NOT_EQ(my_abbie[i], NULL);
 		my_abbie[i]->a = i;
 	}
 	my_bob = JORM_INIT_bob();
-	if (!my_bob) {
-		ret = EXIT_FAILURE;
-		goto done;
-	}
+	EXPECT_NOT_EQ(my_bob, NULL);
 	my_bob->a = 1;
 	my_bob->b = 2.5;
 	my_bob->c = strdup("hi there");
-	if (!my_bob->c) {
-		ret = EXIT_FAILURE;
-		goto done;
-	}
+	EXPECT_NOT_EQ(my_bob->c, NULL);
 	my_bob->d = my_abbie[0];
 	my_bob->e = 0;
 	my_bob->f = calloc(3, sizeof(struct abbie*));
+	EXPECT_NOT_EQ(my_bob->f, NULL);
 	my_bob->f[0] = my_abbie[1];
 	my_bob->f[1] = my_abbie[2];
 	my_bob->f[2] = NULL;
 	my_bob->extra_data = 404;
 	my_bob->g = JORM_INIT_carrie();
+	EXPECT_NOT_EQ(my_bob->g, NULL);
+	my_bob->h = calloc(3, sizeof(char*));
+	my_bob->h[0] = strdup("fee");
+	my_bob->h[1] = strdup("fie");
 	EXPECT_NOT_EQ(my_bob->g, NULL);
 	my_bob->g->x = 101;
 	my_bob->g->y = 5.0;
@@ -113,8 +111,9 @@ static int test2(void)
 	}
 	str = json_object_to_json_string(jo);
 	if (strcmp(str, "{ \"a\": 1, \"b\": 2.500000, \"c\": \"hi there\", "
-		   "\"d\": { \"a\": 0 }, \"e\": false, \"f\": [ { \"a\": 1 }, "
-		   "{ \"a\": 2 } ], \"x\": 101, \"y\": 5.000000 }") != 0)
+		"\"d\": { \"a\": 0 }, \"e\": false, \"f\": [ { \"a\": 1 }, "
+		"{ \"a\": 2 } ], \"x\": 101, \"y\": 5.000000, "
+		"\"h\": [ \"fee\", \"fie\" ] }") != 0)
 	{
 		fprintf(stderr, "got str = '%s'\n", str);
 		ret = EXIT_FAILURE;
@@ -126,25 +125,8 @@ done:
 		json_object_put(jo);
 		jo = NULL;
 	}
-	if (my_bob) {
-		if (my_bob->c) {
-			free(my_bob->c);
-			my_bob->c = NULL;
-		}
-		if (my_bob->f) {
-			free(my_bob->f);
-			my_bob->f = NULL;
-		}
-		if (my_bob->g) {
-			free(my_bob->g);
-			my_bob->g = NULL;
-		}
-		free(my_bob);
-	}
-	for (i = 0; i < TEST2_NUM_ABBIE; ++i) {
-		free(my_abbie[i]);
-		my_abbie[i] = NULL;
-	}
+	if (my_bob)
+		JORM_FREE_bob(my_bob);
 	return ret;
 }
 
@@ -156,7 +138,8 @@ static int test3(void)
 	const char in_str[] = "{ \"a\": 1, \"b\": 2.500000, "
 		"\"c\": \"hi there\", \"d\": { \"a\": 0 }, "
 		"\"e\": false, \"f\": [ { \"a\": 1 }, "
-		"{ \"a\": 2 } ], \"x\" : 5, \"y\" : 1.5 }";
+		"{ \"a\": 2 } ], \"x\" : 5, \"y\" : 1.5, "
+		"\"h\" : [ \"wow\" ] }";
 	int expected_array_val[] = { 1, 2, 6 };
 	struct json_object* jo = NULL;
 	struct bob *my_bob = NULL;
@@ -187,6 +170,10 @@ static int test3(void)
 	}
 	EXPECT_EQ(my_bob->g->x, 5);
 	EXPECT_EQ(my_bob->g->y, 1.5);
+	EXPECT_NOT_EQ(my_bob->h, JORM_INVAL_ARRAY);
+	EXPECT_NOT_EQ(my_bob->h[0], NULL);
+	EXPECT_EQ(my_bob->h[1], NULL);
+	EXPECT_ZERO(strcmp(my_bob->h[0], "wow"));
 done:
 	if (jo) {
 		json_object_put(jo);

@@ -113,6 +113,7 @@ struct ty** JORM_OARRAY_COPY_##ty(struct ty **arr) { \
 #define JORM_NESTED(name, ty)
 #define JORM_EMBEDDED(name, ty)
 #define JORM_BOOL(name)
+#define JORM_SARRAY(name)
 #define JORM_OARRAY(name, ty)
 #define JORM_CONTAINER_END
 #define JORM_IGNORE(x)

@@ -91,6 +91,25 @@ if (me->name != JORM_INVAL_BOOL) { \
 	json_object_object_add(jo, #name, ji); \
 }
 
+#define JORM_SARRAY(name) \
+if (me->name != JORM_INVAL_ARRAY) { \
+	int i; \
+	struct json_object* ji = json_object_new_array(); \
+	if (!ji) { \
+		goto handle_oom; \
+	} \
+	json_object_object_add(jo, #name, ji); \
+	for (i = 0; me->name[i]; ++i) { \
+		struct json_object* ja = json_object_new_string(me->name[i]); \
+		if (!ja) { \
+			goto handle_oom; \
+		} \
+		if (json_object_array_add(ji, ja) != 0) { \
+			goto handle_oom; \
+		} \
+	} \
+}
+
 #define JORM_OARRAY(name, ty) \
 if (me->name != JORM_INVAL_ARRAY) { \
 	int i; \

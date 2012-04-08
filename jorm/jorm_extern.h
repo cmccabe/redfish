@@ -40,6 +40,6 @@ struct json_object;
 	struct ty;
 #define JORM_BOOL(name)
 #define JORM_OARRAY(name, ty)
+#define JORM_SARRAY(name)
 #define JORM_CONTAINER_END
 #define JORM_IGNORE(x)
-

@@ -89,6 +89,33 @@ handle_oom: \
 		out->name = JORM_INVAL_BOOL; \
 	} \
 }
+#define JORM_SARRAY(name) { \
+	struct json_object* ji = json_object_object_get(jo, #name); \
+	if (ji && (json_object_get_type(ji) == json_type_array)) { \
+		int i, arr_len = json_object_array_length(ji); \
+		out->name = calloc(1, (arr_len + 1) * sizeof(char *)); \
+		if (!out->name) { \
+			goto handle_oom; \
+		} \
+		for (i = 0; i < arr_len; ++i) { \
+			struct json_object* ja = \
+				json_object_array_get_idx(ji, i); \
+			if (!ja) { \
+				goto handle_oom; \
+			} \
+			if (json_object_get_type(ja) != json_type_string) { \
+				continue; \
+			} \
+			out->name[i] = strdup(json_object_get_string(ja)); \
+			if (!out->name[i]) { \
+				goto handle_oom; \
+			} \
+		} \
+	} \
+	else { \
+		out->name = JORM_INVAL_ARRAY; \
+	} \
+}
 #define JORM_OARRAY(name, ty) { \
 	struct json_object* ji = json_object_object_get(jo, #name); \
 	if (ji && (json_object_get_type(ji) == json_type_array)) { \

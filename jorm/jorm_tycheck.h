@@ -69,6 +69,30 @@ void JORM_TYCHECK_##ty(struct json_object *jo, \
 
 #define JORM_BOOL(name) JORM_TYCHECK_IMPL(name, json_type_boolean)
 
+#define JORM_SARRAY(name) { \
+struct json_object* ji = json_object_object_get(jo, #name); \
+if (ji) { \
+	json_type aty = json_object_get_type(ji); \
+	if (aty != json_type_array) { \
+		JORM_TYCHECK_BAD_TY_MSG(name, aty, json_type_array) \
+	} \
+	else { \
+		int i, arr_len = json_object_array_length(ji); \
+		for (i = 0; i < arr_len; ++i) { \
+			struct json_object* ja = \
+				json_object_array_get_idx(ji, i); \
+			json_type jaty = json_object_get_type(ja); \
+			if (jaty != json_type_string) { \
+				snappend(err, err_len, "WARNING: ignoring field " \
+					 "\"%s" #name "[%d]\" because it has " \
+					 "type %s, but it should be a string\n", \
+					 acc, i, json_ty_to_str(aty)); \
+			} \
+		} \
+	} \
+} \
+}
+
 #define JORM_OARRAY(name, ty) { \
 struct json_object* ji = json_object_object_get(jo, #name); \
 if (ji) { \

@@ -107,6 +107,36 @@ int JORM_COPY_##name(struct name *src, struct name *dst) { \
 		} \
 	}
 
+#define JORM_SARRAY(name) \
+	if (src->name != JORM_INVAL_ARRAY) { \
+		char **arr; \
+		int i, slen, dlen; \
+		for (slen = 0; src->name[slen]; ++slen) { \
+			; \
+		} \
+		if (dst->name == JORM_INVAL_ARRAY) \
+			dlen = 0; \
+		else { \
+			for (dlen = 0; dst->name[dlen]; ++dlen) { \
+				; \
+			} \
+		} \
+		if (slen > dlen) { \
+			arr = realloc(dst->name, (slen + 1) * sizeof(char *)); \
+			if (!arr) \
+				return -ENOMEM; \
+			memset(arr + dlen, 0, (1 + slen - dlen) * sizeof(char *)); \
+			dst->name = arr; \
+		} \
+		for (i = 0; i < slen; ++i) { \
+			if (dst->name[i]) \
+				free(dst->name[i]); \
+			dst->name[i] = strdup(src->name[i]); \
+			if (!dst->name[i]) \
+				return -ENOMEM; \
+		} \
+	}
+
 #define JORM_CONTAINER_END \
 	return 0; \
 }
