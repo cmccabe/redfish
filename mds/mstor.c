@@ -68,8 +68,6 @@
 /** TODO: allocate chunk IDs in a per-delegation fashion */
 #define MSTOR_INIT_CID 1
 
-#define MSTOR_ROOT_NID 0
-
 #define MSTOR_PERM_EXEC 01
 #define MSTOR_PERM_WRITE 02
 #define MSTOR_PERM_READ 04
@@ -220,7 +218,6 @@ static int mstor_range_lock_by_op(struct mstor *mstor, struct mreq *mreq)
 	case MSTOR_OP_MKDIRS:
 		strat = RL_STRAT_ENTRY_SUBTREE_AND_PARENT;
 		break;
-	case MSTOR_OP_NID_STAT:
 	case MSTOR_OP_CHUNKFIND:
 	case MSTOR_OP_CHMOD:
 	case MSTOR_OP_CHOWN:
@@ -230,6 +227,7 @@ static int mstor_range_lock_by_op(struct mstor *mstor, struct mreq *mreq)
 	case MSTOR_OP_RENAME:
 		strat = RL_STRAT_ENTRY_SUBTREE_AND_PARENT_SUBTREE;
 		break;
+	case MSTOR_OP_NID_STAT:
 	case MSTOR_OP_CHUNKALLOC:
 	case MSTOR_OP_FIND_ZOMBIES:
 	case MSTOR_OP_DESTROY_ZOMBIE:

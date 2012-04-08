@@ -23,6 +23,8 @@
 #include "mds/const.h"
 #include "msg/types.h" /* for RF_MAX_OID */
 
+#define MSTOR_ROOT_NID 1
+
 #define MNODE_IS_DIR 0x8000
 
 /*
@@ -72,7 +74,7 @@ enum mstor_op_ty {
 	 * based on its path.  Locking: uses range locker */
 	MSTOR_OP_STAT,
 	/** Operation that gets information about a file or directory
-	 * based on its node ID.  Locking: uses range locker */
+	 * based on its node ID.  Locking: none */
 	MSTOR_OP_NID_STAT,
 	/** Operation that changes the mode
 	 * Locking: uses range locker */

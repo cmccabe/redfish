@@ -98,6 +98,7 @@ static void mstoru_tls_destroy(void *v)
 
 typedef int (*stat_check_fn_t)(void *arg, const struct rf_stat *stat,
 		const char *pcomp);
+typedef int (*nid_stat_check_fn_t)(void *arg, const struct rf_stat *stat);
 
 static struct udata *udata_unit_create_default(void)
 {
@@ -407,6 +408,34 @@ done:
 	return FORCE_NEGATIVE(ret);
 }
 
+static int mstoru_do_nid_stat(struct mstor *mstor, uint64_t nid,
+		void *arg, nid_stat_check_fn_t fn)
+{
+	int ret;
+	struct rf_stat stat;
+	struct mreq_nid_stat mreq;
+	struct mstoru_tls *tls = mstoru_tls_get();
+
+	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.lk = tls->lk;
+	mreq.base.op = MSTOR_OP_NID_STAT;
+	mreq.nid = nid;
+	mreq.stat = &stat;
+	ret = mstor_do_operation(mstor, (struct mreq*)&mreq);
+	if (ret) {
+		fprintf(stderr, "do_nid_stat failed with error %d\n", ret);
+		goto done;
+	}
+	ret = fn(arg, mreq.stat);
+	if (ret)
+		goto done_free_resp;
+	ret = 0;
+done_free_resp:
+	XDR_REQ_FREE(rf_stat, mreq.stat);
+done:
+	return FORCE_NEGATIVE(ret);
+}
+
 static int mstoru_do_chown(struct mstor *mstor, const char *full_path,
 		const char *user_name, const char *new_user,
 		const char *new_group)
@@ -485,6 +514,16 @@ static int test1_expect_root(void *arg,
 	return 0;
 }
 
+static int test1_expect_root_nid(POSSIBLY_UNUSED(void *arg),
+			     const struct rf_stat *stat)
+{
+	int mode = stat->mode_and_type & MMM_STAT_MODE_MASK;
+	EXPECT_NONZERO(stat->mode_and_type & MMM_STAT_TYPE_DIR);
+	EXPECT_EQ(mode, MSTOR_ROOT_NID_INIT_MODE);
+	EXPECT_EQ(stat->nid, MSTOR_ROOT_NID);
+	return 0;
+}
+
 static int mstoru_test1(const char *tdir)
 {
 	struct mstor *mstor;
@@ -495,7 +534,7 @@ static int mstoru_test1(const char *tdir)
 	struct zombie_info lower_bound;
 	struct zombie_info zinfos[MSTORU_MAX_ZINFOS];
 	uint64_t csize = 134217728ULL;
-	struct mstoru_atime_and_mtime times = { 123ULL, 123ULL };
+	struct mstoru_atime_and_mtime times;
 
 	udata = udata_unit_create_default();
 	EXPECT_NOT_ERRPTR(udata);
@@ -503,6 +542,8 @@ static int mstoru_test1(const char *tdir)
 	EXPECT_NOT_ERRPTR(mstor);
 	EXPECT_EQ(mstoru_do_mkdirs(mstor, "/inval/user",
 		0644, 123, MSTORU_INVALID_USER), -EUSERS);
+	EXPECT_EQ(mstoru_do_nid_stat(mstor, MSTOR_ROOT_NID,
+		NULL, test1_expect_root_nid), 0);
 	/* change root node's mode to 0775 and group to 'users' */
 	EXPECT_EQ(mstoru_do_chown(mstor, "/", RF_SUPERUSER_NAME,
 		"", MSTORU_USERS_GROUP), 0);
@@ -515,6 +556,7 @@ static int mstoru_test1(const char *tdir)
 	EXPECT_EQ(mstoru_do_mkdirs(mstor, "/a/d/e",
 		0644, 123, MSTORU_SPOONY_USER), -ENOTDIR);
 	/* change mtime of /b/c */
+	times.atime = 123ULL;
 	times.mtime = 789ULL;
 	EXPECT_EQ(mstoru_do_utimes(mstor, "/b/c", RF_SUPERUSER_NAME,
 		RF_INVAL_TIME, times.mtime), 0);
