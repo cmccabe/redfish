@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#define REDFISH_MDS_NET_DOT_C
-
 #include "common/cluster_map.h"
 #include "common/config/mdsc.h"
 #include "common/config/unitaryc.h"
