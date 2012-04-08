@@ -14,17 +14,20 @@
  * limitations under the License.
  */
 
+#include "util/error.h"
 #include "util/platform/socket.h"
 
 #include <errno.h>
 #include <fcntl.h>
+#include <netinet/tcp.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 int do_socket(int domain, int type, int proto, enum redfish_plat_flags_t pf)
 {
-	int res, ret;
+	int res, ret, fd;
 	fd = socket(domain, type, proto);
 	if (fd < 0) {
 		return -errno;
@@ -59,9 +62,9 @@ int do_socket(int domain, int type, int proto, enum redfish_plat_flags_t pf)
 }
 
 int do_accept(int sock, struct sockaddr *addr, socklen_t len,
-		int flags)
+		enum redfish_plat_flags_t pf)
 {
-	int ret;
+	int ret, fd, POSSIBLY_UNUSED(res);
 	socklen_t olen;
 
 	olen = len;
@@ -70,17 +73,16 @@ int do_accept(int sock, struct sockaddr *addr, socklen_t len,
 		return -errno;
 	}
 	if (olen > len) {
-		int res;
 		RETRY_ON_EINTR(res, close(fd));
 		return -ENOBUFS;
 	}
 	/* todo: mutex here */
-	if (flags & WANT_O_CLOEXEC) {
+	if (pf & WANT_O_CLOEXEC) {
 		int flags = fcntl(fd, F_GETFD);
 		flags |= FD_CLOEXEC;
 		fcntl(fd, F_SETFD, flags);
 	}
-	if (flags & WANT_O_NONBLOCK) {
+	if (pf & WANT_O_NONBLOCK) {
 		int on = 1;
 		ret = ioctl(fd, FIONBIO, (char*)&on);
 		if (ret < 0) {
@@ -88,7 +90,7 @@ int do_accept(int sock, struct sockaddr *addr, socklen_t len,
 			return ret;
 		}
 	}
-	if (flags & WANT_TCP_NODELAY) {
+	if (pf & WANT_TCP_NODELAY) {
 		int optval = 1;
 		setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
 			   &optval, sizeof(optval));

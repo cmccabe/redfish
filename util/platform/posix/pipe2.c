@@ -15,7 +15,7 @@
  */
 
 #include "util/error.h"
-#include "util/platform/pipe2"
+#include "util/platform/pipe2.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -24,9 +24,9 @@
 /* TODO: add a mutex here ensuring that nobody calls exec in between
  * pipe(2) and fcntl(2) */
 
-int do_pipe(int pipefd[2], enum redfish_plat_flags_t pf)
+int do_pipe2(int pipefd[2], enum redfish_plat_flags_t pf)
 {
-	int ret, curflags, flags;
+	int ret, curflags, flags = 0, POSSIBLY_UNUSED(res);
 	ret = pipe(pipefd);
 	if (ret) {
 		ret = -errno;

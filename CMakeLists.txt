@@ -37,6 +37,17 @@ set(CMAKE_C_FLAGS_DEBUG "-g -O2 -fstack-protector -Werror")
 set(CMAKE_CURRENT_BINARY_DIR, builds)
 SET(CMAKE_INSTALL_PREFIX /usr)
 
+# Although nearly all of Redfish should build and work on POSIX-compatible
+# operating systems, there are a few platform-specific parts.
+# Normally, we'll incorporate only the platform-specific parts appropriate for
+# your operating system.  However, there is a manual override that developers
+# can use for testing purposes.
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    set(REDFISH_DETECTED_PLATFORM "platform_linux")
+else()
+    set(REDFISH_DETECTED_PLATFORM "platform_posix")
+endif()
+set(REDFISH_PLATFORM ${REDFISH_DETECTED_PLATFORM} CACHE STRING "For developers only. Which platform to build for.")
 set(REDFISH_CLIENT_LIB "fishc_real" CACHE STRING "For developers only. Which client library implementation to use (fishc_stub, fishc_hdfs, or fishc_real)")
 set(REDFISH_BUILD_JNI 1 CACHE BOOL "Build Hadoop JNI bindings for Redfish")
 set(REDFISH_BUILD_FUSE 1 CACHE BOOL "Build FUSE (Filesystem in Userspace) connector for Redfish")

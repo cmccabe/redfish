@@ -19,6 +19,7 @@
 #include <inttypes.h>
 #include <pthread.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #define INVALID_TID 0
 #define MAX_TID 0xffffffff
@@ -46,18 +47,19 @@ static uint32_t g_next_tid = INVALID_TID;
  * pthread_key_t needs to be initialized before it can be used.  And since this
  * is the only portable way to get thread-local data, we have to deal with that
  * here.
+ *
+ * It does suck that we're using abort() here to handle out-of-memory
+ * conditions.
  */
-
-void unique_thread_id_init(void)
+void unique_tid(void)
 {
-	int ret;
-
 	pthread_mutex_lock(&g_thread_id_lock);
 	if (g_next_tid != INVALID_TID) {
 		/* The mutex includes a memory barrier that will make other
 		 * threads' stores visible to us.  So if g_next_tid
 		 * has already been initialized, but wasn't visible to us
 		 * before, it will be now. */
+		pthread_mutex_unlock(&g_thread_id_lock);
 		return;
 	}
 	if (pthread_key_create(&g_tid_key, NULL))
@@ -71,7 +73,7 @@ uint32_t get_tid(void)
 	uint32_t tid;
 
 	if (g_next_tid == INVALID_TID) {
-		unique_thread_id_init();
+		unique_tid();
 	}
 	tid = (uint32_t)(uintptr_t)pthread_getspecific(g_tid_key);
 	if (tid == INVALID_TID) {

@@ -23,7 +23,7 @@ add_library(util
     time.c
     username.c
 )
-target_link_libraries(util ${JSON_C_LIBRARY} platform pthread)
+target_link_libraries(util ${JSON_C_LIBRARY} ${REDFISH_PLATFORM} pthread)
 
 IF (CMAKE_SYSTEM MATCHES "Linux")
     FIND_LIBRARY(RT_LIBRARY rt)
