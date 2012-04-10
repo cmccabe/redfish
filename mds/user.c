@@ -228,7 +228,7 @@ int user_add_segid(struct udata *udata, const char *name, uint32_t segid)
 	nuser->num_segid = num_segid;
 	nuser->segid[num_segid - 1] = segid;
 	RB_INSERT(users_by_name, &udata->users_name_head, nuser);
-	RB_INSERT(users_by_uid, &udata->users_uid_head, user);
+	RB_INSERT(users_by_uid, &udata->users_uid_head, nuser);
 	return 0;
 }
 
