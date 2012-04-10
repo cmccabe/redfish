@@ -120,6 +120,7 @@ struct mreq {
 };
 
 struct mreq_set_primary_user_group {
+	struct mreq base;
 	/** User to modify */
 	const char *tgt_user;
 	/** New primary group to set */
@@ -127,6 +128,7 @@ struct mreq_set_primary_user_group {
 };
 
 struct mreq_add_user_to_group {
+	struct mreq base;
 	/** User to modify */
 	const char *tgt_user;
 	/** New group to add */
@@ -134,6 +136,7 @@ struct mreq_add_user_to_group {
 };
 
 struct mreq_remove_user_from_group {
+	struct mreq base;
 	/** User to modify */
 	const char *tgt_user;
 	/** Group to remove */
