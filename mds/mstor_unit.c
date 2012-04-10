@@ -41,6 +41,8 @@
 
 #define MSTORU_NUM_IO_THREADS 5
 
+#define MSTORU_SUPER_USER "superuser"
+
 #define MSTORU_SPOONY_USER "spoony"
 #define MSTORU_SPOONY_UID 2
 
@@ -137,6 +139,78 @@ static struct udata *udata_unit_create_default(void)
 		return ERR_PTR(-EINVAL);
 	}
 	return udata;
+}
+
+static int mstoru_set_primary_user_group(struct mstor *mstor, const char *user,
+		const char *tgt_user, const char *tgt_group)
+{
+	struct mreq_add_user_to_group mreq;
+	struct mstoru_tls *tls = mstoru_tls_get();
+
+	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.lk = tls->lk;
+	mreq.base.op = MSTOR_OP_SET_PRIMARY_USER_GROUP;
+	mreq.base.user_name = user;
+	mreq.tgt_user = tgt_user;
+	mreq.tgt_group = tgt_group;
+	return mstor_do_operation(mstor, (struct mreq*)&mreq);
+}
+
+static int mstoru_add_user_to_group(struct mstor *mstor, const char *user,
+		const char *tgt_user, const char *tgt_group)
+{
+	struct mreq_add_user_to_group mreq;
+	struct mstoru_tls *tls = mstoru_tls_get();
+
+	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.lk = tls->lk;
+	mreq.base.op = MSTOR_OP_ADD_USER_TO_GROUP;
+	mreq.base.user_name = user;
+	mreq.tgt_user = tgt_user;
+	mreq.tgt_group = tgt_group;
+	return mstor_do_operation(mstor, (struct mreq*)&mreq);
+}
+
+static int mstoru_remove_user_from_group(struct mstor *mstor, const char *user,
+		const char *tgt_user, const char *tgt_group)
+{
+	struct mreq_add_user_to_group mreq;
+	struct mstoru_tls *tls = mstoru_tls_get();
+
+	memset(&mreq, 0, sizeof(mreq));
+	mreq.base.lk = tls->lk;
+	mreq.base.op = MSTOR_OP_REMOVE_USER_FROM_GROUP;
+	mreq.base.user_name = user;
+	mreq.tgt_user = tgt_user;
+	mreq.tgt_group = tgt_group;
+	return mstor_do_operation(mstor, (struct mreq*)&mreq);
+}
+
+static int test1_setup_users(struct mstor *mstor)
+{
+	/* The groups setup that we want:
+	 *
+	 * superuser: superuser
+	 * spoony: spoony users
+	 * wooters: wooters woot users
+	 */
+	EXPECT_EQ(mstoru_remove_user_from_group(mstor, MSTORU_SUPER_USER,
+		MSTORU_SPOONY_USER, MSTORU_SPOONY_USER), -EINVAL);
+	EXPECT_EQ(mstoru_remove_user_from_group(mstor, MSTORU_SUPER_USER,
+		MSTORU_SPOONY_USER, MSTORU_USERS_GROUP), -ENOENT);
+//	EXPECT_EQ(mstoru_remove_user_from_group(mstor, MSTORU_SPOONY_USER,
+//		MSTORU_SPOONY_USER, MSTORU_USERS_GROUP), -EPERM);
+	EXPECT_EQ(mstoru_add_user_to_group(mstor, MSTORU_SUPER_USER,
+		MSTORU_SPOONY_USER, MSTORU_USERS_GROUP), 0);
+//	EXPECT_EQ(mstoru_set_primary_user_group(mstor, MSTORU_SPOONY_USER,
+//		MSTORU_WOOT_USER, MSTORU_USERS_GROUP), -EPERM);
+	EXPECT_EQ(mstoru_set_primary_user_group(mstor, MSTORU_SUPER_USER,
+		MSTORU_WOOT_USER, MSTORU_USERS_GROUP), 0);
+	EXPECT_EQ(mstoru_set_primary_user_group(mstor, MSTORU_SUPER_USER,
+		MSTORU_WOOT_USER, MSTORU_SPOONY_USER), 0);
+	EXPECT_EQ(mstoru_add_user_to_group(mstor, MSTORU_SUPER_USER,
+		MSTORU_WOOT_USER, MSTORU_WOOTERS_GROUP), 0);
+	return 0;
 }
 
 static struct mstor *mstoru_init_unit(const char *tdir, const char *name,
@@ -540,6 +614,7 @@ static int mstoru_test1(const char *tdir)
 	EXPECT_NOT_ERRPTR(udata);
 	mstor = mstoru_init_unit(tdir, "test1", 1024, udata);
 	EXPECT_NOT_ERRPTR(mstor);
+	EXPECT_ZERO(test1_setup_users(mstor));
 	EXPECT_EQ(mstoru_do_mkdirs(mstor, "/inval/user",
 		0644, 123, MSTORU_INVALID_USER), -EUSERS);
 	EXPECT_EQ(mstoru_do_nid_stat(mstor, MSTOR_ROOT_NID,

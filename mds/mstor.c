@@ -149,38 +149,6 @@ struct mstor {
 	struct srange_tracker *tk;
 };
 
-/****************************** utility ********************************/
-static void leveldb_try_delete_cb(void *state, POSSIBLY_UNUSED(const char *k),
-		POSSIBLY_UNUSED(size_t klen))
-{
-	*((int*)state) = 0;
-}
-
-static int leveldb_try_delete(leveldb_t *ldb, leveldb_writeoptions_t* lwropt,
-		const char *key, size_t key_len, char **err)
-{
-	int ret;
-	leveldb_writebatch_t* bat;
-	
-	bat = leveldb_writebatch_create();
-	if (!bat) {
-		ret = -ENOMEM;
-		goto done;
-	}
-	leveldb_writebatch_delete(bat, key, key_len);
-	leveldb_write(ldb, lwropt, bat, err);
-	if (*err) {
-		ret = -EIO;
-		goto done_free_writebatch;
-	}
-	ret = -ENOENT;
-	leveldb_writebatch_iterate(bat, (void*)&ret, NULL, leveldb_try_delete_cb);
-done_free_writebatch:
-	leveldb_writebatch_destroy(bat);
-done:
-	return ret;
-}
-
 /****************************** functions ********************************/
 enum rl_strat_ty {
 	RL_STRAT_LOCK_ALL,
@@ -1322,9 +1290,10 @@ static int mstor_do_remove_user_from_group(struct mstor *mstor,
 {
 	struct mreq_remove_user_from_group *req =
 		(struct mreq_remove_user_from_group *)mreq;
-	char *err = NULL;
+	char *err = NULL, *val;
 	char gkey[MGROUP_KEY_MAX], group[RF_GROUP_MAX];
 	int ret, gkey_len;
+	size_t vlen;
 
 	// TODO: check that mreq.user_name is a superuser, or 
 	// mreq.user_name == tgt_user
@@ -1344,11 +1313,25 @@ static int mstor_do_remove_user_from_group(struct mstor *mstor,
 		if (ret)
 			return ret;
 	}
-	ret = leveldb_try_delete(mstor->ldb, mstor->lwropt, gkey,
+	else {
+		val = leveldb_get(mstor->ldb, mstor->lreadopt, gkey, gkey_len,
+			&vlen, &err);
+		if (err) {
+			glitch_log("mstor_do_remove_user: leveldb_get failed "
+				"with error %s\n", err);
+			free(err);
+			return -EIO;
+		}
+		if (!val) {
+			return -ENOENT;
+		}
+		free(val);
+	}
+	leveldb_delete(mstor->ldb, mstor->lwropt, gkey,
 			gkey_len, &err);
 	if (err) {
 		glitch_log("mstor_do_remove_user_from_group: "
-			"leveldb_try_delete(tgt_user=%s, tgt_group=%s) "
+			"leveldb_delete(tgt_user=%s, tgt_group=%s) "
 			"returned error '%s'\n",
 			req->tgt_user, req->tgt_group, err);
 		free(err);
