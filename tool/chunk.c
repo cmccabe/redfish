@@ -1,4 +1,6 @@
 /*
+ * vim: ts=8:sw=8:tw=79:noet
+ * 
  * Copyright 2012 the Redfish authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
